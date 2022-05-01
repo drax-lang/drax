@@ -1,5 +1,6 @@
 #include "bfunctions.h"
 #include <stdlib.h>
+#include <string.h>
 
 beorn_state* bpop(beorn_state* curr, int i){
   beorn_state* ele = curr->child[i];
@@ -102,4 +103,28 @@ beorn_state* do_op(beorn_state* curr) {
   }
 
   return x;
+}
+
+beorn_state* bb_type_of(beorn_state* exp) {
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (type-of 123)");
+  BASSERT(exp->length == 1, BTYPE_ERROR, "missing one argument.");
+  BASSERT(exp->length > 2,  BTYPE_ERROR, "expected only one argument.");
+
+  char* t = btype_to_str(exp->child[1]->type);
+  free(exp);
+
+  return new_string(t);
+}
+
+beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
+  beorn_state* bs = exp->child[0];
+
+  if (strcmp("+", bs->cval) == 0) { return do_op(exp); }
+  if (strcmp("-", bs->cval) == 0) { return do_op(exp); }
+  if (strcmp("*", bs->cval) == 0) { return do_op(exp); }
+  if (strcmp("/", bs->cval) == 0) { return do_op(exp); }
+  if (strcmp("type-of", bs->cval) == 0) { return bb_type_of(exp); }
+  
+  return exp;
+
 }

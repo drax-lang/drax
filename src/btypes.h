@@ -5,6 +5,8 @@
 #ifndef __BTYPES
 #define __BTYPES
 
+#define BASSERT(cond, t, msg, ...) if (cond) { return new_error(t, msg, ##__VA_ARGS__); }
+
 typedef enum types {
   BT_UNKNOWN,
   BT_ERROR,
@@ -14,7 +16,7 @@ typedef enum types {
   BT_STRING,
   BT_SYMBOL,
   BT_EXPRESSION,
-  BT_PACK_FREEZE
+  BT_PACK
 } types;
 
 typedef enum berrors_type {
@@ -22,7 +24,8 @@ typedef enum berrors_type {
   BTYPE_ERROR,
   BREFERENCE_ERROR,
   BUNKNOWN_TYPE_ERROR,
-  BZERO_DIVISION_ERROR
+  BZERO_DIVISION_ERROR,
+  BUNSPECTED_TYPE,
 } berrors_type;
 
 typedef struct beorn_state {
@@ -36,8 +39,11 @@ typedef struct beorn_state {
   struct beorn_state** child;
 } beorn_state;
 
+typedef struct beorn_env {
+  beorn_state** bval;
+} beorn_env;
 
-beorn_state* new_error(berrors_type t, char* s);
+beorn_state* new_error(berrors_type t, char* s, ...);
 
 beorn_state* new_integer(long iv);
 
@@ -54,5 +60,7 @@ beorn_state* new_expression(char* s);
 void del_bstate(beorn_state* curr);
 
 char* berrors_to_str(berrors_type t);
+
+char* btype_to_str(types t);
 
 #endif

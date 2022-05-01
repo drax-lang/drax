@@ -52,7 +52,7 @@ int add_child(beorn_state** root, beorn_state* child) {
   } else {
 
     beorn_state* crr;
-    if ((((*root)->child[(*root)->length - 1]->type == BT_PACK_FREEZE)  || 
+    if ((((*root)->child[(*root)->length - 1]->type == BT_PACK)  || 
          ((*root)->child[(*root)->length - 1]->type == BT_EXPRESSION )) &&
          ((*root)->child[(*root)->length - 1]->closed == 0))
     {
@@ -78,7 +78,7 @@ int add_child(beorn_state** root, beorn_state* child) {
 int close_pack_freeze(beorn_state** root, types ct) {
   if ((*root)->length == 0) return 0;
 
-  if ((((*root)->child[(*root)->length - 1]->type == BT_PACK_FREEZE)  || 
+  if ((((*root)->child[(*root)->length - 1]->type == BT_PACK)  || 
        ((*root)->child[(*root)->length - 1]->type == BT_EXPRESSION )) &&
        ((*root)->child[(*root)->length - 1]->closed == 0))
   {
@@ -110,8 +110,8 @@ beorn_state* beorn_parser(char *input) {
     {
       case ' ': break;
       case '\n': break;
-      case '\r': break;  
-      case ',': break; 
+      case '\r': break;
+      case ',': break;
 
       case '0':
       case '1':
@@ -153,14 +153,14 @@ beorn_state* beorn_parser(char *input) {
         bword = "";
         break;
       case '}':
-        if(!close_pack_freeze(&bs, BT_PACK_FREEZE))
+        if(!close_pack_freeze(&bs, BT_PACK))
           throw_error("pack freeze pair not found.\n");
         break;
 
 
-      case '+': 
-      case '-': 
-      case '*': 
+      case '+':
+      case '-':
+      case '*':
       case '/': {
         char* ctmp = get_new_str(bword, c);
         add_child(&bs, new_symbol(ctmp));

@@ -37,7 +37,7 @@ void bprint(beorn_state* curr) {
     case BT_FLOAT:        printf("%Lf", curr->fval);     break;
     case BT_STRING:       printf("\"%s\"",  curr->cval); break;
     case BT_SYMBOL:       printf("%s",  curr->cval);     break;
-    case BT_PACK_FREEZE:  bprint_packfreeze(curr);       break;
+    case BT_PACK:  bprint_packfreeze(curr);       break;
     case BT_EXPRESSION:   bprint_expression(curr);       break;
     case BT_ERROR:        bshow_error(curr);             break;
     
