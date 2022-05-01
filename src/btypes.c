@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include "btypes.h"
 
-beorn_state* new_error(char* s) {
+beorn_state* new_error(berrors_type t, char* s) {
   beorn_state* v = malloc(sizeof(beorn_state));
   v->type = BT_ERROR;
   v->cval = malloc(strlen(s) + 1);
+  v->et = t;
   strcpy(v->cval, s);
   return v;
 }
@@ -80,3 +81,15 @@ void del_bstate(beorn_state* curr) {
 
   free(curr);
 }
+
+char* berrors_to_str(berrors_type t) {
+  switch (t) {
+    case BSYNTAX_ERROR: return "SYNTAX_ERROR";
+    case BTYPE_ERROR: return "TYPE_ERROR";
+    case BREFERENCE_ERROR: return "REFERENCE_ERROR";
+    case BUNKNOWN_TYPE_ERROR: return "UNKNOWN_TYPE_ERROR";
+    case BZERO_DIVISION_ERROR: return "ZERO_DIVISION_ERROR";
+    default: return "ERROR";
+  }
+}
+

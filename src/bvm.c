@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include "bvm.h"
 #include "bfunctions.h"
-#include "./btypes.h"
+#include "btypes.h"
 
-#define BASSERT(cond, msg) if (!(cond)) { return new_error(msg); }
+#define BASSERT(cond, t, msg) if (!(cond)) { return new_error(t, msg); }
 
 beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
   return do_op(curr);
@@ -23,6 +23,6 @@ beorn_state* process(beorn_env* benv, beorn_state* curr) {
     case BT_SYMBOL:       return process_symbol(benv, curr);
     case BT_EXPRESSION:   return process_expression(benv, curr);
     
-    default: return new_error("runtime error");
+    default: return new_error(BUNKNOWN_TYPE_ERROR, "type not found.");
   }
 }

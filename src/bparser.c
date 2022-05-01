@@ -15,7 +15,7 @@ char* get_new_str(char *str, char c) { // FIXME
 }
 
 void throw_error(char* err) {
-  printf("\x1B[31m%s\x1B[0m\n", err);
+  printf("\x1B[31mPARSER_ERROR: %s\x1B[0m\n", err);
   exit(1); // FIXME
 }
 
@@ -154,7 +154,7 @@ beorn_state* beorn_parser(char *input) {
         break;
       case '}':
         if(!close_pack_freeze(&bs, BT_PACK_FREEZE))
-          throw_error("Parser error, pack freeze pair not found.\n");
+          throw_error("pack freeze pair not found.\n");
         break;
 
 
@@ -177,7 +177,7 @@ beorn_state* beorn_parser(char *input) {
 
       case ')': {
         if(!close_pack_freeze(&bs, BT_EXPRESSION))
-          throw_error("Parser error, expression pair not found.\n");
+          throw_error("expression pair not found.\n");
         break;
       }
 

@@ -44,7 +44,7 @@ beorn_state* do_op(beorn_state* curr) {
         )
     {
       del_bstate(curr);
-      return new_error("It is not possible to do operations with non-numbers.");
+      return new_error(BTYPE_ERROR, "unsupported type.");
     }
   }
 
@@ -83,7 +83,7 @@ beorn_state* do_op(beorn_state* curr) {
       if (tvl == 0) {
         del_bstate(x);
         del_bstate(y);
-        x = new_error("bad argument in arithmetic expression.");
+        x = new_error(BZERO_DIVISION_ERROR, "bad argument in arithmetic expression.");
         break;
       }
       r /= tvl;

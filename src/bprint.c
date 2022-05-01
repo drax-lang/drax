@@ -9,7 +9,8 @@
 #define BRED  "\x1B[31m"
 
 void bshow_error(beorn_state* curr) {
-  printf("%s%s%s", BRED, curr->cval, BDEF);
+  char * et = berrors_to_str(curr->et);
+  printf("%s%s: %s%s", BRED, et, curr->cval, BDEF);
 }
 
 void bprint_packfreeze(beorn_state* curr) {
@@ -32,13 +33,13 @@ void bprint_expression(beorn_state* curr) {
 
 void bprint(beorn_state* curr) {
   switch (curr->type) {
-    case BT_INTEGER:      printf("%ld", curr->ival);  break;
-    case BT_FLOAT:        printf("%Lf", curr->fval);  break;
-    case BT_STRING:       printf("\"%s\"",  curr->cval);  break;
-    case BT_SYMBOL:       printf("%s",  curr->cval);  break;
-    case BT_PACK_FREEZE:  bprint_packfreeze(curr);    break;
-    case BT_EXPRESSION:   bprint_expression(curr);    break;
-    case BT_ERROR:        bshow_error(curr);    break;
+    case BT_INTEGER:      printf("%ld", curr->ival);     break;
+    case BT_FLOAT:        printf("%Lf", curr->fval);     break;
+    case BT_STRING:       printf("\"%s\"",  curr->cval); break;
+    case BT_SYMBOL:       printf("%s",  curr->cval);     break;
+    case BT_PACK_FREEZE:  bprint_packfreeze(curr);       break;
+    case BT_EXPRESSION:   bprint_expression(curr);       break;
+    case BT_ERROR:        bshow_error(curr);             break;
     
     default: printf("Runtime error: unspected token %s.\n", curr->cval); break;
   }
