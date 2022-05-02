@@ -116,6 +116,19 @@ beorn_state* bb_type_of(beorn_state* exp) {
   return new_string(t);
 }
 
+beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (set name 123)");
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
+  BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
+  BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
+
+  bset_env(benv, exp->child[1], exp->child[2]);
+  beorn_state* pck = new_pack("none");
+  pck->closed = 1;
+  del_bstate(exp);
+  return pck;
+}
+
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   beorn_state* bs = exp->child[0];
 
@@ -123,7 +136,10 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   if (strcmp("-", bs->cval) == 0) { return do_op(exp); }
   if (strcmp("*", bs->cval) == 0) { return do_op(exp); }
   if (strcmp("/", bs->cval) == 0) { return do_op(exp); }
+
   if (strcmp("type-of", bs->cval) == 0) { return bb_type_of(exp); }
+  
+  if (strcmp("set", bs->cval) == 0) { return bb_set(benv, exp);}
   
   return exp;
 

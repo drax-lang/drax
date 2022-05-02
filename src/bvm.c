@@ -17,18 +17,24 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
 }
 
 beorn_state* process_symbol(beorn_env* benv, beorn_state* curr) {
-  return curr;
+  for (int i = 0; i < benv->length; i++) {
+    if (strcmp(benv->symbol[i], curr->cval) == 0) {
+      return bcopy_state(benv->bval[i]);
+    }
+  }
+
+  return new_error(BREFERENCE_ERROR, "symbol '%s' not found.", curr->cval);
 }
 
 beorn_state* process(beorn_env* benv, beorn_state* curr) {
   switch (curr->type) {
-    case BT_INTEGER:      return curr;
-    case BT_FLOAT:        return curr;
-    case BT_STRING:       return curr;
+    case BT_INTEGER:
+    case BT_FLOAT:
+    case BT_STRING:
     case BT_PACK:         return curr;
     case BT_SYMBOL:       return process_symbol(benv, curr);
     case BT_EXPRESSION:   return process_expression(benv, curr);
     
-    default: return new_error(BUNKNOWN_TYPE_ERROR, "type not found.");
+    default: return new_error(BUNKNOWN_TYPE_ERROR, "type '%s' not found.", btype_to_str(curr->type));
   }
 }

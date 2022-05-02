@@ -7,6 +7,7 @@
 #define BBLU  "\x1B[34m"
 #define BGRE  "\x1B[32m"
 #define BRED  "\x1B[31m"
+#define BMAG  "\x1b[35m"
 
 void bshow_error(beorn_state* curr) {
   char * et = berrors_to_str(curr->et);
@@ -33,13 +34,13 @@ void bprint_expression(beorn_state* curr) {
 
 void bprint(beorn_state* curr) {
   switch (curr->type) {
-    case BT_INTEGER:      printf("%ld", curr->ival);     break;
-    case BT_FLOAT:        printf("%Lf", curr->fval);     break;
-    case BT_STRING:       printf("\"%s\"",  curr->cval); break;
-    case BT_SYMBOL:       printf("%s",  curr->cval);     break;
-    case BT_PACK:  bprint_packfreeze(curr);       break;
-    case BT_EXPRESSION:   bprint_expression(curr);       break;
-    case BT_ERROR:        bshow_error(curr);             break;
+    case BT_INTEGER:      printf("%ld", curr->ival);    break;
+    case BT_FLOAT:        printf("%Lf", curr->fval);    break;
+    case BT_STRING:       printf("\"%s\"", curr->cval); break;
+    case BT_SYMBOL:       printf("%s",  curr->cval);    break;
+    case BT_PACK:         bprint_packfreeze(curr);      break;
+    case BT_EXPRESSION:   bprint_expression(curr);      break;
+    case BT_ERROR:        bshow_error(curr);            break;
     
     default: printf("Runtime error: unspected token %s.\n", curr->cval); break;
   }

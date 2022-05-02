@@ -149,7 +149,7 @@ beorn_state* beorn_parser(char *input) {
 
       case '{':
         bword = get_new_str(bword, c);
-        add_child(&bs, new_pack_freeze(bword));
+        add_child(&bs, new_pack(bword));
         bword = "";
         break;
       case '}':
