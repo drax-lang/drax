@@ -21,7 +21,7 @@ void interactive_shell() {
       putchar('\n');
     }
 
-    free(out);
+    del_bstate(out);
     free(input);
   }
 }

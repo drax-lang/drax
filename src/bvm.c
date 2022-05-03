@@ -8,6 +8,8 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
   if(curr->length == 0)
     return curr;
 
+  BASSERT(curr->child[0]->type != BT_SYMBOL, BUNSPECTED_TYPE, "Invalid expression.")
+
   beorn_state* r = call_func_builtin(benv, curr);
 
   BASSERT(r->type == BT_EXPRESSION, BREFERENCE_ERROR, 

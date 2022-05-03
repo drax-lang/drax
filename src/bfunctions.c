@@ -52,9 +52,7 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
   }
 
   beorn_state* x = bpop(curr, 0);
-  beorn_state* tmpx = x;
   x = process(benv, x);
-  del_bstate(tmpx);
 
 
   if ((op == '-') && curr->length == 0) {
@@ -74,10 +72,7 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
     beorn_state* y = bpop(curr, 0);
 
     if (y->type == BT_EXPRESSION) { y = do_op(benv, y); }
-
-    beorn_state* tmpy = y;
     y = process(benv, y);
-    del_bstate(tmpy);
 
     if (y->type == BT_FLOAT) { tval = BT_FLOAT; }
     long double tvl = get_number(y);
