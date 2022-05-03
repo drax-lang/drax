@@ -1,6 +1,7 @@
 #include "bfunctions.h"
 #include <stdlib.h>
 #include <string.h>
+#include "bvm.h"
 
 beorn_state* bpop(beorn_state* curr, int i){
   beorn_state* ele = curr->child[i];
@@ -31,7 +32,7 @@ long double get_number(beorn_state* v) {
   }
 }
 
-beorn_state* do_op(beorn_state* curr) {
+beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
 
   beorn_state* opr = bpop(curr, 0);
   char op = opr->cval[0];
@@ -41,6 +42,7 @@ beorn_state* do_op(beorn_state* curr) {
     if (
           (curr->child[i]->type != BT_FLOAT) &&
           (curr->child[i]->type != BT_INTEGER) &&
+          (curr->child[i]->type != BT_SYMBOL) &&
           (curr->child[i]->type != BT_EXPRESSION)
         )
     {
@@ -50,6 +52,10 @@ beorn_state* do_op(beorn_state* curr) {
   }
 
   beorn_state* x = bpop(curr, 0);
+  beorn_state* tmpx = x;
+  x = process(benv, x);
+  del_bstate(tmpx);
+
 
   if ((op == '-') && curr->length == 0) {
     if (x->type == BT_INTEGER) {
@@ -67,14 +73,13 @@ beorn_state* do_op(beorn_state* curr) {
   while (curr->length > 0) {
     beorn_state* y = bpop(curr, 0);
 
-    if (y->type == BT_EXPRESSION) {
-      y = do_op(y);
-    }
+    if (y->type == BT_EXPRESSION) { y = do_op(benv, y); }
 
-    if (y->type == BT_FLOAT) {
-      tval = BT_FLOAT;
-    }
+    beorn_state* tmpy = y;
+    y = process(benv, y);
+    del_bstate(tmpy);
 
+    if (y->type == BT_FLOAT) { tval = BT_FLOAT; }
     long double tvl = get_number(y);
 
     if (op == '+') { r += tvl; }
@@ -105,12 +110,14 @@ beorn_state* do_op(beorn_state* curr) {
   return x;
 }
 
-beorn_state* bb_type_of(beorn_state* exp) {
+beorn_state* bb_type_of(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (type-of 123)");
   BASSERT(exp->length == 1, BTYPE_ERROR, "missing one argument.");
   BASSERT(exp->length > 2,  BTYPE_ERROR, "expected only one argument.");
 
-  char* t = btype_to_str(exp->child[1]->type);
+  beorn_state* r = process(benv, exp->child[1]);
+  char* t = btype_to_str(r->type);
+  free(r);
   free(exp);
 
   return new_string(t);
@@ -132,12 +139,12 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   beorn_state* bs = exp->child[0];
 
-  if (strcmp("+", bs->cval) == 0) { return do_op(exp); }
-  if (strcmp("-", bs->cval) == 0) { return do_op(exp); }
-  if (strcmp("*", bs->cval) == 0) { return do_op(exp); }
-  if (strcmp("/", bs->cval) == 0) { return do_op(exp); }
+  if (strcmp("+", bs->cval) == 0) { return do_op(benv, exp); }
+  if (strcmp("-", bs->cval) == 0) { return do_op(benv, exp); }
+  if (strcmp("*", bs->cval) == 0) { return do_op(benv, exp); }
+  if (strcmp("/", bs->cval) == 0) { return do_op(benv, exp); }
 
-  if (strcmp("type-of", bs->cval) == 0) { return bb_type_of(exp); }
+  if (strcmp("type-of", bs->cval) == 0) { return bb_type_of(benv, exp); }
   
   if (strcmp("set", bs->cval) == 0) { return bb_set(benv, exp);}
   
