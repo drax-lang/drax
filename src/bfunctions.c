@@ -131,18 +131,39 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
   return pck;
 }
 
+void put_function_env(beorn_env** benv, char* name, beorn_func fn) {
+  beorn_state* fun = new_function(fn);
+  bset_env((*benv), new_string(name), fun);
+}
+
+void load_buildtin_functions(beorn_env** benv) {
+  put_function_env(benv, "+",       do_op);
+  put_function_env(benv, "-",       do_op);
+  put_function_env(benv, "*",       do_op);
+  put_function_env(benv, "/",       do_op);
+  put_function_env(benv, "type-of", bb_type_of);
+  put_function_env(benv, "set",     bb_set);
+}
+
+beorn_state* call_func(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
+  BASSERT(fun->type != BT_FUNCTION, BTYPE_ERROR, "Fail to call function.");
+
+  if (fun->bfunc) {
+    return fun->bfunc(benv, exp);
+  }
+
+  // other's
+}
+
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
-  beorn_state* bs = exp->child[0];
+  beorn_state* bs = exp->child[0];  
 
-  if (strcmp("+", bs->cval) == 0) { return do_op(benv, exp); }
-  if (strcmp("-", bs->cval) == 0) { return do_op(benv, exp); }
-  if (strcmp("*", bs->cval) == 0) { return do_op(benv, exp); }
-  if (strcmp("/", bs->cval) == 0) { return do_op(benv, exp); }
+  for (int i = 0; i < benv->length; i++) {
+    if (strcmp(benv->symbol[i], bs->cval) == 0) {
+      return call_func(benv, benv->bval[i], exp);
+    }
+  }  
 
-  if (strcmp("type-of", bs->cval) == 0) { return bb_type_of(benv, exp); }
-  
-  if (strcmp("set", bs->cval) == 0) { return bb_set(benv, exp);}
-  
   return exp;
 
 }

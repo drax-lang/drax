@@ -29,6 +29,8 @@ beorn_state* process_symbol(beorn_env* benv, beorn_state* curr) {
 }
 
 beorn_state* process(beorn_env* benv, beorn_state* curr) {
+  load_buildtin_functions(&benv);
+
   switch (curr->type) {
     case BT_INTEGER:
     case BT_FLOAT:

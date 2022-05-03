@@ -17,6 +17,7 @@ typedef enum types {
   BT_SYMBOL,
   BT_EXPRESSION,
   BT_PACK,
+  BT_FUNCTION
 } types;
 
 typedef enum berrors_type {
@@ -28,6 +29,10 @@ typedef enum berrors_type {
   BUNSPECTED_TYPE,
 } berrors_type;
 
+typedef struct beorn_env beorn_env;
+typedef struct beorn_state beorn_state;
+
+typedef beorn_state*(*beorn_func)(beorn_env* e, struct beorn_state* s);
 typedef struct beorn_state {
   types type;
   berrors_type et;
@@ -36,7 +41,7 @@ typedef struct beorn_state {
   char* cval;
   long ival;
   long double fval;
-  // struct beorn_state* bfunc();
+  beorn_func bfunc;
   struct beorn_state** child;
 } beorn_state;
 
@@ -53,6 +58,7 @@ beorn_state* new_string(char* s);
 beorn_state* new_symbol(char* s);
 beorn_state* new_pack(char* s);
 beorn_state* new_expression(char* s);
+beorn_state* new_function(beorn_func fn);
 
 void del_bstate(beorn_state* curr);
 

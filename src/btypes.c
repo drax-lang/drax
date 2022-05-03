@@ -72,6 +72,13 @@ beorn_state* new_expression(char* s) {
   return v;
 }
 
+beorn_state* new_function(beorn_func fn) {
+  beorn_state* v = malloc(sizeof(beorn_state));
+  v->type = BT_FUNCTION;
+  v->bfunc = fn;
+  return v;
+};
+
 void del_bstate(beorn_state* curr) {
 
   switch (curr->type) {
@@ -130,6 +137,7 @@ beorn_state* bcopy_state(beorn_state* v) {
       x->cval = malloc(strlen(v->cval) + 1);
       strcpy(x->cval, v->cval);
     break;
+    case BT_FUNCTION: x->bfunc = v->bfunc;
     case BT_PACK:
     case BT_EXPRESSION:
       x->length = v->length;
