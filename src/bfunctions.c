@@ -74,6 +74,8 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
     if (y->type == BT_EXPRESSION) { y = do_op(benv, y); }
     y = process(benv, y);
 
+    if (y->type == BT_ERROR) return y;
+
     if (y->type == BT_FLOAT) { tval = BT_FLOAT; }
     long double tvl = get_number(y);
 
