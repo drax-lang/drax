@@ -113,6 +113,7 @@ beorn_state* beorn_parser(char *input) {
       case '\r': break;
       case ',': break;
 
+      case '-':
       case '0':
       case '1':
       case '2':
@@ -123,6 +124,13 @@ beorn_state* beorn_parser(char *input) {
       case '7':
       case '8':
       case '9': {
+        if ((c == '-') && (!is_number(input[b_index + 1]))) {
+          char* ctmp = get_new_str(bword, c);
+          add_child(&bs, new_symbol(ctmp));
+          bword = "";
+          break;
+        }
+
         char* num = "";
         num = get_new_str(num, c);
 
@@ -157,9 +165,7 @@ beorn_state* beorn_parser(char *input) {
           throw_error("pack freeze pair not found.\n");
         break;
 
-
       case '+':
-      case '-':
       case '*':
       case '/': {
         char* ctmp = get_new_str(bword, c);
