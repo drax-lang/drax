@@ -3,11 +3,13 @@
 #include "bparser.h"
 #include "bvm.h"
 #include "bprint.h"
+#include "bfunctions.h"
 #include "flags.c"
 #include <editline/readline.h>
 
 void interactive_shell() {
-  beorn_env* benv = malloc(sizeof(beorn_state));
+  beorn_env* benv = malloc(sizeof(beorn_env));
+  load_buildtin_functions(&benv);
   initial_info();
   
   while (1) {
