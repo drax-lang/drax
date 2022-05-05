@@ -63,6 +63,8 @@ beorn_state* new_pack(char* s) {
 
 beorn_state* new_expression(char* s) {
   beorn_state* v = malloc(sizeof(beorn_state));
+  v->blenv = malloc(sizeof(beorn_env));
+  v->blenv->length = 0;
   v->type = BT_EXPRESSION;
   v->cval = malloc(strlen(s) + 1);
   v->child = NULL;

@@ -42,7 +42,8 @@ typedef struct beorn_state {
   long ival;
   long double fval;
   beorn_func bfunc;
-  struct beorn_state** child;
+  beorn_env* blenv;
+  beorn_state** child;
 } beorn_state;
 
 typedef struct beorn_env {

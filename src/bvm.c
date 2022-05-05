@@ -8,13 +8,29 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
   if(curr->length == 0)
     return curr;
 
+  for (size_t i = 0; i < curr->length; i++) {
+    if ((curr->child[0]->type != BT_SYMBOL) ||
+        (curr->length == 1) && (curr->child[0]->type == BT_SYMBOL))
+    {
+      curr->child[0] = process(benv, curr->child[0]);
+    }
+  }
+
+  for (size_t i = 0; i < curr->length; i++) {
+    if (curr->child[i]->type == BT_ERROR) {
+      return curr->child[i];
+    }
+  }
+
+  if (curr->length == 1) {
+    beorn_state* res = curr->child[0];
+    free(curr);
+    return res;
+  }
+
   BASSERT(curr->child[0]->type != BT_SYMBOL, BUNSPECTED_TYPE, "Invalid expression.")
 
   beorn_state* r = call_func_builtin(benv, curr);
-
-  BASSERT(r->type == BT_EXPRESSION, BREFERENCE_ERROR, 
-          "expression '%s' not found.", r->child[0]->cval);
-
   return r;
 }
 
@@ -29,12 +45,13 @@ beorn_state* process_symbol(beorn_env* benv, beorn_state* curr) {
 }
 
 beorn_state* process(beorn_env* benv, beorn_state* curr) {
-  load_buildtin_functions(&benv);
-
   switch (curr->type) {
+    case BT_PROGRAM:
     case BT_INTEGER:
     case BT_FLOAT:
     case BT_STRING:
+    case BT_ERROR:
+    case BT_FUNCTION:
     case BT_PACK:         return curr;
     case BT_SYMBOL:       return process_symbol(benv, curr);
     case BT_EXPRESSION:   return process_expression(benv, curr);

@@ -74,7 +74,11 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
     if (y->type == BT_EXPRESSION) { y = do_op(benv, y); }
     y = process(benv, y);
 
-    if (y->type == BT_ERROR) return y;
+    if ((y->type != BT_FLOAT) && (y->type != BT_INTEGER)) {
+      if (y->type == BT_ERROR) return y;
+
+      return new_error(BUNSPECTED_TYPE, "Invalid Expression.");
+    }
 
     if (y->type == BT_FLOAT) { tval = BT_FLOAT; }
     long double tvl = get_number(y);
@@ -89,6 +93,8 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
         x = new_error(BZERO_DIVISION_ERROR, "bad argument in arithmetic expression.");
         break;
       }
+
+      tval = BT_FLOAT;
       r /= tvl;
     }
 
@@ -133,6 +139,19 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
   return pck;
 }
 
+beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (set name 123)");
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
+  BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
+  BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
+
+  bset_env(exp->blenv, exp->child[1], exp->child[2]);
+  beorn_state* pck = new_pack("none");
+  pck->closed = 1;
+  del_bstate(exp);
+  return pck;
+}
+
 void put_function_env(beorn_env** benv, char* name, beorn_func fn) {
   beorn_state* fun = new_function(fn);
   bset_env((*benv), new_string(name), fun);
@@ -145,6 +164,7 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(benv, "/",       do_op);
   put_function_env(benv, "type-of", bb_type_of);
   put_function_env(benv, "set",     bb_set);
+  put_function_env(benv, "let",     bb_let);
 }
 
 beorn_state* call_func(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
