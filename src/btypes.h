@@ -61,6 +61,8 @@ beorn_state* new_pack(char* s);
 beorn_state* new_expression(char* s);
 beorn_state* new_function(beorn_func fn);
 
+beorn_env* new_env();
+
 void del_bstate(beorn_state* curr);
 
 char* berrors_to_str(berrors_type t);

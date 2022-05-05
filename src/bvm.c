@@ -9,8 +9,10 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
     return curr;
 
   for (size_t i = 0; i < curr->length; i++) {
-    if ((curr->child[0]->type != BT_SYMBOL) ||
-        (curr->length == 1) && (curr->child[0]->type == BT_SYMBOL))
+    if (
+        (curr->child[0]->type != BT_SYMBOL) ||
+        ((curr->length == 1) && (curr->child[0]->type == BT_SYMBOL))
+       )
     {
       curr->child[0] = process(benv, curr->child[0]);
     }

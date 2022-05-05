@@ -8,7 +8,7 @@
 #include <editline/readline.h>
 
 void interactive_shell() {
-  beorn_env* benv = malloc(sizeof(beorn_env));
+  beorn_env* benv = new_env();
   load_buildtin_functions(&benv);
   initial_info();
   

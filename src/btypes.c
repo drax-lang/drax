@@ -63,8 +63,7 @@ beorn_state* new_pack(char* s) {
 
 beorn_state* new_expression(char* s) {
   beorn_state* v = malloc(sizeof(beorn_state));
-  v->blenv = malloc(sizeof(beorn_env));
-  v->blenv->length = 0;
+  v->blenv = new_env();
   v->type = BT_EXPRESSION;
   v->cval = malloc(strlen(s) + 1);
   v->child = NULL;
@@ -80,6 +79,14 @@ beorn_state* new_function(beorn_func fn) {
   v->bfunc = fn;
   return v;
 };
+
+beorn_env* new_env() {
+  beorn_env* blenv = malloc(sizeof(beorn_env));
+  blenv->length = 0;
+  blenv->bval =  malloc(sizeof(beorn_state *));
+  blenv->symbol = malloc(sizeof(char*));
+  return blenv;
+}
 
 void del_bstate(beorn_state* curr) {
 
