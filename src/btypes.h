@@ -27,6 +27,7 @@ typedef enum berrors_type {
   BUNKNOWN_TYPE_ERROR,
   BZERO_DIVISION_ERROR,
   BUNSPECTED_TYPE,
+  BPARSER_ERROR
 } berrors_type;
 
 typedef struct beorn_env beorn_env;

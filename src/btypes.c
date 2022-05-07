@@ -9,6 +9,7 @@ beorn_state* new_error(berrors_type t, char* s, ...) {
   v->type = BT_ERROR;
   v->cval = malloc(strlen(s) + 1);
   v->et = t;
+  v->length = 0;
 
   va_list va;
   va_start(va, s);  

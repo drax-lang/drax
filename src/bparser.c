@@ -14,9 +14,9 @@ char* get_new_str(char *str, char c) { // FIXME
     return nstr;
 }
 
-void throw_error(char* err) {
-  printf("\x1B[31mPARSER_ERROR: %s\x1B[0m\n", err);
-  exit(1); // FIXME
+beorn_state* new_parser_error(char* msg) {
+  beorn_state* err = new_error(BPARSER_ERROR, msg);
+  return err;
 }
 
 int is_symbol(char c) {
@@ -101,7 +101,8 @@ beorn_state* beorn_parser(char *input) {
 
   char* bword = "";
   int b_index = 0;
-  while (b_index < strlen(input)) {
+  int b_parser_error = 0;
+  while (b_index < strlen(input) && (!b_parser_error)) {
     char c = input[b_index];
 
     switch (c)
@@ -160,7 +161,7 @@ beorn_state* beorn_parser(char *input) {
         break;
       case '}':
         if(!close_pack_freeze(bs, BT_PACK))
-          throw_error("pack freeze pair not found.\n");
+          return new_parser_error("pack freeze pair not found.");
         break;
 
       case '+':
@@ -181,7 +182,7 @@ beorn_state* beorn_parser(char *input) {
 
       case ')': {
         if(!close_pack_freeze(bs, BT_EXPRESSION))
-          throw_error("expression pair not found.\n");
+          return new_parser_error("expression pair not found.");
         break;
       }
 

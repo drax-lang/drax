@@ -17,13 +17,18 @@ void interactive_shell() {
     add_history(input);
     beorn_state* out = beorn_parser(input);
 
-    for (size_t i = 0; i < out->length; i++) {
-      beorn_state* evaluated = process(benv, out->child[i]);
-      bprint(evaluated);
+    if (out->type == BT_ERROR) {
+      bprint(out);
       putchar('\n');
+    } else {
+      for (size_t i = 0; i < out->length; i++) {
+        beorn_state* evaluated = process(benv, out->child[i]);
+        bprint(evaluated);
+        putchar('\n');
+      }
+      del_bstate(out);
     }
 
-    del_bstate(out);
     free(input);
   }
 }
