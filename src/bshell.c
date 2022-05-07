@@ -16,13 +16,13 @@ char* b_read_content() {
   fgets(buffer, BUFFER_SIZE, stdin);
 
   size_t sz = strlen(buffer);
-  char* tmp = malloc(sz + 1);
+  char* tmp = malloc(sz);
 
   for (size_t i = 0; i < sz; i++) {
       tmp[i] = buffer[i];
   }
   
-  tmp[sz  + 1] = '\0';
+  tmp[sz] = '\0';
 
 //   breg_history(tmp);
   return tmp;
