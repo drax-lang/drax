@@ -34,8 +34,7 @@ int is_symbol(char c) {
 int is_number(char c) {
   char accepted_num[] = ".0123456789";
   
-  for (size_t i = 0; i < 11; i++)
-  {
+  for (size_t i = 0; i < 11; i++) {
     if (c == accepted_num[i])
       return 1;
   }
@@ -43,23 +42,22 @@ int is_number(char c) {
   return 0;
 }
 
-int add_child(beorn_state** root, beorn_state* child) {
-  if ((*root)->length <= 0) {
-    (*root)->length++;
-    (*root)->child = malloc(sizeof(beorn_state*));
-    (*root)->child[(*root)->length - 1] = child;
+int add_child(beorn_state* root, beorn_state* child) {
+  if (root->length <= 0) {
+    root->length++;
+    root->child = malloc(sizeof(beorn_state*));
+    root->child[0] = child;
     return 1;
   } else {
-
     beorn_state* crr;
-    if ((((*root)->child[(*root)->length - 1]->type == BT_PACK)  || 
-         ((*root)->child[(*root)->length - 1]->type == BT_EXPRESSION )) &&
-         ((*root)->child[(*root)->length - 1]->closed == 0))
+    if (((root->child[root->length - 1]->type == BT_PACK)  || 
+         (root->child[root->length - 1]->type == BT_EXPRESSION )) &&
+         (root->child[root->length - 1]->closed == 0))
     {
-      crr  = (*root)->child[(*root)->length - 1];
-      if(add_child(&crr, child)) return 1;
+      crr  = root->child[root->length - 1];
+      if (add_child(crr, child)) return 1;
     } else {
-      crr = (*root);
+      crr = root;
     }
 
     crr->length++;
@@ -75,18 +73,18 @@ int add_child(beorn_state** root, beorn_state* child) {
 
 }
 
-int close_pack_freeze(beorn_state** root, types ct) {
-  if ((*root)->length == 0) return 0;
+int close_pack_freeze(beorn_state* root, types ct) {
+  if (root->length == 0) return 0;
 
-  if ((((*root)->child[(*root)->length - 1]->type == BT_PACK)  || 
-       ((*root)->child[(*root)->length - 1]->type == BT_EXPRESSION )) &&
-       ((*root)->child[(*root)->length - 1]->closed == 0))
+  if (((root->child[root->length - 1]->type == BT_PACK)  || 
+       (root->child[root->length - 1]->type == BT_EXPRESSION )) &&
+       (root->child[root->length - 1]->closed == 0))
   {
-    if (close_pack_freeze( &((*root)->child[(*root)->length - 1]), ct )) {
+    if (close_pack_freeze( root->child[root->length - 1], ct )) {
       return 1;
     } else {
-      if ((*root)->child[(*root)->length - 1]->type == ct) {
-        (*root)->child[(*root)->length - 1]->closed = 1;
+      if (root->child[root->length - 1]->type == ct) {
+        root->child[root->length - 1]->closed = 1;
         return 1;
       }
     }
@@ -98,7 +96,7 @@ int close_pack_freeze(beorn_state** root, types ct) {
 beorn_state* beorn_parser(char *input) {
   beorn_state* bs = malloc(sizeof(beorn_state *));
   bs->type = BT_PROGRAM;
-  bs->child = NULL;
+  bs->child = malloc(sizeof(beorn_state*));
   bs->length = 0;
 
   char* bword = "";
@@ -126,7 +124,7 @@ beorn_state* beorn_parser(char *input) {
       case '9': {
         if ((c == '-') && (!is_number(input[b_index + 1]))) {
           char* ctmp = get_new_str(bword, c);
-          add_child(&bs, new_symbol(ctmp));
+          add_child(bs, new_symbol(ctmp));
           bword = "";
           break;
         }
@@ -147,21 +145,21 @@ beorn_state* beorn_parser(char *input) {
 
         if (!isf) {
           int vi = strtol(num, NULL, 10);
-          add_child(&bs, new_integer(vi));
+          add_child(bs, new_integer(vi));
         } else {
           long double vf = strtold(num, NULL);
-          add_child(&bs, new_float(vf));
+          add_child(bs, new_float(vf));
         }
         break;
       };
 
       case '{':
         bword = get_new_str(bword, c);
-        add_child(&bs, new_pack(bword));
+        add_child(bs, new_pack(bword));
         bword = "";
         break;
       case '}':
-        if(!close_pack_freeze(&bs, BT_PACK))
+        if(!close_pack_freeze(bs, BT_PACK))
           throw_error("pack freeze pair not found.\n");
         break;
 
@@ -169,20 +167,20 @@ beorn_state* beorn_parser(char *input) {
       case '*':
       case '/': {
         char* ctmp = get_new_str(bword, c);
-        add_child(&bs, new_symbol(ctmp));
+        add_child(bs, new_symbol(ctmp));
         bword = "";
         break;
       }
 
       case '(': {
         char* ctmp = get_new_str(bword, c);
-        add_child(&bs, new_expression(ctmp));
+        add_child(bs, new_expression(ctmp));
         bword = "";
         break;
       }
 
       case ')': {
-        if(!close_pack_freeze(&bs, BT_EXPRESSION))
+        if(!close_pack_freeze(bs, BT_EXPRESSION))
           throw_error("expression pair not found.\n");
         break;
       }
@@ -190,7 +188,7 @@ beorn_state* beorn_parser(char *input) {
       case '[':
       case ']': {
         char* ctmp = get_new_str(bword, c);
-        add_child(&bs, new_symbol(ctmp));
+        add_child(bs, new_symbol(ctmp));
         bword = "";
         break;
       }
@@ -201,7 +199,7 @@ beorn_state* beorn_parser(char *input) {
           char c = input[b_index];
 
           if (c == '"') {
-            add_child(&bs, new_string(bword));
+            add_child(bs, new_string(bword));
             bword = "";
             break;
           };
@@ -230,7 +228,7 @@ beorn_state* beorn_parser(char *input) {
               bword = get_new_str(bword, c);
               b_index ++;
             } else {
-              add_child(&bs, new_symbol(bword));
+              add_child(bs, new_symbol(bword));
               bword = "";
               break;
             }
