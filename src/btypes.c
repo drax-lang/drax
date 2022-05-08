@@ -10,6 +10,7 @@ beorn_state* new_error(berrors_type t, char* s, ...) {
   v->cval = malloc(strlen(s) + 1);
   v->et = t;
   v->length = 0;
+  v->child = NULL;
 
   va_list va;
   va_start(va, s);  
@@ -39,6 +40,7 @@ beorn_state* new_string(char* s) {
   beorn_state* v = malloc(sizeof(beorn_state));
   v->type = BT_STRING;
   v->cval = malloc(strlen(s) + 1);
+  v->child = NULL;
   strcpy(v->cval, s);
   return v;
 }
@@ -47,6 +49,7 @@ beorn_state* new_symbol(char* s) {
   beorn_state* v = malloc(sizeof(beorn_state));
   v->type = BT_SYMBOL;
   v->cval = malloc(strlen(s) + 1);
+  v->child = NULL;
   strcpy(v->cval, s);
   return v;
 }
@@ -78,6 +81,7 @@ beorn_state* new_function(beorn_func fn) {
   beorn_state* v = malloc(sizeof(beorn_state));
   v->type = BT_FUNCTION;
   v->bfunc = fn;
+  v->child = NULL;
   return v;
 };
 

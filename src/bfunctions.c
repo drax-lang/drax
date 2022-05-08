@@ -184,8 +184,10 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
     if (strcmp(benv->symbol[i], bs->cval) == 0) {
       return call_func(benv, benv->bval[i], exp);
     }
-  }  
+  }
 
-  return exp;
+  beorn_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", bs->cval);
+  del_bstate(exp);
 
+  return err;
 }
