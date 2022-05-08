@@ -3,6 +3,16 @@
 #include <stdio.h>
 #include "bparser.h"
 
+typedef enum esm { 
+  BP_NONE,
+  BP_SIMPLE_DEFINITIONS
+} esm;
+
+typedef struct bpsm {
+  esm mode;
+  int count;
+} bpsm;
+
 /* helpers */
 char* get_new_str(char *str, char c) { // FIXME
     size_t len = strlen(str);
@@ -12,6 +22,11 @@ char* get_new_str(char *str, char c) { // FIXME
     nstr[len] = c;
     nstr[len + 1] = '\0';
     return nstr;
+}
+
+beorn_state* new_definition(char* msg) {
+  beorn_state* bdef = new_expression("(");
+  return bdef;
 }
 
 beorn_state* new_parser_error(char* msg) {
@@ -40,6 +55,15 @@ int is_number(char c) {
   }
   
   return 0;
+}
+
+int auto_state_update(bpsm* gs, beorn_state* b) {
+  if (gs->mode == BP_SIMPLE_DEFINITIONS) {
+    if (b->length == 3) {
+      b->closed = 1;
+      gs->mode = BP_NONE;
+    }
+  }
 }
 
 int add_child(beorn_state* root, beorn_state* child) {
@@ -95,6 +119,7 @@ int close_pack_freeze(beorn_state* root, types ct) {
 
 beorn_state* beorn_parser(char *input) {
   beorn_state* bs = malloc(sizeof(beorn_state *));
+  bpsm* gbpsm = malloc(sizeof(bpsm));
   bs->type = BT_PROGRAM;
   bs->child = malloc(sizeof(beorn_state*));
   bs->length = 0;
@@ -104,6 +129,7 @@ beorn_state* beorn_parser(char *input) {
   int b_parser_error = 0;
   while (b_index < strlen(input) && (!b_parser_error)) {
     char c = input[b_index];
+    auto_state_update(gbpsm, bs);
 
     switch (c)
     {
@@ -229,6 +255,14 @@ beorn_state* beorn_parser(char *input) {
               bword = get_new_str(bword, c);
               b_index ++;
             } else {
+
+              if (
+                 ((strcmp("set", bword) == 0) || (strcmp("let", bword) == 0)) &&
+                  ((bs->length == 0) || ((bs->length > 0)  && (bs->child[bs->length -1]->closed == 1)))
+                ) {
+                add_child(bs, new_definition("("));              
+              }
+
               add_child(bs, new_symbol(bword));
               bword = "";
               break;
