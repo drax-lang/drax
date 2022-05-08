@@ -53,6 +53,7 @@ beorn_state* process(beorn_env* benv, beorn_state* curr) {
     case BT_FLOAT:
     case BT_STRING:
     case BT_ERROR:
+    case BT_LIST:
     case BT_FUNCTION:
     case BT_PACK:         return curr;
     case BT_SYMBOL:       return process_symbol(benv, curr);

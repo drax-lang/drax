@@ -17,6 +17,7 @@ typedef enum types {
   BT_SYMBOL,
   BT_EXPRESSION,
   BT_PACK,
+  BT_LIST,
   BT_FUNCTION
 } types;
 
@@ -60,6 +61,7 @@ beorn_state* new_string(char* s);
 beorn_state* new_symbol(char* s);
 beorn_state* new_pack(char* s);
 beorn_state* new_expression(char* s);
+beorn_state* new_list(char* s);
 beorn_state* new_function(beorn_func fn);
 
 beorn_env* new_env();

@@ -3,16 +3,6 @@
 #include <stdio.h>
 #include "bparser.h"
 
-typedef enum esm { 
-  BP_NONE,
-  BP_SIMPLE_DEFINITIONS
-} esm;
-
-typedef struct bpsm {
-  esm mode;
-  int count;
-} bpsm;
-
 /* helpers */
 char* get_new_str(char *str, char c) { // FIXME
     size_t len = strlen(str);
@@ -57,9 +47,38 @@ int is_number(char c) {
   return 0;
 }
 
-int auto_state_update(bpsm* gs, beorn_state* b) {
+int is_simple_expressions(char* key) {
+  return (strcmp("set", key) == 0) || (strcmp("let", key) == 0) || (strcmp("fun", key) == 0);
+}
+
+esm keyword_to_bpsm(char* key) {
+  if (strcmp("set", key) == 0) {
+    return BP_SIMPLE_DEFINITIONS;
+  } else if (strcmp("let", key) == 0) {
+    return BP_SIMPLE_DEFINITIONS;
+  } else if (strcmp("fun", key) == 0) {
+    return BP_FUNCTION_DEFINITION;
+  }
+
+  return BP_NONE;
+}
+
+int apply_bpsm_state(bpsm* gs, esm s) {
+  if (gs->mode != BP_NONE) return 0;
+  gs->mode = s;
+  return 1;
+}
+
+void auto_state_update(bpsm* gs, beorn_state* b) {
   if (gs->mode == BP_SIMPLE_DEFINITIONS) {
     if (b->length == 3) {
+      b->closed = 1;
+      gs->mode = BP_NONE;
+    }
+  }
+
+  if (gs->mode == BP_FUNCTION_DEFINITION) {
+    if (b->length == 4) {
       b->closed = 1;
       gs->mode = BP_NONE;
     }
@@ -74,8 +93,9 @@ int add_child(beorn_state* root, beorn_state* child) {
     return 1;
   } else {
     beorn_state* crr;
-    if (((root->child[root->length - 1]->type == BT_PACK)  || 
-         (root->child[root->length - 1]->type == BT_EXPRESSION )) &&
+    if (((root->child[root->length - 1]->type == BT_PACK) || 
+         (root->child[root->length - 1]->type == BT_LIST) || 
+         (root->child[root->length - 1]->type == BT_EXPRESSION)) &&
          (root->child[root->length - 1]->closed == 0))
     {
       crr  = root->child[root->length - 1];
@@ -97,14 +117,15 @@ int add_child(beorn_state* root, beorn_state* child) {
 
 }
 
-int close_pack_freeze(beorn_state* root, types ct) {
+int close_pending_structs(beorn_state* root, types ct) {
   if (root->length == 0) return 0;
 
-  if (((root->child[root->length - 1]->type == BT_PACK)  || 
-       (root->child[root->length - 1]->type == BT_EXPRESSION )) &&
+  if (((root->child[root->length - 1]->type == BT_PACK) || 
+       (root->child[root->length - 1]->type == BT_LIST) ||
+       (root->child[root->length - 1]->type == BT_EXPRESSION)) &&
        (root->child[root->length - 1]->closed == 0))
   {
-    if (close_pack_freeze( root->child[root->length - 1], ct )) {
+    if (close_pending_structs( root->child[root->length - 1], ct )) {
       return 1;
     } else {
       if (root->child[root->length - 1]->type == ct) {
@@ -118,8 +139,10 @@ int close_pack_freeze(beorn_state* root, types ct) {
 }
 
 beorn_state* beorn_parser(char *input) {
-  beorn_state* bs = malloc(sizeof(beorn_state *));
   bpsm* gbpsm = malloc(sizeof(bpsm));
+  gbpsm->mode = BP_NONE;
+
+  beorn_state* bs = malloc(sizeof(beorn_state *));
   bs->type = BT_PROGRAM;
   bs->child = malloc(sizeof(beorn_state*));
   bs->length = 0;
@@ -186,7 +209,7 @@ beorn_state* beorn_parser(char *input) {
         bword = "";
         break;
       case '}':
-        if(!close_pack_freeze(bs, BT_PACK))
+        if(!close_pending_structs(bs, BT_PACK))
           return new_parser_error("pack freeze pair not found.");
         break;
 
@@ -207,16 +230,21 @@ beorn_state* beorn_parser(char *input) {
       }
 
       case ')': {
-        if(!close_pack_freeze(bs, BT_EXPRESSION))
+        if(!close_pending_structs(bs, BT_EXPRESSION))
           return new_parser_error("expression pair not found.");
         break;
       }
 
-      case '[':
-      case ']': {
+      case '[': {
         char* ctmp = get_new_str(bword, c);
-        add_child(bs, new_symbol(ctmp));
+        add_child(bs, new_list(ctmp));
         bword = "";
+        break;
+      }
+
+      case ']': {
+        if(!close_pending_structs(bs, BT_LIST))
+          return new_parser_error("list pair not found.");
         break;
       }
       
@@ -256,10 +284,14 @@ beorn_state* beorn_parser(char *input) {
               b_index ++;
             } else {
 
-              if (
-                 ((strcmp("set", bword) == 0) || (strcmp("let", bword) == 0)) &&
-                  ((bs->length == 0) || ((bs->length > 0)  && (bs->child[bs->length -1]->closed == 1)))
+              if ((is_simple_expressions(bword)) &&
+                  ((bs->length == 0) || ((bs->length > 0) && (bs->child[bs->length -1]->closed == 1)))
                 ) {
+                esm cbpsm = keyword_to_bpsm(bword);
+
+                if (apply_bpsm_state(gbpsm, cbpsm) == 0)
+                 return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
+
                 add_child(bs, new_definition("("));              
               }
 

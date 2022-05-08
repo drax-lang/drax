@@ -77,6 +77,18 @@ beorn_state* new_expression(char* s) {
   return v;
 }
 
+beorn_state* new_list(char* s) {
+  beorn_state* v = malloc(sizeof(beorn_state));
+  v->blenv = NULL;
+  v->type = BT_LIST;
+  v->cval = malloc(strlen(s) + 1);
+  v->child = NULL;
+  v->length = 0;
+  v->closed = 0;
+  strcpy(v->cval, s);
+  return v;
+}
+
 beorn_state* new_function(beorn_func fn) {
   beorn_state* v = malloc(sizeof(beorn_state));
   v->type = BT_FUNCTION;
@@ -130,6 +142,7 @@ char* btype_to_str(types t) {
     case BT_PACK:         return "Pack";
     case BT_SYMBOL:       return "Symbol";
     case BT_EXPRESSION:   return "Expression";
+    case BT_LIST:         return "List";
     default:              return "Unknown";
   }
 }

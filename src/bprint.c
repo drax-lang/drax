@@ -14,13 +14,22 @@ void bshow_error(beorn_state* curr) {
   printf("%s%s: %s%s", BRED, et, curr->cval, BDEF);
 }
 
-void bprint_packfreeze(beorn_state* curr) {
+void bprint_pack(beorn_state* curr) {
   putchar('{');
   for (size_t i = 0; i < curr->length; i++) {
     bprint(curr->child[i]);
     if (i + 1 < curr->length) putchar(' ');
   }
   putchar('}');
+}
+
+void bprint_list(beorn_state* curr) {
+  putchar('[');
+  for (size_t i = 0; i < curr->length; i++) {
+    bprint(curr->child[i]);
+    if (i + 1 < curr->length) putchar(' ');
+  }
+  putchar(']');
 }
 
 void bprint_expression(beorn_state* curr) {
@@ -39,7 +48,8 @@ void bprint(beorn_state* curr) {
     case BT_STRING:       printf("\"%s\"", curr->cval); break;
     case BT_SYMBOL:       printf("%s",  curr->cval);    break;
     case BT_FUNCTION:     printf("#function<>");        break;
-    case BT_PACK:         bprint_packfreeze(curr);      break;
+    case BT_PACK:         bprint_pack(curr);            break;
+    case BT_LIST:         bprint_list(curr);            break;
     case BT_EXPRESSION:   bprint_expression(curr);      break;
     case BT_ERROR:        bshow_error(curr);            break;
     
