@@ -48,12 +48,15 @@ void bprint(beorn_state* curr) {
     case BT_STRING:       printf("\"%s\"", curr->cval); break;
     case BT_SYMBOL:       printf("%s",  curr->cval);    break;
     case BT_FUNCTION:     printf("#function<>");        break;
+    case BT_LAMBDA:       printf("#lambda<>");          break;
     case BT_PACK:         bprint_pack(curr);            break;
     case BT_LIST:         bprint_list(curr);            break;
     case BT_EXPRESSION:   bprint_expression(curr);      break;
     case BT_ERROR:        bshow_error(curr);            break;
     
-    default: printf("Runtime error: unspected token %s.\n", curr->cval); break;
+    default:
+      bshow_error(new_error(BRUNTIME_ERROR, "unspected token."));
+      break;
   }
 
   free(curr);

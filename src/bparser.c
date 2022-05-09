@@ -48,7 +48,8 @@ int is_number(char c) {
 }
 
 int is_simple_expressions(char* key) {
-  return (strcmp("set", key) == 0) || (strcmp("let", key) == 0) || (strcmp("fun", key) == 0);
+  return (strcmp("set", key) == 0) || (strcmp("let", key) == 0) ||
+         (strcmp("fun", key) == 0) || (strcmp("lambda", key) == 0);
 }
 
 esm keyword_to_bpsm(char* key) {
@@ -56,6 +57,8 @@ esm keyword_to_bpsm(char* key) {
     return BP_SIMPLE_DEFINITIONS;
   } else if (strcmp("let", key) == 0) {
     return BP_SIMPLE_DEFINITIONS;
+  } else if (strcmp("lambda", key) == 0) {
+    return BP_LAMBDA_DEFINITION;
   } else if (strcmp("fun", key) == 0) {
     return BP_FUNCTION_DEFINITION;
   }
@@ -70,19 +73,9 @@ int apply_bpsm_state(bpsm* gs, esm s) {
 }
 
 void auto_state_update(bpsm* gs, beorn_state* b) {
-  if (gs->mode == BP_SIMPLE_DEFINITIONS) {
-    if (b->length == 3) {
-      b->closed = 1;
-      gs->mode = BP_NONE;
-    }
-  }
-
-  if (gs->mode == BP_FUNCTION_DEFINITION) {
-    if (b->length == 4) {
-      b->closed = 1;
-      gs->mode = BP_NONE;
-    }
-  }
+  BAUTO_STATE_UPDATE(gs, BP_SIMPLE_DEFINITIONS,  3);
+  BAUTO_STATE_UPDATE(gs, BP_FUNCTION_DEFINITION, 4);
+  BAUTO_STATE_UPDATE(gs, BP_LAMBDA_DEFINITION,   3);
 }
 
 int add_child(beorn_state* root, beorn_state* child) {

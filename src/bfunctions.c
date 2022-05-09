@@ -139,6 +139,22 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
   return pck;
 }
 
+beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression in lambda function.");
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
+  BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
+  BASSERT(exp->child[1]->type != BT_LIST, BTYPE_ERROR, "exprected a list of args to lambda function.");
+  BASSERT(exp->child[2]->type != BT_PACK, BTYPE_ERROR, "exprected a pack to make body to lambda function.");
+
+  beorn_state* lbd = new_lambda();
+
+  lbd->child[0] = exp->child[1];
+  lbd->child[1] = exp->child[2];
+  free(exp);
+
+  return lbd;
+}
+
 beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (set name 123)");
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
@@ -179,6 +195,10 @@ beorn_state* call_func(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
 
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   beorn_state* bs = exp->child[0];  
+
+  if (strcmp("lambda", bs->cval) == 0) {
+    return bb_lambda(benv, exp);
+  }
 
   for (int i = 0; i < benv->length; i++) {
     if (strcmp(benv->symbol[i], bs->cval) == 0) {

@@ -55,9 +55,9 @@ beorn_state* process(beorn_env* benv, beorn_state* curr) {
     case BT_ERROR:
     case BT_LIST:
     case BT_FUNCTION:
-    case BT_PACK:         return curr;
-    case BT_SYMBOL:       return process_symbol(benv, curr);
-    case BT_EXPRESSION:   return process_expression(benv, curr);
+    case BT_PACK:       return curr;
+    case BT_SYMBOL:     return process_symbol(benv, curr);
+    case BT_EXPRESSION: return process_expression(benv, curr);
     
     default: return new_error(BUNKNOWN_TYPE_ERROR, "type '%s' not found.", btype_to_str(curr->type));
   }

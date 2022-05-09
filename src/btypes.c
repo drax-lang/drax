@@ -97,6 +97,14 @@ beorn_state* new_function(beorn_func fn) {
   return v;
 };
 
+beorn_state* new_lambda() {
+  beorn_state* v = malloc(sizeof(beorn_state));
+  v->type = BT_LAMBDA;
+  v->bfunc = NULL;
+  v->child = malloc(sizeof(beorn_state*) * 2);
+  return v;
+};
+
 beorn_env* new_env() {
   beorn_env* blenv = malloc(sizeof(beorn_env));
   blenv->length = 0;

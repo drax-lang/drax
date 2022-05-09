@@ -18,11 +18,13 @@ typedef enum types {
   BT_EXPRESSION,
   BT_PACK,
   BT_LIST,
-  BT_FUNCTION
+  BT_FUNCTION,
+  BT_LAMBDA
 } types;
 
 typedef enum berrors_type {
   BSYNTAX_ERROR,
+  BRUNTIME_ERROR,
   BTYPE_ERROR,
   BREFERENCE_ERROR,
   BUNKNOWN_TYPE_ERROR,
@@ -63,6 +65,7 @@ beorn_state* new_pack(char* s);
 beorn_state* new_expression(char* s);
 beorn_state* new_list(char* s);
 beorn_state* new_function(beorn_func fn);
+beorn_state* new_lambda();
 
 beorn_env* new_env();
 
