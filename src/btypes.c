@@ -101,6 +101,7 @@ beorn_state* new_lambda() {
   beorn_state* v = malloc(sizeof(beorn_state));
   v->type = BT_LAMBDA;
   v->bfunc = NULL;
+  v->blenv = new_env();
   v->child = malloc(sizeof(beorn_state*) * 2);
   return v;
 };

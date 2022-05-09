@@ -155,6 +155,33 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
   return lbd;
 }
 
+beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_state* exp) {
+  beorn_state* lfunc = bpop(exp, 0);
+
+  BASSERT(
+    lfunc->child[1]->length != exp->length, BTYPE_ERROR, 
+    "Lambda Function with number of non-compatible arguments"
+  );
+
+  // add lenv
+  for (size_t i = 0; i < exp->length; i++) {
+    bset_env(lfunc->blenv, lfunc->child[0]->child[i], exp->child[i]);
+  }
+
+  beorn_state* res = NULL;
+  for (size_t i = 0; i < exp->length; i++) {
+    if (res != NULL)
+      del_bstate(res);
+
+    res = process(lfunc->blenv, lfunc->child[1]->child[i]);
+  }
+
+  if (res == NULL)
+    return new_error(BRUNTIME_ERROR, "Empty return of process");
+
+  return res;
+}
+
 beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (set name 123)");
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
@@ -181,29 +208,35 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(benv, "type-of", bb_type_of);
   put_function_env(benv, "set",     bb_set);
   put_function_env(benv, "let",     bb_let);
+  put_function_env(benv, "lambda",  bb_lambda);
 }
 
-beorn_state* call_func(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
+beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
   BASSERT(fun->type != BT_FUNCTION, BTYPE_ERROR, "Fail to call function.");
 
   if (fun->bfunc) {
     return fun->bfunc(benv, exp);
   }
 
-  // other's
+  return new_error(BRUNTIME_ERROR, "fail to call function '%s'.", fun->cval);
 }
 
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   beorn_state* bs = exp->child[0];  
 
-  if (strcmp("lambda", bs->cval) == 0) {
-    return bb_lambda(benv, exp);
+  if (bs->type == BT_SYMBOL) {
+    for (int i = 0; i < benv->length; i++) {
+      if (strcmp(benv->symbol[i], bs->cval) == 0) {
+        return call_func_native(benv, benv->bval[i], exp);
+      }
+    }
   }
 
-  for (int i = 0; i < benv->length; i++) {
-    if (strcmp(benv->symbol[i], bs->cval) == 0) {
-      return call_func(benv, benv->bval[i], exp);
-    }
+  // lambda
+  beorn_state* resolved = process(benv, bs);
+  
+  if (resolved->type == BT_LAMBDA) {
+    return call_function_lambda(benv, resolved, exp);
   }
 
   beorn_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", bs->cval);

@@ -30,9 +30,17 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
     return res;
   }
 
-  BASSERT(curr->child[0]->type != BT_SYMBOL, BUNSPECTED_TYPE, "Invalid expression.")
+  BASSERT(
+    curr->child[0]->type != BT_SYMBOL &&
+    curr->child[0]->type != BT_LAMBDA &&
+    curr->child[0]->type != BT_FUNCTION,
+    BUNSPECTED_TYPE,
+    "Invalid expression."
+  )
 
   beorn_state* r = call_func_builtin(benv, curr);
+
+  // call_lamda
   return r;
 }
 
@@ -55,6 +63,7 @@ beorn_state* process(beorn_env* benv, beorn_state* curr) {
     case BT_ERROR:
     case BT_LIST:
     case BT_FUNCTION:
+    case BT_LAMBDA:
     case BT_PACK:       return curr;
     case BT_SYMBOL:     return process_symbol(benv, curr);
     case BT_EXPRESSION: return process_expression(benv, curr);
