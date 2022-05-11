@@ -147,7 +147,8 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->child[2]->type != BT_PACK, BTYPE_ERROR, "exprected a pack to make body to lambda function.");
 
   beorn_state* lbd = new_lambda();
-
+  
+  lbd->length = 2;
   lbd->child[0] = exp->child[1];
   lbd->child[1] = exp->child[2];
   free(exp);
@@ -159,13 +160,13 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
   beorn_state* lfunc = bpop(exp, 0);
 
   BASSERT(
-    lfunc->child[1]->length != exp->length, BTYPE_ERROR, 
+    func->child[1]->length != exp->length, BTYPE_ERROR, 
     "Lambda Function with number of non-compatible arguments"
   );
 
   // add lenv
   for (size_t i = 0; i < exp->length; i++) {
-    bset_env(lfunc->blenv, lfunc->child[0]->child[i], exp->child[i]);
+    bset_env(func->blenv, func->child[0]->child[i], exp->child[i]);
   }
 
   beorn_state* res = NULL;
@@ -173,7 +174,7 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
     if (res != NULL)
       del_bstate(res);
 
-    res = process(lfunc->blenv, lfunc->child[1]->child[i]);
+    res = process(func->blenv, func->child[1]->child[i]);
   }
 
   if (res == NULL)
@@ -201,14 +202,16 @@ void put_function_env(beorn_env** benv, char* name, beorn_func fn) {
 }
 
 void load_buildtin_functions(beorn_env** benv) {
-  put_function_env(benv, "+",       do_op);
-  put_function_env(benv, "-",       do_op);
-  put_function_env(benv, "*",       do_op);
-  put_function_env(benv, "/",       do_op);
-  put_function_env(benv, "type-of", bb_type_of);
-  put_function_env(benv, "set",     bb_set);
-  put_function_env(benv, "let",     bb_let);
-  put_function_env(benv, "lambda",  bb_lambda);
+  beorn_env* native = (*benv)->native;
+
+  put_function_env(&native, "+",       do_op);
+  put_function_env(&native, "-",       do_op);
+  put_function_env(&native, "*",       do_op);
+  put_function_env(&native, "/",       do_op);
+  put_function_env(&native, "type-of", bb_type_of);
+  put_function_env(&native, "set",     bb_set);
+  put_function_env(&native, "let",     bb_let);
+  put_function_env(&native, "lambda",  bb_lambda);
 }
 
 beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
@@ -222,12 +225,18 @@ beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* ex
 }
 
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
-  beorn_state* bs = exp->child[0];  
+  beorn_state* bs = exp->child[0];
+
+  for (size_t i = 0; i < exp->length; i++) {
+    if (exp->child[i]->type == BT_EXPRESSION) {
+      exp->child[i] = process(benv, exp->child[i]);
+    }
+  }
 
   if (bs->type == BT_SYMBOL) {
-    for (int i = 0; i < benv->length; i++) {
-      if (strcmp(benv->symbol[i], bs->cval) == 0) {
-        return call_func_native(benv, benv->bval[i], exp);
+    for (int i = 0; i < benv->native->length; i++) {
+      if (strcmp(benv->native->symbol[i], bs->cval) == 0) {
+        return call_func_native(benv, benv->native->bval[i], exp);
       }
     }
   }

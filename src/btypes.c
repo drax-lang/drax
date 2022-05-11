@@ -111,6 +111,12 @@ beorn_env* new_env() {
   blenv->length = 0;
   blenv->bval =  malloc(sizeof(beorn_state *));
   blenv->symbol = malloc(sizeof(char*));
+
+  blenv->native = malloc(sizeof(beorn_env));
+  blenv->native->length = 0;
+  blenv->native->bval =  malloc(sizeof(beorn_state *));
+  blenv->native->symbol = malloc(sizeof(char*));
+
   return blenv;
 }
 
@@ -175,8 +181,11 @@ beorn_state* bcopy_state(beorn_state* v) {
     break;
     case BT_FUNCTION: x->bfunc = v->bfunc;
     case BT_PACK:
+    case BT_LIST:
+    case BT_LAMBDA:
     case BT_EXPRESSION:
       x->length = v->length;
+      x->blenv = v->blenv;
       x->child = malloc(sizeof(beorn_state*) * x->length);
       for (int i = 0; i < x->length; i++) {
         x->child[i] = bcopy_state(v->child[i]);
