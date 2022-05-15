@@ -97,11 +97,12 @@ beorn_state* new_function(beorn_func fn) {
   return v;
 };
 
-beorn_state* new_lambda() {
+beorn_state* new_lambda(beorn_env* global) {
   beorn_state* v = malloc(sizeof(beorn_state));
   v->type = BT_LAMBDA;
   v->bfunc = NULL;
   v->blenv = new_env();
+  v->blenv->global = global;
   v->child = malloc(sizeof(beorn_state*) * 2);
   return v;
 };
@@ -116,6 +117,7 @@ beorn_env* new_env() {
   blenv->native->length = 0;
   blenv->native->bval =  malloc(sizeof(beorn_state *));
   blenv->native->symbol = malloc(sizeof(char*));
+  blenv->global = NULL;
 
   return blenv;
 }

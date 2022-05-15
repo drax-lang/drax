@@ -8,14 +8,12 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
   if(curr->length == 0)
     return curr;
 
-  for (size_t i = 0; i < curr->length; i++) {
-    if (
-        (curr->child[0]->type != BT_SYMBOL) ||
-        ((curr->length == 1) && (curr->child[0]->type == BT_SYMBOL))
-       )
-    {
-      curr->child[0] = process(benv, curr->child[0]);
-    }
+  if (
+      (curr->child[0]->type != BT_SYMBOL) ||
+      ((curr->length == 1) && (curr->child[0]->type == BT_SYMBOL))
+      )
+  {
+    curr->child[0] = process(benv, curr->child[0]);
   }
 
   for (size_t i = 0; i < curr->length; i++) {
@@ -49,6 +47,10 @@ beorn_state* process_symbol(beorn_env* benv, beorn_state* curr) {
     if (strcmp(benv->symbol[i], curr->cval) == 0) {
       return bcopy_state(benv->bval[i]);
     }
+  }
+
+  if (benv->global != NULL) {
+    return process_symbol(benv->global, curr);
   }
 
   return new_error(BREFERENCE_ERROR, "symbol '%s' not found.", curr->cval);

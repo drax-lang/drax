@@ -146,11 +146,12 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->child[1]->type != BT_LIST, BTYPE_ERROR, "exprected a list of args to lambda function.");
   BASSERT(exp->child[2]->type != BT_PACK, BTYPE_ERROR, "exprected a pack to make body to lambda function.");
 
-  beorn_state* lbd = new_lambda();
+  beorn_state* lbd = new_lambda(benv);
   
   lbd->length = 2;
   lbd->child[0] = exp->child[1];
   lbd->child[1] = exp->child[2];
+
   free(exp);
 
   return lbd;
@@ -158,6 +159,7 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_state* exp) {
   beorn_state* lfunc = bpop(exp, 0);
+  del_bstate(lfunc);
 
   BASSERT(
     func->child[1]->length != exp->length, BTYPE_ERROR, 
@@ -224,6 +226,14 @@ beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* ex
   return new_error(BRUNTIME_ERROR, "fail to call function '%s'.", fun->cval);
 }
 
+beorn_env* get_main_env(beorn_env* benv) {
+  beorn_env* cenv = benv;
+  while (cenv->global != NULL) {
+    cenv = benv->global;
+  }
+  return cenv;
+}
+
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   beorn_state* bs = exp->child[0];
 
@@ -234,9 +244,10 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   }
 
   if (bs->type == BT_SYMBOL) {
-    for (int i = 0; i < benv->native->length; i++) {
-      if (strcmp(benv->native->symbol[i], bs->cval) == 0) {
-        return call_func_native(benv, benv->native->bval[i], exp);
+    beorn_env* cenv = get_main_env(benv);
+    for (int i = 0; i < cenv->native->length; i++) {
+      if (strcmp(cenv->native->symbol[i], bs->cval) == 0) {
+        return call_func_native(benv, cenv->native->bval[i], exp);
       }
     }
   }
@@ -248,6 +259,9 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
     return call_function_lambda(benv, resolved, exp);
   }
 
+  if (benv->global != NULL)
+    return call_func_builtin(benv->global, exp);
+  
   beorn_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", bs->cval);
   del_bstate(exp);
 

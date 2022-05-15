@@ -55,6 +55,7 @@ typedef struct beorn_env {
   char** symbol;
   beorn_state** bval;
   beorn_env* native;
+  beorn_env* global;
 } beorn_env;
 
 beorn_state* new_error(berrors_type t, char* s, ...);
