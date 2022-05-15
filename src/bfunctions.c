@@ -162,7 +162,7 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
   del_bstate(lfunc);
 
   BASSERT(
-    func->child[1]->length != exp->length, BTYPE_ERROR, 
+    func->child[0]->length != exp->length, BTYPE_ERROR, 
     "Lambda Function with number of non-compatible arguments"
   );
 
@@ -172,7 +172,7 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
   }
 
   beorn_state* res = NULL;
-  for (size_t i = 0; i < exp->length; i++) {
+  for (size_t i = 0; i < func->child[1]->length; i++) {
     if (res != NULL)
       del_bstate(res);
 
