@@ -5,7 +5,7 @@ Beorn is a simple functional language implementation.
 ### Examples
 
 ```beorn
-set say (lambda [text] {(text)})
+fun say [text] {(text)}
 (say "Hello World")
 ```
 
