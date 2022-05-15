@@ -157,6 +157,34 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
   return lbd;
 }
 
+beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression in lambda function.");
+  BASSERT(exp->length <= 3, BTYPE_ERROR, "'set' missing two arguments.");
+  BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two arguments.");
+  BASSERT(exp->child[1]->type != BT_SYMBOL, BTYPE_ERROR, "exprected a symbol to define function name.");
+  BASSERT(exp->child[2]->type != BT_LIST, BTYPE_ERROR, "exprected a list of args to lambda function.");
+  BASSERT(exp->child[3]->type != BT_PACK, BTYPE_ERROR, "exprected a pack to make body to lambda function.");
+
+  beorn_state* lbd = new_lambda(benv);
+  
+  lbd->length = 2;
+  lbd->child[0] = exp->child[2];
+  lbd->child[1] = exp->child[3];
+
+  beorn_state* expfun = new_expression("none");
+  expfun->child = malloc(sizeof(beorn_state*) * 2);
+  expfun->length = 3;
+  expfun->child[0] = new_symbol("set");
+  expfun->child[1] = exp->child[1];
+  expfun->child[2] = lbd;
+
+  beorn_state* def = bb_set(benv, expfun);
+
+  free(exp);
+
+  return def;
+}
+
 beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_state* exp) {
   beorn_state* lfunc = bpop(exp, 0);
   del_bstate(lfunc);
@@ -214,6 +242,7 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "set",     bb_set);
   put_function_env(&native, "let",     bb_let);
   put_function_env(&native, "lambda",  bb_lambda);
+  put_function_env(&native, "fun",  bb_fun); 
 }
 
 beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
