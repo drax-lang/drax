@@ -2,6 +2,13 @@
 
 Beorn is a simple functional language implementation.
 
+### Examples
+
+```beorn
+set say (lambda [text] {(text)})
+(say "Hello World")
+```
+
 ### Contributing
 
 Must be installed libedit
