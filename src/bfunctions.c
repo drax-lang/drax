@@ -226,6 +226,37 @@ beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
   return pck;
 }
 
+beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (if true {()})");
+  BASSERT(exp->length <= 3, BTYPE_ERROR, "'if' missing two arguments.");
+  BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two or three arguments.");
+  BASSERT(exp->child[1]->type != BT_INTEGER, BTYPE_ERROR, "'if' with invalid argument");
+  
+  beorn_state* result = NULL;
+  beorn_state* r_exp = NULL;
+  if (exp->child[1]->ival) {
+    r_exp = bpop(exp, 2);
+  } else if (exp->length >= 4) {
+    r_exp = bpop(exp, 3);
+  }
+  
+  if (r_exp->type == BT_PACK) {
+    for (size_t i = 0; i < r_exp->length; i++) {
+      if (result != NULL) del_bstate(result);
+
+      beorn_state* tmp = bpop(r_exp, i);
+      result = process(benv, tmp);
+    }
+  } else if (r_exp != NULL) {
+    result = process(benv, r_exp);
+  } else {
+    result = new_pack("");
+  }
+
+  del_bstate(exp);
+  return result;
+}
+
 void put_function_env(beorn_env** benv, char* name, beorn_func fn) {
   beorn_state* fun = new_function(fn);
   bset_env((*benv), new_string(name), fun);
@@ -242,7 +273,8 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "set",     bb_set);
   put_function_env(&native, "let",     bb_let);
   put_function_env(&native, "lambda",  bb_lambda);
-  put_function_env(&native, "fun",  bb_fun); 
+  put_function_env(&native, "fun",     bb_fun); 
+  put_function_env(&native, "if",      bb_if);
 }
 
 beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
