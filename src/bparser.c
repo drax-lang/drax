@@ -99,7 +99,7 @@ int add_child(beorn_state* root, beorn_state* child) {
 
     crr->length++;
 
-    if (crr->length <= 1) { // unnecessary
+    if (crr->length <= 1) {
       crr->child = malloc(sizeof(beorn_state*));
     } else {
       crr->child = realloc(crr->child, sizeof(beorn_state*) * crr->length);

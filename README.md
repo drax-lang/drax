@@ -1,7 +1,7 @@
 # Beorn
 
 Beorn is a simple functional language implementation.
-
+The proposal is to implement a functional language written in c.
 ### Examples
 
 ```beorn
