@@ -3,6 +3,12 @@
 #include <string.h>
 #include "bvm.h"
 
+#define return_false_to_prev_expr(exp) { \
+  del_bstate(exp);                       \
+    return new_integer(0);               \
+  }                                      \
+  break;
+
 beorn_state* bpop(beorn_state* curr, int i){
   beorn_state* ele = curr->child[i];
 
@@ -257,6 +263,41 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   return result;
 }
 
+beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (== 5 5)");
+  BASSERT(exp->length <= 1, BTYPE_ERROR, "'=='missing at least one argument.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* first = exp->child[0];
+
+  for (size_t i = 1; i < exp->length; i++)
+  {
+    if (exp->child[i]->type != first->type) return new_integer(0);
+    
+    switch (exp->child[i]->type)
+    {
+      case BT_INTEGER: 
+        if (exp->child[i]->ival != first->ival)
+          return_false_to_prev_expr(exp);
+
+      case BT_FLOAT: 
+        if (exp->child[i]->fval != first->fval)
+          return_false_to_prev_expr(exp);
+
+      case BT_STRING: 
+        if (strcmp(exp->child[i]->cval, first->cval) != 0)
+          return_false_to_prev_expr(exp);
+    
+    default: return_false_to_prev_expr(exp);
+    }
+
+  }
+
+  del_bstate(exp);
+  return new_integer(1);
+}
+
 void put_function_env(beorn_env** benv, char* name, beorn_func fn) {
   beorn_state* fun = new_function(fn);
   bset_env((*benv), new_string(name), fun);
@@ -275,6 +316,7 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "lambda",  bb_lambda);
   put_function_env(&native, "fun",     bb_fun); 
   put_function_env(&native, "if",      bb_if);
+  put_function_env(&native, "==",      bb_equal);
 }
 
 beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
