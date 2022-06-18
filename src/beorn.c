@@ -21,7 +21,7 @@ void interactive_shell() {
       bprint(out);
       putchar('\n');
     } else {
-      for (size_t i = 0; i < out->length; i++) {
+      for (int i = 0; i < out->length; i++) {
         beorn_state* evaluated = process(benv, out->child[i]);
         bprint(evaluated);
         putchar('\n');

@@ -16,7 +16,7 @@ void bshow_error(beorn_state* curr) {
 
 void bprint_pack(beorn_state* curr) {
   putchar('{');
-  for (size_t i = 0; i < curr->length; i++) {
+  for (int i = 0; i < curr->length; i++) {
     bprint(curr->child[i]);
     if (i + 1 < curr->length) putchar(' ');
   }
@@ -25,7 +25,7 @@ void bprint_pack(beorn_state* curr) {
 
 void bprint_list(beorn_state* curr) {
   putchar('[');
-  for (size_t i = 0; i < curr->length; i++) {
+  for (int i = 0; i < curr->length; i++) {
     bprint(curr->child[i]);
     if (i + 1 < curr->length) putchar(' ');
   }
@@ -34,7 +34,7 @@ void bprint_list(beorn_state* curr) {
 
 void bprint_expression(beorn_state* curr) {
     putchar('(');
-    for (size_t i = 0; i < curr->length; i++) {
+    for (int i = 0; i < curr->length; i++) {
       bprint(curr->child[i]);
       if (i + 1 < curr->length) putchar(' ');
     }

@@ -16,7 +16,7 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
     curr->child[0] = process(benv, curr->child[0]);
   }
 
-  for (size_t i = 0; i < curr->length; i++) {
+  for (int i = 0; i < curr->length; i++) {
     if (curr->child[i]->type == BT_ERROR) {
       return curr->child[i];
     }

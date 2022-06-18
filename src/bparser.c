@@ -4,14 +4,17 @@
 #include "bparser.h"
 
 /* helpers */
-char* get_new_str(char *str, char c) { // FIXME
-    size_t len = strlen(str);
-    char *nstr = malloc(len + 2);
+char* append_char(char *str, char c) {
+    size_t size = strlen(str);
+    char *s = (char *) calloc(size + 2, sizeof(char));
 
-    strcpy(nstr, str);
-    nstr[len] = c;
-    nstr[len + 1] = '\0';
-    return nstr;
+    for (size_t i = 0; i < size; i++) {
+      s[i] = str[i];
+    }
+  
+    s[size] = c;
+    s[size + 1] = '\0';
+    return s;
 }
 
 beorn_state* new_definition(char* msg) {
@@ -81,7 +84,7 @@ void auto_state_update(bpsm* gs, beorn_state* b) {
 int add_child(beorn_state* root, beorn_state* child) {
   if (root->length <= 0) {
     root->length++;
-    root->child = malloc(sizeof(beorn_state*));
+    root->child = (beorn_state**) malloc(sizeof(beorn_state*));
     root->child[0] = child;
     return 1;
   } else {
@@ -100,9 +103,9 @@ int add_child(beorn_state* root, beorn_state* child) {
     crr->length++;
 
     if (crr->length <= 1) {
-      crr->child = malloc(sizeof(beorn_state*));
+      crr->child = (beorn_state**) malloc(sizeof(beorn_state*));
     } else {
-      crr->child = realloc(crr->child, sizeof(beorn_state*) * crr->length);
+      crr->child = (beorn_state**) realloc(crr->child, sizeof(beorn_state*) * crr->length);
     }
     crr->child[crr->length - 1] = child;
     return 1;
@@ -132,12 +135,12 @@ int close_pending_structs(beorn_state* root, types ct) {
 }
 
 beorn_state* beorn_parser(char *input) {
-  bpsm* gbpsm = malloc(sizeof(bpsm));
+  bpsm* gbpsm = (bpsm*) malloc(sizeof(bpsm));
   gbpsm->mode = BP_NONE;
 
-  beorn_state* bs = malloc(sizeof(beorn_state *));
+  beorn_state* bs = (beorn_state*) malloc(sizeof(beorn_state *));
   bs->type = BT_PROGRAM;
-  bs->child = malloc(sizeof(beorn_state*));
+  bs->child = (beorn_state**) malloc(sizeof(beorn_state*));
   bs->length = 0;
 
   char* bword = "";
@@ -166,14 +169,14 @@ beorn_state* beorn_parser(char *input) {
       case '8':
       case '9': {
         if ((c == '-') && (!is_number(input[b_index + 1]))) {
-          char* ctmp = get_new_str(bword, c);
+          char* ctmp = append_char(bword, c);
           add_child(bs, new_symbol(ctmp));
           bword = "";
           break;
         }
 
         char* num = "";
-        num = get_new_str(num, c);
+        num = append_char(num, c);
 
         int isf = 0;
         while (b_index < strlen(input)) {
@@ -183,7 +186,7 @@ beorn_state* beorn_parser(char *input) {
           if (sc == '.') isf = 1;
 
           b_index++;
-          num = get_new_str(num, sc);
+          num = append_char(num, sc);
         }
 
         if (!isf) {
@@ -197,7 +200,7 @@ beorn_state* beorn_parser(char *input) {
       };
 
       case '{':
-        bword = get_new_str(bword, c);
+        bword = append_char(bword, c);
         add_child(bs, new_pack(bword));
         bword = "";
         break;
@@ -209,14 +212,14 @@ beorn_state* beorn_parser(char *input) {
       case '+':
       case '*':
       case '/': {
-        char* ctmp = get_new_str(bword, c);
+        char* ctmp = append_char(bword, c);
         add_child(bs, new_symbol(ctmp));
         bword = "";
         break;
       }
 
       case '(': {
-        char* ctmp = get_new_str(bword, c);
+        char* ctmp = append_char(bword, c);
         add_child(bs, new_expression(ctmp));
         bword = "";
         break;
@@ -229,7 +232,7 @@ beorn_state* beorn_parser(char *input) {
       }
 
       case '[': {
-        char* ctmp = get_new_str(bword, c);
+        char* ctmp = append_char(bword, c);
         add_child(bs, new_list(ctmp));
         bword = "";
         break;
@@ -252,7 +255,7 @@ beorn_state* beorn_parser(char *input) {
             break;
           };
 
-          bword = get_new_str(bword, c);
+          bword = append_char(bword, c);
         }
         break;
       }
@@ -268,12 +271,12 @@ beorn_state* beorn_parser(char *input) {
       }
       default: {
         if (is_symbol(c)) {
-          bword = get_new_str(bword, c);
+          bword = append_char(bword, c);
           while (b_index < strlen(input)) {
             char c = input[b_index + 1];
 
             if(is_symbol(c)) {
-              bword = get_new_str(bword, c);
+              bword = append_char(bword, c);
               b_index ++;
             } else {
 

@@ -5,9 +5,9 @@
 #include <stdarg.h>
 
 beorn_state* new_error(berrors_type t, char* s, ...) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_ERROR;
-  v->cval = malloc(strlen(s) + 1);
+  v->cval = (char *) malloc(strlen(s) + 1);
   v->et = t;
   v->length = 0;
   v->child = NULL;
@@ -21,7 +21,7 @@ beorn_state* new_error(berrors_type t, char* s, ...) {
 }
 
 beorn_state* new_integer(long iv) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_INTEGER;
   v->ival = iv;
   v->child = NULL;
@@ -29,7 +29,7 @@ beorn_state* new_integer(long iv) {
 }
 
 beorn_state* new_float(long double fv) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_FLOAT;
   v->fval = fv;
   v->child = NULL;
@@ -37,27 +37,27 @@ beorn_state* new_float(long double fv) {
 }
 
 beorn_state* new_string(char* s) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_STRING;
-  v->cval = malloc(strlen(s) + 1);
+  v->cval = (char *) malloc(strlen(s) + 1);
   v->child = NULL;
   strcpy(v->cval, s);
   return v;
 }
 
 beorn_state* new_symbol(char* s) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_SYMBOL;
-  v->cval = malloc(strlen(s) + 1);
+  v->cval = (char *) malloc(strlen(s) + 1);
   v->child = NULL;
   strcpy(v->cval, s);
   return v;
 }
 
 beorn_state* new_pack(char* s) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_PACK;
-  v->cval = malloc(strlen(s) + 1);
+  v->cval = (char *) malloc(strlen(s) + 1);
   v->child = NULL;
   v->length = 0;
   v->closed = 0;
@@ -66,10 +66,10 @@ beorn_state* new_pack(char* s) {
 }
 
 beorn_state* new_expression(char* s) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->blenv = new_env();
   v->type = BT_EXPRESSION;
-  v->cval = malloc(strlen(s) + 1);
+  v->cval = (char *) malloc(strlen(s) + 1);
   v->child = NULL;
   v->length = 0;
   v->closed = 0;
@@ -78,10 +78,10 @@ beorn_state* new_expression(char* s) {
 }
 
 beorn_state* new_list(char* s) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->blenv = NULL;
   v->type = BT_LIST;
-  v->cval = malloc(strlen(s) + 1);
+  v->cval = (char *) malloc(strlen(s) + 1);
   v->child = NULL;
   v->length = 0;
   v->closed = 0;
@@ -90,7 +90,7 @@ beorn_state* new_list(char* s) {
 }
 
 beorn_state* new_function(beorn_func fn) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_FUNCTION;
   v->bfunc = fn;
   v->child = NULL;
@@ -98,25 +98,25 @@ beorn_state* new_function(beorn_func fn) {
 };
 
 beorn_state* new_lambda(beorn_env* global) {
-  beorn_state* v = malloc(sizeof(beorn_state));
+  beorn_state* v = (beorn_state *) malloc(sizeof(beorn_state));
   v->type = BT_LAMBDA;
   v->bfunc = NULL;
   v->blenv = new_env();
   v->blenv->global = global;
-  v->child = malloc(sizeof(beorn_state*) * 2);
+  v->child = (beorn_state**) malloc(sizeof(beorn_state*) * 2);
   return v;
 };
 
 beorn_env* new_env() {
-  beorn_env* blenv = malloc(sizeof(beorn_env));
+  beorn_env* blenv = (beorn_env*) malloc(sizeof(beorn_env));
   blenv->length = 0;
-  blenv->bval =  malloc(sizeof(beorn_state *));
-  blenv->symbol = malloc(sizeof(char*));
+  blenv->bval = (beorn_state**) malloc(sizeof(beorn_state *));
+  blenv->symbol = (char**) malloc(sizeof(char*));
 
-  blenv->native = malloc(sizeof(beorn_env));
+  blenv->native = (beorn_env*) malloc(sizeof(beorn_env));
   blenv->native->length = 0;
-  blenv->native->bval =  malloc(sizeof(beorn_state *));
-  blenv->native->symbol = malloc(sizeof(char*));
+  blenv->native->bval = (beorn_state**) malloc(sizeof(beorn_state *));
+  blenv->native->symbol = (char**) malloc(sizeof(char*));
   blenv->global = NULL;
 
   return blenv;
@@ -125,7 +125,11 @@ beorn_env* new_env() {
 void del_bstate(beorn_state* curr) {
 
   switch (curr->type) {
+    case BT_STRING:
+      free(curr->cval);
+
     case BT_PACK:
+    case BT_LIST:
     case BT_EXPRESSION:
       for (int i = 0; i < curr->length; i++) {
         del_bstate(curr->child[i]);
@@ -165,7 +169,7 @@ char* btype_to_str(types t) {
 }
 
 beorn_state* bcopy_state(beorn_state* v) {
-  beorn_state* x = malloc(sizeof(beorn_state));
+  beorn_state* x = (beorn_state*) malloc(sizeof(beorn_state));
   x->type = v->type;
   switch (v->type) {
     break;
@@ -173,12 +177,12 @@ beorn_state* bcopy_state(beorn_state* v) {
     case BT_FLOAT: x->fval = v->fval; break;
     case BT_ERROR:
       x->et = v->et;
-      x->cval = malloc(strlen(v->cval) + 1);
+      x->cval = (char *) malloc(strlen(v->cval) + 1);
       strcpy(x->cval, v->cval);
     break;
     case BT_STRING:
     case BT_SYMBOL:
-      x->cval = malloc(strlen(v->cval) + 1);
+      x->cval = (char *) malloc(strlen(v->cval) + 1);
       strcpy(x->cval, v->cval);
     break;
     case BT_FUNCTION: x->bfunc = v->bfunc;
@@ -188,7 +192,7 @@ beorn_state* bcopy_state(beorn_state* v) {
     case BT_EXPRESSION:
       x->length = v->length;
       x->blenv = v->blenv;
-      x->child = malloc(sizeof(beorn_state*) * x->length);
+      x->child = (beorn_state**) malloc(sizeof(beorn_state*) * x->length);
       for (int i = 0; i < x->length; i++) {
         x->child[i] = bcopy_state(v->child[i]);
       }
@@ -209,11 +213,11 @@ void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {
   }
 
   e->length++;
-  e->bval = realloc(e->bval, sizeof(beorn_state*) * e->length);
-  e->symbol = realloc(e->symbol, sizeof(char*) * e->length);  
+  e->bval = (beorn_state**) realloc(e->bval, sizeof(beorn_state*) * e->length);
+  e->symbol = (char**) realloc(e->symbol, sizeof(char*) * e->length);  
 
   e->bval[e->length-1] = bcopy_state(value);
-  e->symbol[e->length-1] = malloc(strlen(key->cval)+1);
+  e->symbol[e->length-1] = (char*) malloc(strlen(key->cval)+1);
   strcpy(e->symbol[e->length -1], key->cval);
 }
 

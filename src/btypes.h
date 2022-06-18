@@ -67,7 +67,7 @@ beorn_state* new_pack(char* s);
 beorn_state* new_expression(char* s);
 beorn_state* new_list(char* s);
 beorn_state* new_function(beorn_func fn);
-beorn_state* new_lambda();
+beorn_state* new_lambda(beorn_env* global);
 
 beorn_env* new_env();
 
