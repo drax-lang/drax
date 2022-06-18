@@ -3,10 +3,10 @@
 #include <string.h>
 #include "bvm.h"
 
-#define return_false_to_prev_expr(exp) { \
-  del_bstate(exp);                       \
-    return new_integer(0);               \
-  }                                      \
+#define breturn_and_realease_expr(exp, bool_op) { \
+  del_bstate(exp);                                \
+    return new_integer(bool_op);                  \
+  }                                               \
   break;
 
 beorn_state* bpop(beorn_state* curr, int i){
@@ -265,7 +265,7 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (== 5 5)");
-  BASSERT(exp->length <= 1, BTYPE_ERROR, "'=='missing at least one argument.");
+  BASSERT(exp->length <= 1, BTYPE_ERROR, "'==' missing at least one argument.");
   
   del_bstate(bpop(exp, 0));
 
@@ -273,29 +273,70 @@ beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
 
   for (size_t i = 1; i < exp->length; i++)
   {
-    if (exp->child[i]->type != first->type) return new_integer(0);
+    if (exp->child[i]->type != first->type) {
+      del_bstate(exp);
+      return new_integer(0);
+    }
     
     switch (exp->child[i]->type)
     {
       case BT_INTEGER: 
         if (exp->child[i]->ival != first->ival)
-          return_false_to_prev_expr(exp);
+          breturn_and_realease_expr(exp, 0);
 
       case BT_FLOAT: 
         if (exp->child[i]->fval != first->fval)
-          return_false_to_prev_expr(exp);
+          breturn_and_realease_expr(exp, 0);
 
       case BT_STRING: 
         if (strcmp(exp->child[i]->cval, first->cval) != 0)
-          return_false_to_prev_expr(exp);
+          breturn_and_realease_expr(exp, 0);
     
-    default: return_false_to_prev_expr(exp);
+    default: breturn_and_realease_expr(exp, 0);
     }
 
   }
 
   del_bstate(exp);
   return new_integer(1);
+}
+
+beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (!= 4 5)");
+  BASSERT(exp->length <= 1, BTYPE_ERROR, "'!=' missing at least one argument.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* first = exp->child[0];
+
+  for (size_t i = 1; i < exp->length; i++)
+  {
+    if (exp->child[i]->type != first->type) {
+      del_bstate(exp);
+      return new_integer(1);
+    }
+    
+    switch (exp->child[i]->type)
+    {
+      case BT_INTEGER: 
+        if (exp->child[i]->ival != first->ival)
+          breturn_and_realease_expr(exp, 1);
+
+      case BT_FLOAT: 
+        if (exp->child[i]->fval != first->fval)
+          breturn_and_realease_expr(exp, 1);
+
+      case BT_STRING: 
+        if (strcmp(exp->child[i]->cval, first->cval) != 0)
+          breturn_and_realease_expr(exp, 1);
+    
+    default: breturn_and_realease_expr(exp, 1);
+    }
+
+  }
+
+  del_bstate(exp);
+  return new_integer(0);
 }
 
 void put_function_env(beorn_env** benv, char* name, beorn_func fn) {
@@ -317,6 +358,7 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "fun",     bb_fun); 
   put_function_env(&native, "if",      bb_if);
   put_function_env(&native, "==",      bb_equal);
+  put_function_env(&native, "!=",      bb_diff);
 }
 
 beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
