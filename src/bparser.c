@@ -4,7 +4,7 @@
 #include "bparser.h"
 
 /* helpers */
-char* append_char(char *str, char c) {
+char* append_char(char *str, const char c) {
     size_t size = strlen(str);
     char *s = (char *) calloc(size + 2, sizeof(char));
 
@@ -17,17 +17,17 @@ char* append_char(char *str, char c) {
     return s;
 }
 
-beorn_state* new_definition(char* msg) {
+beorn_state* new_definition(const char* msg) {
   beorn_state* bdef = new_expression("(");
   return bdef;
 }
 
-beorn_state* new_parser_error(char* msg) {
+beorn_state* new_parser_error(const char* msg) {
   beorn_state* err = new_error(BPARSER_ERROR, msg);
   return err;
 }
 
-int is_symbol(char c) {
+int is_symbol(const char c) {
   char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_-0123456789?!=";
   
   for (size_t i = 0; i < 67; i++)
@@ -39,7 +39,7 @@ int is_symbol(char c) {
   return 0;
 }
 
-int is_number(char c) {
+int is_number(const char c) {
   char accepted_num[] = ".0123456789";
   
   for (size_t i = 0; i < 11; i++) {
@@ -50,12 +50,12 @@ int is_number(char c) {
   return 0;
 }
 
-int is_simple_expressions(char* key) {
+int is_simple_expressions(const char* key) {
   return (strcmp("set", key) == 0) || (strcmp("let", key) == 0) ||
          (strcmp("fun", key) == 0) || (strcmp("lambda", key) == 0);
 }
 
-esm keyword_to_bpsm(char* key) {
+esm keyword_to_bpsm(const char* key) {
   if (strcmp("set", key) == 0) {
     return BP_SIMPLE_DEFINITIONS;
   } else if (strcmp("let", key) == 0) {
@@ -144,7 +144,7 @@ beorn_state* beorn_parser(char *input) {
   bs->length = 0;
 
   char* bword = "";
-  int b_index = 0;
+  size_t b_index = 0;
   int b_parser_error = 0;
   while (b_index < strlen(input) && (!b_parser_error)) {
     char c = input[b_index];

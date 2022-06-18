@@ -16,7 +16,7 @@ beorn_state* bpop(beorn_state* curr, int i){
     sizeof(beorn_state*) * (curr->length -i -1));
 
   curr->length--;
-  curr->child = realloc(curr->child, sizeof(beorn_state*) * curr->length);
+  curr->child = (beorn_state**) realloc(curr->child, sizeof(beorn_state*) * curr->length);
   return ele;
 }
 
@@ -72,7 +72,7 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
   }
 
   long double r = get_number(x);
-  int tval = x->type;
+  types tval = x->type;
 
   while (curr->length > 0) {
     beorn_state* y = bpop(curr, 0);
@@ -178,7 +178,7 @@ beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
   lbd->child[1] = exp->child[3];
 
   beorn_state* expfun = new_expression("none");
-  expfun->child = malloc(sizeof(beorn_state*) * 2);
+  expfun->child = (beorn_state**) malloc(sizeof(beorn_state*) * 2);
   expfun->length = 3;
   expfun->child[0] = new_symbol("set");
   expfun->child[1] = exp->child[1];
@@ -192,6 +192,7 @@ beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_state* exp) {
+  UNUSED(benv);
   beorn_state* lfunc = bpop(exp, 0);
   del_bstate(lfunc);
 
@@ -201,12 +202,12 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
   );
 
   // add lenv
-  for (size_t i = 0; i < exp->length; i++) {
+  for (int i = 0; i < exp->length; i++) {
     bset_env(func->blenv, func->child[0]->child[i], exp->child[i]);
   }
 
   beorn_state* res = NULL;
-  for (size_t i = 0; i < func->child[1]->length; i++) {
+  for (int i = 0; i < func->child[1]->length; i++) {
     if (res != NULL)
       del_bstate(res);
 
@@ -220,6 +221,7 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
 }
 
 beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
+  UNUSED(exp);
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (set name 123)");
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
   BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
@@ -247,7 +249,7 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   }
   
   if (r_exp->type == BT_PACK) {
-    for (size_t i = 0; i < r_exp->length; i++) {
+    for (int i = 0; i < r_exp->length; i++) {
       if (result != NULL) del_bstate(result);
 
       beorn_state* tmp = bpop(r_exp, i);
@@ -264,6 +266,7 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (== 5 5)");
   BASSERT(exp->length <= 1, BTYPE_ERROR, "'==' missing at least one argument.");
   
@@ -271,7 +274,7 @@ beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
 
   beorn_state* first = exp->child[0];
 
-  for (size_t i = 1; i < exp->length; i++)
+  for (int i = 1; i < exp->length; i++)
   {
     if (exp->child[i]->type != first->type) {
       del_bstate(exp);
@@ -309,7 +312,7 @@ beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
 
   beorn_state* first = exp->child[0];
 
-  for (size_t i = 1; i < exp->length; i++)
+  for (int i = 1; i < exp->length; i++)
   {
     if (exp->child[i]->type != first->type) {
       del_bstate(exp);
@@ -339,7 +342,7 @@ beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
   return new_integer(0);
 }
 
-void put_function_env(beorn_env** benv, char* name, beorn_func fn) {
+void put_function_env(beorn_env** benv, const char* name, beorn_func fn) {
   beorn_state* fun = new_function(fn);
   bset_env((*benv), new_string(name), fun);
 }
@@ -382,7 +385,7 @@ beorn_env* get_main_env(beorn_env* benv) {
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   beorn_state* bs = exp->child[0];
 
-  for (size_t i = 0; i < exp->length; i++) {
+  for (int i = 0; i < exp->length; i++) {
     if (exp->child[i]->type == BT_EXPRESSION) {
       exp->child[i] = process(benv, exp->child[i]);
     }

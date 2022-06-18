@@ -4,7 +4,7 @@
 #include "stdio.h"
 #include <stdarg.h>
 
-beorn_state* new_error(berrors_type t, char* s, ...) {
+beorn_state* new_error(berrors_type t, const char* s, ...) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_ERROR;
   v->cval = (char *) malloc(strlen(s) + 1);
@@ -36,7 +36,7 @@ beorn_state* new_float(long double fv) {
   return v;
 }
 
-beorn_state* new_string(char* s) {
+beorn_state* new_string(const char* s) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_STRING;
   v->cval = (char *) malloc(strlen(s) + 1);
@@ -45,7 +45,7 @@ beorn_state* new_string(char* s) {
   return v;
 }
 
-beorn_state* new_symbol(char* s) {
+beorn_state* new_symbol(const char* s) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_SYMBOL;
   v->cval = (char *) malloc(strlen(s) + 1);
@@ -54,7 +54,7 @@ beorn_state* new_symbol(char* s) {
   return v;
 }
 
-beorn_state* new_pack(char* s) {
+beorn_state* new_pack(const char* s) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_PACK;
   v->cval = (char *) malloc(strlen(s) + 1);
@@ -65,7 +65,7 @@ beorn_state* new_pack(char* s) {
   return v;
 }
 
-beorn_state* new_expression(char* s) {
+beorn_state* new_expression(const char* s) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->blenv = new_env();
   v->type = BT_EXPRESSION;
@@ -77,7 +77,7 @@ beorn_state* new_expression(char* s) {
   return v;
 }
 
-beorn_state* new_list(char* s) {
+beorn_state* new_list(const char* s) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->blenv = NULL;
   v->type = BT_LIST;
@@ -125,9 +125,6 @@ beorn_env* new_env() {
 void del_bstate(beorn_state* curr) {
 
   switch (curr->type) {
-    case BT_STRING:
-      free(curr->cval);
-
     case BT_PACK:
     case BT_LIST:
     case BT_EXPRESSION:

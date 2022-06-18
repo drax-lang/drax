@@ -7,6 +7,8 @@
 
 #define BASSERT(cond, t, msg, ...) if (cond) { return new_error(t, msg, ##__VA_ARGS__); }
 
+#define UNUSED(x) (void)(x)
+
 typedef enum types {
   BT_UNKNOWN,
   BT_ERROR,
@@ -58,14 +60,14 @@ typedef struct beorn_env {
   beorn_env* global;
 } beorn_env;
 
-beorn_state* new_error(berrors_type t, char* s, ...);
+beorn_state* new_error(berrors_type t, const char* s, ...);
 beorn_state* new_integer(long iv);
 beorn_state* new_float(long double fv);
-beorn_state* new_string(char* s);
-beorn_state* new_symbol(char* s);
-beorn_state* new_pack(char* s);
-beorn_state* new_expression(char* s);
-beorn_state* new_list(char* s);
+beorn_state* new_string(const char* s);
+beorn_state* new_symbol(const char* s);
+beorn_state* new_pack(const char* s);
+beorn_state* new_expression(const char* s);
+beorn_state* new_list(const char* s);
 beorn_state* new_function(beorn_func fn);
 beorn_state* new_lambda(beorn_env* global);
 

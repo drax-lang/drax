@@ -19,6 +19,28 @@ typedef struct bpsm {
   int count;
 } bpsm;
 
+char* append_char(char *str, const char c);
+
+beorn_state* new_definition(const char* msg);
+
+beorn_state* new_parser_error(const char* msg);
+
+int is_symbol(const char c);
+
+int is_number(const char c);
+
+int is_simple_expressions(const char* key);
+
+esm keyword_to_bpsm(const char* key);
+
+int apply_bpsm_state(bpsm* gs, esm s);
+
+void auto_state_update(bpsm* gs, beorn_state* b);
+
+int add_child(beorn_state* root, beorn_state* child);
+
+int close_pending_structs(beorn_state* root, types ct);
+
 beorn_state* beorn_parser(char *input);
 
 #define BAUTO_STATE_UPDATE(gs, tp, lenght) \
