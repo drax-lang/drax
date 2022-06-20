@@ -4,20 +4,22 @@
 #include "bparser.h"
 
 /* helpers */
-char* append_char(char *str, const char c) {
-    size_t size = strlen(str);
-    char *s = (char *) calloc(size + 2, sizeof(char));
+char* append_char(const char *str, const char c) {
+  size_t size = 0;
+  if (str != 0) size = strlen(str);
 
-    for (size_t i = 0; i < size; i++) {
-      s[i] = str[i];
-    }
-  
-    s[size] = c;
-    s[size + 1] = '\0';
-    return s;
+  char *s = (char *) calloc(size + 2, sizeof(char));
+
+  for (size_t i = 0; i < size; i++) {
+    s[i] = str[i];
+  }
+
+  s[size] = c;
+  s[size + 1] = '\0';
+  return s;
 }
 
-beorn_state* new_definition(const char* msg) {
+beorn_state* new_definition() {
   beorn_state* bdef = new_expression("(");
   return bdef;
 }
@@ -143,7 +145,7 @@ beorn_state* beorn_parser(char *input) {
   bs->child = (beorn_state**) malloc(sizeof(beorn_state*));
   bs->length = 0;
 
-  char* bword = "";
+  char* bword = 0;
   size_t b_index = 0;
   int b_parser_error = 0;
   while (b_index < strlen(input) && (!b_parser_error)) {
@@ -171,12 +173,11 @@ beorn_state* beorn_parser(char *input) {
         if ((c == '-') && (!is_number(input[b_index + 1]))) {
           char* ctmp = append_char(bword, c);
           add_child(bs, new_symbol(ctmp));
-          bword = "";
+          bword = 0;
           break;
         }
 
-        char* num = "";
-        num = append_char(num, c);
+        char* num = append_char("", c);
 
         int isf = 0;
         while (b_index < strlen(input)) {
@@ -202,7 +203,7 @@ beorn_state* beorn_parser(char *input) {
       case '{':
         bword = append_char(bword, c);
         add_child(bs, new_pack(bword));
-        bword = "";
+        bword = 0;
         break;
       case '}':
         if(!close_pending_structs(bs, BT_PACK))
@@ -214,14 +215,14 @@ beorn_state* beorn_parser(char *input) {
       case '/': {
         char* ctmp = append_char(bword, c);
         add_child(bs, new_symbol(ctmp));
-        bword = "";
+        bword = 0;
         break;
       }
 
       case '(': {
         char* ctmp = append_char(bword, c);
         add_child(bs, new_expression(ctmp));
-        bword = "";
+        bword = 0;
         break;
       }
 
@@ -234,7 +235,7 @@ beorn_state* beorn_parser(char *input) {
       case '[': {
         char* ctmp = append_char(bword, c);
         add_child(bs, new_list(ctmp));
-        bword = "";
+        bword = 0;
         break;
       }
 
@@ -247,36 +248,38 @@ beorn_state* beorn_parser(char *input) {
       case '"': {
         while (b_index < strlen(input)) {
           b_index++;
-          char c = input[b_index];
+          char sc = input[b_index];
 
-          if (c == '"') {
+          if (sc == '"') {
             add_child(bs, new_string(bword));
-            bword = "";
+            bword = 0;
             break;
           };
 
-          bword = append_char(bword, c);
+          bword = append_char(bword, sc);
         }
         break;
       }
 
       case '#': {
         while (b_index < strlen(input)) {
-          char c = input[b_index];
+          char sc = input[b_index];
 
           b_index++;
-          if (c == '\n')
+          if (sc == '\n')
             break;
         }
+        break;
       }
+
       default: {
         if (is_symbol(c)) {
           bword = append_char(bword, c);
           while (b_index < strlen(input)) {
-            char c = input[b_index + 1];
+            char sc = input[b_index + 1];
 
-            if(is_symbol(c)) {
-              bword = append_char(bword, c);
+            if(is_symbol(sc)) {
+              bword = append_char(bword, sc);
               b_index ++;
             } else {
 
@@ -288,14 +291,13 @@ beorn_state* beorn_parser(char *input) {
                 if (apply_bpsm_state(gbpsm, cbpsm) == 0)
                  return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
 
-                add_child(bs, new_definition("("));              
+                add_child(bs, new_definition());              
               }
 
               add_child(bs, new_symbol(bword));
-              bword = "";
+              bword = 0;
               break;
-            }
-            
+            }   
           }
         }
         break;

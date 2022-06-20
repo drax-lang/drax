@@ -140,7 +140,7 @@ void del_bstate(beorn_state* curr) {
   free(curr);
 }
 
-char* berrors_to_str(berrors_type t) {
+const char* berrors_to_str(berrors_type t) {
   switch (t) {
     case BSYNTAX_ERROR: return "SYNTAX_ERROR";
     case BTYPE_ERROR: return "TYPE_ERROR";
@@ -152,7 +152,7 @@ char* berrors_to_str(berrors_type t) {
   }
 }
 
-char* btype_to_str(types t) {
+const char* btype_to_str(types t) {
   switch (t) {
     case BT_INTEGER:      return "Integer";
     case BT_FLOAT:        return "Float";
@@ -182,7 +182,11 @@ beorn_state* bcopy_state(beorn_state* v) {
       x->cval = (char *) malloc(strlen(v->cval) + 1);
       strcpy(x->cval, v->cval);
     break;
-    case BT_FUNCTION: x->bfunc = v->bfunc;
+
+    case BT_FUNCTION:
+      x->bfunc = v->bfunc;
+      break;
+
     case BT_PACK:
     case BT_LIST:
     case BT_LAMBDA:

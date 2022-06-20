@@ -10,7 +10,7 @@
 #define BMAG  "\x1b[35m"
 
 void bshow_error(beorn_state* curr) {
-  char * et = berrors_to_str(curr->et);
+  const char * et = berrors_to_str(curr->et);
   printf("%s%s: %s%s", BRED, et, curr->cval, BDEF);
 }
 

@@ -11,6 +11,7 @@ FILES= ./src/bvm.c \
        ./src/bfunctions.c \
        ./src/bprint.c \
 	   ./src/bflags.c \
+	   ./src/bio.c \
        ./src/beorn.c
 
 DEBUGF= -ggdb \

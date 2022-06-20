@@ -82,9 +82,9 @@ beorn_env* new_env();
 
 void del_bstate(beorn_state* curr);
 
-char* berrors_to_str(berrors_type t);
+const char* berrors_to_str(berrors_type t);
 
-char* btype_to_str(types t);
+const char* btype_to_str(types t);
 
 beorn_state* bcopy_state(beorn_state* v);
 

@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include "bio.h"
 
 int get_file_content(char* name, char** content)
 {

@@ -19,9 +19,9 @@ typedef struct bpsm {
   int count;
 } bpsm;
 
-char* append_char(char *str, const char c);
+char* append_char(const char *str, const char c);
 
-beorn_state* new_definition(const char* msg);
+beorn_state* new_definition();
 
 beorn_state* new_parser_error(const char* msg);
 
