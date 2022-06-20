@@ -24,6 +24,12 @@ typedef enum types {
   BT_LAMBDA
 } types;
 
+typedef enum bimode {
+  BI_NONE,
+  BI_PROCESS_DEFAULT,
+  BI_INTERACTIVE_DEFAULT
+} bimode;
+
 typedef enum berrors_type {
   BSYNTAX_ERROR,
   BRUNTIME_ERROR,
@@ -32,7 +38,8 @@ typedef enum berrors_type {
   BUNKNOWN_TYPE_ERROR,
   BZERO_DIVISION_ERROR,
   BUNSPECTED_TYPE,
-  BPARSER_ERROR
+  BPARSER_ERROR,
+  BFILE_NOT_FOUND
 } berrors_type;
 
 typedef struct beorn_env beorn_env;

@@ -1,15 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <editline/readline.h>
 #include "bparser.h"
 #include "bvm.h"
 #include "bprint.h"
 #include "bfunctions.h"
-#include "flags.c"
-#include <editline/readline.h>
+#include "bflags.h"
+#include "bio.c"
 
-void interactive_shell() {
-  beorn_env* benv = new_env();
-  load_buildtin_functions(&benv);
+void process_file(beorn_env* benv, char** argv);
+void interactive_shell(beorn_env* benv);
+
+void interactive_shell(beorn_env* benv) {
   initial_info();
   
   while (1) {
@@ -33,10 +36,46 @@ void interactive_shell() {
   }
 }
 
+void process_file(beorn_env* benv, char** argv) {
+  char * content = 0;
+  char * path = argv[1];
+  if(get_file_content(path, &content)) {
+    bprint(new_error(BFILE_NOT_FOUND, "fail to process '%s' file.", path));
+    putchar('\n');
+  }
+
+  beorn_state* out = beorn_parser(content);
+
+  if (out->type == BT_ERROR) {
+    bprint(out);
+    putchar('\n');
+  } else {
+    for (int i = 0; i < out->length; i++) {
+      beorn_state* evaluated = process(benv, out->child[i]);
+    }
+    del_bstate(out);
+  }
+
+}
+
 int main(int argc, char** argv) {
 
-  if (argc == 1) {
-    interactive_shell();
+  bimode bmode = get_bimode(argc, argv);
+  beorn_env* benv = new_env();
+  
+  load_buildtin_functions(&benv);
+  switch (bmode)
+  {
+  case BI_PROCESS_DEFAULT:
+    process_file(benv, argv);
+    break;
+
+  case BI_INTERACTIVE_DEFAULT:
+    interactive_shell(benv);
+    break;
+
+  default:
+    break;
   }
 
   return 0;
