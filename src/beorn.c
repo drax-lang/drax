@@ -7,7 +7,7 @@
 #include "bprint.h"
 #include "bfunctions.h"
 #include "bflags.h"
-#include "bio.c"
+#include "bio.h"
 
 void process_file(beorn_env* benv, char** argv);
 void interactive_shell(beorn_env* benv);
@@ -27,7 +27,7 @@ void interactive_shell(beorn_env* benv) {
       for (int i = 0; i < out->length; i++) {
         beorn_state* evaluated = process(benv, out->child[i]);
         bprint(evaluated);
-        putchar('\n');
+        bbreak_line();
       }
       del_bstate(out);
     }
@@ -41,17 +41,18 @@ void process_file(beorn_env* benv, char** argv) {
   char * path = argv[1];
   if(get_file_content(path, &content)) {
     bprint(new_error(BFILE_NOT_FOUND, "fail to process '%s' file.", path));
-    putchar('\n');
+    bbreak_line();
   }
 
   beorn_state* out = beorn_parser(content);
 
   if (out->type == BT_ERROR) {
     bprint(out);
-    putchar('\n');
+    bbreak_line();
   } else {
     for (int i = 0; i < out->length; i++) {
-      beorn_state* evaluated = process(benv, out->child[i]);
+        beorn_state* evaluated = process(benv, out->child[i]);
+        if (evaluated->type == BT_ERROR) bprint(evaluated);
     }
     del_bstate(out);
   }

@@ -35,20 +35,14 @@ esm keyword_to_bpsm(const char* key);
 
 int apply_bpsm_state(bpsm* gs, esm s);
 
+void bauto_state_update(bpsm* gs, beorn_state* b, esm tp, int lenght);
+
 void auto_state_update(bpsm* gs, beorn_state* b);
 
-int add_child(beorn_state* root, beorn_state* child);
+int add_child(bpsm* gs, beorn_state* root, beorn_state* child);
 
 int close_pending_structs(beorn_state* root, types ct);
 
 beorn_state* beorn_parser(char *input);
-
-#define BAUTO_STATE_UPDATE(gs, tp, lenght) \
-  if (gs->mode == tp) {                    \
-  if (b->length == lenght) {               \
-    b->closed = 1;                         \
-    gs->mode = BP_NONE;                    \
-  }                                        \
-}
 
 #endif

@@ -33,6 +33,8 @@ beorn_state* bb_equal(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_diff(beorn_env* benv, beorn_state* exp);
 
+beorn_state* bb_print(beorn_env* benv, beorn_state* exp);
+
 void put_function_env(beorn_env** benv, const char* name, beorn_func fn);
 
 beorn_env* get_main_env(beorn_env* benv);

@@ -77,17 +77,29 @@ int apply_bpsm_state(bpsm* gs, esm s) {
   return 1;
 }
 
-void auto_state_update(bpsm* gs, beorn_state* b) {
-  BAUTO_STATE_UPDATE(gs, BP_SIMPLE_DEFINITIONS,  3);
-  BAUTO_STATE_UPDATE(gs, BP_FUNCTION_DEFINITION, 4);
-  BAUTO_STATE_UPDATE(gs, BP_LAMBDA_DEFINITION,   3);
+void bauto_state_update(bpsm* gs, beorn_state* b, esm tp, int lenght) {
+  if (gs->mode == tp) {
+    if (gs->count == lenght) {
+      b->closed = 1;
+      gs->count = 0;
+      gs->mode = BP_NONE;
+      close_pending_structs(b, BT_EXPRESSION);   
+    }
+  }                       
 }
 
-int add_child(beorn_state* root, beorn_state* child) {
+void auto_state_update(bpsm* gs, beorn_state* b) {
+  bauto_state_update(gs, b, BP_SIMPLE_DEFINITIONS,  3);
+  bauto_state_update(gs, b, BP_FUNCTION_DEFINITION, 4);
+  bauto_state_update(gs, b, BP_LAMBDA_DEFINITION,   3);
+}
+
+int add_child(bpsm* gs, beorn_state* root, beorn_state* child) {
   if (root->length <= 0) {
     root->length++;
     root->child = (beorn_state**) malloc(sizeof(beorn_state*));
     root->child[0] = child;
+    if (gs != 0) gs->count++;
     return 1;
   } else {
     beorn_state* crr;
@@ -97,7 +109,7 @@ int add_child(beorn_state* root, beorn_state* child) {
          (root->child[root->length - 1]->closed == 0))
     {
       crr  = root->child[root->length - 1];
-      if (add_child(crr, child)) return 1;
+      if (add_child(gs, crr, child)) return 1;
     } else {
       crr = root;
     }
@@ -110,6 +122,7 @@ int add_child(beorn_state* root, beorn_state* child) {
       crr->child = (beorn_state**) realloc(crr->child, sizeof(beorn_state*) * crr->length);
     }
     crr->child[crr->length - 1] = child;
+    gs->count++;
     return 1;
   }
 
@@ -172,7 +185,7 @@ beorn_state* beorn_parser(char *input) {
       case '9': {
         if ((c == '-') && (!is_number(input[b_index + 1]))) {
           char* ctmp = append_char(bword, c);
-          add_child(bs, new_symbol(ctmp));
+          add_child(gbpsm, bs, new_symbol(ctmp));
           bword = 0;
           break;
         }
@@ -192,17 +205,17 @@ beorn_state* beorn_parser(char *input) {
 
         if (!isf) {
           int vi = strtol(num, NULL, 10);
-          add_child(bs, new_integer(vi));
+          add_child(gbpsm, bs, new_integer(vi));
         } else {
           long double vf = strtold(num, NULL);
-          add_child(bs, new_float(vf));
+          add_child(gbpsm, bs, new_float(vf));
         }
         break;
       };
 
       case '{':
         bword = append_char(bword, c);
-        add_child(bs, new_pack(bword));
+        add_child(gbpsm, bs, new_pack(bword));
         bword = 0;
         break;
       case '}':
@@ -214,14 +227,14 @@ beorn_state* beorn_parser(char *input) {
       case '*':
       case '/': {
         char* ctmp = append_char(bword, c);
-        add_child(bs, new_symbol(ctmp));
+        add_child(gbpsm, bs, new_symbol(ctmp));
         bword = 0;
         break;
       }
 
       case '(': {
         char* ctmp = append_char(bword, c);
-        add_child(bs, new_expression(ctmp));
+        add_child(gbpsm, bs, new_expression(ctmp));
         bword = 0;
         break;
       }
@@ -234,7 +247,7 @@ beorn_state* beorn_parser(char *input) {
 
       case '[': {
         char* ctmp = append_char(bword, c);
-        add_child(bs, new_list(ctmp));
+        add_child(gbpsm, bs, new_list(ctmp));
         bword = 0;
         break;
       }
@@ -251,7 +264,7 @@ beorn_state* beorn_parser(char *input) {
           char sc = input[b_index];
 
           if (sc == '"') {
-            add_child(bs, new_string(bword));
+            add_child(gbpsm, bs, new_string(bword));
             bword = 0;
             break;
           };
@@ -291,10 +304,10 @@ beorn_state* beorn_parser(char *input) {
                 if (apply_bpsm_state(gbpsm, cbpsm) == 0)
                  return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
 
-                add_child(bs, new_definition());              
+                add_child(0, bs, new_definition());              
               }
 
-              add_child(bs, new_symbol(bword));
+              add_child(gbpsm, bs, new_symbol(bword));
               bword = 0;
               break;
             }   

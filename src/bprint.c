@@ -1,13 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "bprint.h"
 #include "btypes.h"
-
-#define BDEF  "\x1B[0m"
-#define BBLU  "\x1B[34m"
-#define BGRE  "\x1B[32m"
-#define BRED  "\x1B[31m"
-#define BMAG  "\x1b[35m"
+#include "bprint.h"
 
 void bshow_error(beorn_state* curr) {
   const char * et = berrors_to_str(curr->et);
@@ -61,3 +55,6 @@ void bprint(beorn_state* curr) {
 
   free(curr);
 }
+
+void bbreak_line() { putchar('\n'); }
+void bspace_line() { putchar(' '); }

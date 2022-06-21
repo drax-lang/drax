@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bvm.h"
+#include "bprint.h"
 
 #define breturn_and_realease_expr(exp, bool_op) { \
   del_bstate(exp);                                \
@@ -125,7 +126,7 @@ beorn_state* bb_type_of(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->length > 2,  BTYPE_ERROR, "expected only one argument.");
 
   beorn_state* r = process(benv, exp->child[1]);
-  char* t = btype_to_str(r->type);
+  const char* t = btype_to_str(r->type);
   free(r);
   free(exp);
 
@@ -221,7 +222,7 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
 }
 
 beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
-  UNUSED(exp);
+  UNUSED(benv);
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (set name 123)");
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
   BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
@@ -305,6 +306,7 @@ beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (!= 4 5)");
   BASSERT(exp->length <= 1, BTYPE_ERROR, "'!=' missing at least one argument.");
   
@@ -342,6 +344,20 @@ beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
   return new_integer(0);
 }
 
+beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  bpop(exp, 0);
+
+  for (int i = 0; i < exp->length; i++)
+  {
+    bprint(process(benv, exp->child[i]));
+    bspace_line();
+  }
+  
+  bbreak_line();
+  return new_pack("");
+}
+
 void put_function_env(beorn_env** benv, const char* name, beorn_func fn) {
   beorn_state* fun = new_function(fn);
   bset_env((*benv), new_string(name), fun);
@@ -362,6 +378,7 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "if",      bb_if);
   put_function_env(&native, "==",      bb_equal);
   put_function_env(&native, "!=",      bb_diff);
+  put_function_env(&native, "print",   bb_print);  
 }
 
 beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
