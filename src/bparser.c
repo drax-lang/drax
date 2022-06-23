@@ -3,6 +3,40 @@
 #include <stdio.h>
 #include "bparser.h"
 
+/* state handler */
+stack_bpsm* create_stack_bpsm() {
+  stack_bpsm* gsb = (stack_bpsm*) malloc(sizeof(stack_bpsm));
+  gsb->size = 0;
+  gsb->bpsm = (bpsm**) malloc(sizeof(bpsm*));
+  return gsb;
+}
+
+int increment_stack_bpsm(stack_bpsm* gsb) {
+  if ((NULL == gsb) || (gsb->size == 0)) return 0;
+  gsb->bpsm[gsb->size - 1]->count++;
+  return 0;
+}
+
+int del_first_stack_bpsm(stack_bpsm* gsb) {
+  if ((NULL == gsb) || (gsb->size == 0)) return 0;
+
+  free(gsb->bpsm[gsb->size -1]);
+  gsb->size--;
+  gsb->bpsm = (bpsm**) realloc(gsb->bpsm, sizeof(bpsm*) * gsb->size);
+  return 0;
+}
+
+int add_elem_stack_bpsm(stack_bpsm* gsb) {
+  if (NULL == gsb) return 0;
+
+  gsb->size++;
+  gsb->bpsm = (bpsm**) realloc(gsb->bpsm, sizeof(bpsm*) * gsb->size);
+  gsb->bpsm[gsb->size -1] = (bpsm*) malloc(sizeof(bpsm));
+  gsb->bpsm[gsb->size -1]->mode = BP_NONE;
+  gsb->bpsm[gsb->size -1]->count = 0;
+  return 0;
+}
+
 /* helpers */
 char* append_char(const char *str, const char c) {
   size_t size = 0;
@@ -71,35 +105,39 @@ esm keyword_to_bpsm(const char* key) {
   return BP_NONE;
 }
 
-int apply_bpsm_state(bpsm* gs, esm s) {
-  if (gs->mode != BP_NONE) return 0;
-  gs->mode = s;
+int initialize_new_state(stack_bpsm* gs, esm s) {
+  add_elem_stack_bpsm(gs);
+
+  gs->bpsm[gs->size -1]->mode = s;
   return 1;
 }
 
-void bauto_state_update(bpsm* gs, beorn_state* b, esm tp, int lenght) {
-  if (gs->mode == tp) {
-    if (gs->count == lenght) {
+int bauto_state_update(stack_bpsm* gs, beorn_state* b, esm tp, int lenght) {
+  if (gs->size <= 0) return 0;
+
+  bpsm* curr = gs->bpsm[gs->size -1];
+  if (curr->mode == tp) {
+    if (curr->count == lenght) {
       b->closed = 1;
-      gs->count = 0;
-      gs->mode = BP_NONE;
-      close_pending_structs(b, BT_EXPRESSION);   
+      close_pending_structs(gs, b, BT_EXPRESSION);   
+      del_first_stack_bpsm(gs);
     }
-  }                       
+  }
+  return 0; 
 }
 
-void auto_state_update(bpsm* gs, beorn_state* b) {
+void auto_state_update(stack_bpsm* gs, beorn_state* b) {
   bauto_state_update(gs, b, BP_SIMPLE_DEFINITIONS,  3);
   bauto_state_update(gs, b, BP_FUNCTION_DEFINITION, 4);
   bauto_state_update(gs, b, BP_LAMBDA_DEFINITION,   3);
 }
 
-int add_child(bpsm* gs, beorn_state* root, beorn_state* child) {
+int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {
   if (root->length <= 0) {
     root->length++;
     root->child = (beorn_state**) malloc(sizeof(beorn_state*));
     root->child[0] = child;
-    if (gs != 0) gs->count++;
+    increment_stack_bpsm(gs);
     return 1;
   } else {
     beorn_state* crr;
@@ -122,13 +160,13 @@ int add_child(bpsm* gs, beorn_state* root, beorn_state* child) {
       crr->child = (beorn_state**) realloc(crr->child, sizeof(beorn_state*) * crr->length);
     }
     crr->child[crr->length - 1] = child;
-    gs->count++;
+    increment_stack_bpsm(gs);
     return 1;
   }
 
 }
 
-int close_pending_structs(beorn_state* root, types ct) {
+int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct) {
   if (root->length == 0) return 0;
 
   if (((root->child[root->length - 1]->type == BT_PACK) || 
@@ -136,11 +174,12 @@ int close_pending_structs(beorn_state* root, types ct) {
        (root->child[root->length - 1]->type == BT_EXPRESSION)) &&
        (root->child[root->length - 1]->closed == 0))
   {
-    if (close_pending_structs( root->child[root->length - 1], ct )) {
+    if (close_pending_structs(gs, root->child[root->length - 1], ct )) {
       return 1;
     } else {
       if (root->child[root->length - 1]->type == ct) {
         root->child[root->length - 1]->closed = 1;
+        del_first_stack_bpsm(gs);
         return 1;
       }
     }
@@ -150,8 +189,7 @@ int close_pending_structs(beorn_state* root, types ct) {
 }
 
 beorn_state* beorn_parser(char *input) {
-  bpsm* gbpsm = (bpsm*) malloc(sizeof(bpsm));
-  gbpsm->mode = BP_NONE;
+  stack_bpsm* gsb = create_stack_bpsm();
 
   beorn_state* bs = (beorn_state*) malloc(sizeof(beorn_state *));
   bs->type = BT_PROGRAM;
@@ -163,7 +201,7 @@ beorn_state* beorn_parser(char *input) {
   int b_parser_error = 0;
   while (b_index < strlen(input) && (!b_parser_error)) {
     char c = input[b_index];
-    auto_state_update(gbpsm, bs);
+    auto_state_update(gsb, bs);
 
     switch (c)
     {
@@ -185,7 +223,7 @@ beorn_state* beorn_parser(char *input) {
       case '9': {
         if ((c == '-') && (!is_number(input[b_index + 1]))) {
           char* ctmp = append_char(bword, c);
-          add_child(gbpsm, bs, new_symbol(ctmp));
+          add_child(gsb, bs, new_symbol(ctmp));
           bword = 0;
           break;
         }
@@ -205,21 +243,25 @@ beorn_state* beorn_parser(char *input) {
 
         if (!isf) {
           int vi = strtol(num, NULL, 10);
-          add_child(gbpsm, bs, new_integer(vi));
+          add_child(gsb, bs, new_integer(vi));
         } else {
           long double vf = strtold(num, NULL);
-          add_child(gbpsm, bs, new_float(vf));
+          add_child(gsb, bs, new_float(vf));
         }
         break;
       };
 
       case '{':
         bword = append_char(bword, c);
-        add_child(gbpsm, bs, new_pack(bword));
+        add_child(gsb, bs, new_pack(bword));
+        
+        if (initialize_new_state(gsb, BP_DINAMIC) == 0)
+          return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
+
         bword = 0;
         break;
       case '}':
-        if(!close_pending_structs(bs, BT_PACK))
+        if(!close_pending_structs(gsb, bs, BT_PACK))
           return new_parser_error("pack freeze pair not found.");
         break;
 
@@ -227,33 +269,41 @@ beorn_state* beorn_parser(char *input) {
       case '*':
       case '/': {
         char* ctmp = append_char(bword, c);
-        add_child(gbpsm, bs, new_symbol(ctmp));
+        add_child(gsb, bs, new_symbol(ctmp));
         bword = 0;
         break;
       }
 
       case '(': {
         char* ctmp = append_char(bword, c);
-        add_child(gbpsm, bs, new_expression(ctmp));
+        add_child(gsb, bs, new_expression(ctmp));
+
+        if (initialize_new_state(gsb, BP_DINAMIC) == 0)
+          return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
+
         bword = 0;
         break;
       }
 
       case ')': {
-        if(!close_pending_structs(bs, BT_EXPRESSION))
+        if(!close_pending_structs(gsb, bs, BT_EXPRESSION))
           return new_parser_error("expression pair not found.");
         break;
       }
 
       case '[': {
         char* ctmp = append_char(bword, c);
-        add_child(gbpsm, bs, new_list(ctmp));
+        add_child(gsb, bs, new_list(ctmp));
+
+        if (initialize_new_state(gsb, BP_DINAMIC) == 0)
+          return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
+
         bword = 0;
         break;
       }
 
       case ']': {
-        if(!close_pending_structs(bs, BT_LIST))
+        if(!close_pending_structs(gsb, bs, BT_LIST))
           return new_parser_error("list pair not found.");
         break;
       }
@@ -264,7 +314,7 @@ beorn_state* beorn_parser(char *input) {
           char sc = input[b_index];
 
           if (sc == '"') {
-            add_child(gbpsm, bs, new_string(bword));
+            add_child(gsb, bs, new_string(bword));
             bword = 0;
             break;
           };
@@ -301,13 +351,13 @@ beorn_state* beorn_parser(char *input) {
                 ) {
                 esm cbpsm = keyword_to_bpsm(bword);
 
-                if (apply_bpsm_state(gbpsm, cbpsm) == 0)
+                if (initialize_new_state(gsb, cbpsm) == 0)
                  return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
 
                 add_child(0, bs, new_definition());              
               }
 
-              add_child(gbpsm, bs, new_symbol(bword));
+              add_child(gsb, bs, new_symbol(bword));
               bword = 0;
               break;
             }   
@@ -320,5 +370,6 @@ beorn_state* beorn_parser(char *input) {
     b_index++;
   }
   
+  free(gsb);
   return bs;
 }
