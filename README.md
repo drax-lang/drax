@@ -1,11 +1,14 @@
 # Beorn
 
-Beorn is a simple functional language implementation.
+Beorn is a simple functional language implementation. <br/>
 The proposal is to implement a functional language written in c.
 ### Examples
 
 ```beorn
-fun say [text] {(text)}
+fun say [text] {
+    (print text)
+}
+
 (say "Hello World")
 ```
 
