@@ -191,7 +191,7 @@ int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct) {
 beorn_state* beorn_parser(char *input) {
   stack_bpsm* gsb = create_stack_bpsm();
 
-  beorn_state* bs = (beorn_state*) malloc(sizeof(beorn_state *));
+  beorn_state* bs = (beorn_state*) malloc(sizeof(beorn_state));
   bs->type = BT_PROGRAM;
   bs->child = (beorn_state**) malloc(sizeof(beorn_state*));
   bs->length = 0;

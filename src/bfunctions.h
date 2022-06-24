@@ -37,6 +37,8 @@ beorn_state* bb_print(beorn_env* benv, beorn_state* exp);
 
 void put_function_env(beorn_env** benv, const char* name, beorn_func fn);
 
+beorn_state* bb_import(beorn_env* benv, beorn_state* exp);
+
 beorn_env* get_main_env(beorn_env* benv);
 
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp);

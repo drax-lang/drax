@@ -18,7 +18,7 @@ int get_file_content(char* name, char** content)
     {
       fread (buffer, 1, length, f);
     }
-    // fclose (f);
+    fclose (f);
   }
 
   if (buffer)
