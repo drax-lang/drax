@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bvm.h"
+#include "bparser.h"
 #include "bprint.h"
+#include "bio.h"
 
 #define breturn_and_realease_expr(exp, bool_op) { \
   del_bstate(exp);                                \
@@ -179,7 +181,7 @@ beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
   lbd->child[1] = exp->child[3];
 
   beorn_state* expfun = new_expression("none");
-  expfun->child = (beorn_state**) malloc(sizeof(beorn_state*) * 2);
+  expfun->child = (beorn_state**) malloc(sizeof(beorn_state) * 2);
   expfun->length = 3;
   expfun->child[0] = new_symbol("set");
   expfun->child[1] = exp->child[1];
@@ -350,6 +352,7 @@ beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
 
   for (int i = 0; i < exp->length; i++)
   {
+    // bprint(exp->child[i]);
     bprint(process(benv, exp->child[i]));
     bspace_line();
   }
@@ -361,6 +364,31 @@ beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
 void put_function_env(beorn_env** benv, const char* name, beorn_func fn) {
   beorn_state* fun = new_function(fn);
   bset_env((*benv), new_string(name), fun);
+}
+
+beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->length == 1, BTYPE_ERROR, "missing path.");
+  BASSERT(exp->child[1]->type != BT_STRING,  BTYPE_ERROR, "import with invalid path.");
+
+  char * content = 0;
+  if(get_file_content(exp->child[1]->cval, &content)) {
+    bprint(new_error(BFILE_NOT_FOUND, "fail to import '%s' file.", exp->child[1]->cval));
+  }
+
+  beorn_state* out = beorn_parser(content);
+
+  if (out->type == BT_ERROR) {
+    bprint(out);
+    bbreak_line();
+  } else {
+    for (int i = 0; i < out->length; i++) {
+        beorn_state* evaluated = process(benv, out->child[i]);
+        if (evaluated->type == BT_ERROR) bprint(evaluated);
+    }
+    del_bstate(out);
+  }
+
+  return new_pack("");
 }
 
 void load_buildtin_functions(beorn_env** benv) {
@@ -378,7 +406,9 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "if",      bb_if);
   put_function_env(&native, "==",      bb_equal);
   put_function_env(&native, "!=",      bb_diff);
-  put_function_env(&native, "print",   bb_print);  
+  put_function_env(&native, "print",   bb_print);
+  put_function_env(&native, "import",  bb_import);
+  
 }
 
 beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {

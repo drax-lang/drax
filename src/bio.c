@@ -4,7 +4,7 @@
 
 int get_file_content(char* name, char** content)
 {
-  char * buffer = 0;
+  char * buffer = NULL;
   long length;
   FILE * f = fopen (name, "rb");
 
@@ -13,16 +13,17 @@ int get_file_content(char* name, char** content)
     fseek (f, 0, SEEK_END);
     length = ftell (f);
     fseek (f, 0, SEEK_SET);
-    buffer = (char *) malloc (length);
+    buffer = (char *) calloc (length + 1, sizeof(char));
     if (buffer)
     {
       fread (buffer, 1, length, f);
     }
-    // fclose (f);
+    fclose (f);
   }
 
   if (buffer)
   {
+    buffer[length + 1] = 0;
     *content = buffer;
     return 0;
   }
