@@ -87,8 +87,11 @@ int is_number(const char c) {
 }
 
 int is_simple_expressions(const char* key) {
-  return (strcmp("set", key) == 0) || (strcmp("let", key) == 0) ||
-         (strcmp("fun", key) == 0) || (strcmp("lambda", key) == 0);
+  return (strcmp("import", key) == 0) || 
+         (strcmp("set", key) == 0) ||
+         (strcmp("let", key) == 0) ||
+         (strcmp("fun", key) == 0) || 
+         (strcmp("lambda", key) == 0);
 }
 
 esm keyword_to_bpsm(const char* key) {
@@ -100,6 +103,8 @@ esm keyword_to_bpsm(const char* key) {
     return BP_LAMBDA_DEFINITION;
   } else if (strcmp("fun", key) == 0) {
     return BP_FUNCTION_DEFINITION;
+  } else if (strcmp("import", key) == 0) {
+    return BP_FN_ONE_ARG;
   }
 
   return BP_NONE;
@@ -130,6 +135,7 @@ void auto_state_update(stack_bpsm* gs, beorn_state* b) {
   bauto_state_update(gs, b, BP_SIMPLE_DEFINITIONS,  3);
   bauto_state_update(gs, b, BP_FUNCTION_DEFINITION, 4);
   bauto_state_update(gs, b, BP_LAMBDA_DEFINITION,   3);
+  bauto_state_update(gs, b, BP_FN_ONE_ARG,          2);
 }
 
 int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {

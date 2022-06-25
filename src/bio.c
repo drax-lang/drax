@@ -23,7 +23,7 @@ int get_file_content(char* name, char** content)
 
   if (buffer)
   {
-    buffer[length + 1] = 0;
+    buffer[length] = 0;
     *content = buffer;
     return 0;
   }

@@ -167,12 +167,12 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression in lambda function.");
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression in function.");
   BASSERT(exp->length <= 3, BTYPE_ERROR, "'set' missing two arguments.");
   BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two arguments.");
   BASSERT(exp->child[1]->type != BT_SYMBOL, BTYPE_ERROR, "exprected a symbol to define function name.");
-  BASSERT(exp->child[2]->type != BT_LIST, BTYPE_ERROR, "exprected a list of args to lambda function.");
-  BASSERT(exp->child[3]->type != BT_PACK, BTYPE_ERROR, "exprected a pack to make body to lambda function.");
+  BASSERT(exp->child[2]->type != BT_LIST, BTYPE_ERROR, "exprected a list of args to function.");
+  BASSERT(exp->child[3]->type != BT_PACK, BTYPE_ERROR, "exprected a pack to make body to function.");
 
   beorn_state* lbd = new_lambda(benv);
   
@@ -352,7 +352,6 @@ beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
 
   for (int i = 0; i < exp->length; i++)
   {
-    // bprint(exp->child[i]);
     bprint(process(benv, exp->child[i]));
     bspace_line();
   }
@@ -372,7 +371,13 @@ beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
 
   char * content = 0;
   if(get_file_content(exp->child[1]->cval, &content)) {
-    bprint(new_error(BFILE_NOT_FOUND, "fail to import '%s' file.", exp->child[1]->cval));
+    char pm[25];
+  
+    memcpy(pm, &exp->child[1]->cval[0], 21);
+    pm[21] = '.';  pm[22] = '.'; pm[23] = '.';
+    pm[24] = '\0';
+  
+    return new_error(BFILE_NOT_FOUND, "Cannot find file: '%s'", pm);
   }
 
   beorn_state* out = beorn_parser(content);
