@@ -399,15 +399,16 @@ beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
 void load_buildtin_functions(beorn_env** benv) {
   beorn_env* native = (*benv)->native;
 
+  put_function_env(&native, "set",     bb_set);
+  put_function_env(&native, "let",     bb_let);
+  put_function_env(&native, "fun",     bb_fun);
+
   put_function_env(&native, "+",       do_op);
   put_function_env(&native, "-",       do_op);
   put_function_env(&native, "*",       do_op);
   put_function_env(&native, "/",       do_op);
   put_function_env(&native, "type-of", bb_type_of);
-  put_function_env(&native, "set",     bb_set);
-  put_function_env(&native, "let",     bb_let);
   put_function_env(&native, "lambda",  bb_lambda);
-  put_function_env(&native, "fun",     bb_fun); 
   put_function_env(&native, "if",      bb_if);
   put_function_env(&native, "==",      bb_equal);
   put_function_env(&native, "!=",      bb_diff);
@@ -434,6 +435,15 @@ beorn_env* get_main_env(beorn_env* benv) {
   return cenv;
 }
 
+int block_process(char* fun_n) {
+  return (
+    (strcmp(fun_n, "set") == 0) ||
+    (strcmp(fun_n, "let") == 0) ||
+    (strcmp(fun_n, "fun") == 0) ||
+    (strcmp(fun_n, "import") == 0)
+  );
+}
+
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   beorn_state* bs = exp->child[0];
 
@@ -444,6 +454,11 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   }
 
   if (bs->type == BT_SYMBOL) {
+    for (int i = 1; i < exp->length; i++) {
+      if (!block_process(bs->cval))
+        exp->child[i] = process(benv, exp->child[i]);
+    }    
+
     beorn_env* cenv = get_main_env(benv);
     for (int i = 0; i < cenv->native->length; i++) {
       if (strcmp(cenv->native->symbol[i], bs->cval) == 0) {

@@ -7,7 +7,7 @@
 beorn_state* new_error(berrors_type t, const char* s, ...) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_ERROR;
-  v->cval = (char *) malloc(strlen(s) + 1);
+  v->cval = (char *) malloc(strlen(s));
   v->et = t;
   v->length = 0;
   v->child = NULL;

@@ -39,7 +39,7 @@ void bprint(beorn_state* curr) {
   switch (curr->type) {
     case BT_INTEGER:      printf("%ld", curr->ival);    break;
     case BT_FLOAT:        printf("%Lf", curr->fval);    break;
-    case BT_STRING:       printf("\"%s\"", curr->cval); break;
+    case BT_STRING:       printf("%s", curr->cval);     break;
     case BT_SYMBOL:       printf("%s",  curr->cval);    break;
     case BT_FUNCTION:     printf("#function<>");        break;
     case BT_LAMBDA:       printf("#lambda<>");          break;
