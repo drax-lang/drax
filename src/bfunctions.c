@@ -122,7 +122,7 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
   return x;
 }
 
-beorn_state* bb_type_of(beorn_env* benv, beorn_state* exp) {
+beorn_state* bb_typeof(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (type-of 123)");
   BASSERT(exp->length == 1, BTYPE_ERROR, "missing one argument.");
   BASSERT(exp->length > 2,  BTYPE_ERROR, "expected only one argument.");
@@ -407,7 +407,7 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "-",       do_op);
   put_function_env(&native, "*",       do_op);
   put_function_env(&native, "/",       do_op);
-  put_function_env(&native, "type-of", bb_type_of);
+  put_function_env(&native, "typeof",  bb_typeof);
   put_function_env(&native, "lambda",  bb_lambda);
   put_function_env(&native, "if",      bb_if);
   put_function_env(&native, "==",      bb_equal);

@@ -15,7 +15,7 @@ long double get_number(beorn_state* v);
 
 beorn_state* do_op(beorn_env* benv, beorn_state* curr);
 
-beorn_state* bb_type_of(beorn_env* benv, beorn_state* exp);
+beorn_state* bb_typeof(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_set(beorn_env* benv, beorn_state* exp);
 
