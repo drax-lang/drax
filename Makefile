@@ -35,14 +35,16 @@ WARNING= \
 		-Wdisabled-optimization \
 
 FLAGS=  -std=c99 \
-		-ledit \
 		-Wall  \
 		$(WARNING) \
 		$(DWN_CCFLAGS) \
 		$(LIBS) \
 		$(OUTBIN)
 
-BEORN_BUILD_FULL=-D_B_BUILF_FULL
+BEORN_BUILD_FULL= \
+		-D_B_BUILF_FULL \
+		-ledit
+
 
 DEFAULT_BUILD = \
 		$(CC) \
