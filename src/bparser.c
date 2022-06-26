@@ -91,7 +91,8 @@ int is_simple_expressions(const char* key) {
          (strcmp("set", key) == 0) ||
          (strcmp("let", key) == 0) ||
          (strcmp("fun", key) == 0) || 
-         (strcmp("lambda", key) == 0);
+         (strcmp("lambda", key) == 0) ||
+         (strcmp("if", key) == 0);
 }
 
 esm keyword_to_bpsm(const char* key) {
@@ -104,7 +105,9 @@ esm keyword_to_bpsm(const char* key) {
   } else if (strcmp("fun", key) == 0) {
     return BP_FUNCTION_DEFINITION;
   } else if (strcmp("import", key) == 0) {
-    return BP_FN_ONE_ARG;
+    return BP_ONE_ARG;
+  } else if (strcmp("if", key) == 0) {
+    return BP_THREE_ARG;
   }
 
   return BP_NONE;
@@ -132,10 +135,14 @@ int bauto_state_update(stack_bpsm* gs, beorn_state* b, esm tp, int lenght) {
 }
 
 void auto_state_update(stack_bpsm* gs, beorn_state* b) {
+  bauto_state_update(gs, b, BP_ONE_ARG,             2);
+  bauto_state_update(gs, b, BP_TWO_ARG,             3);
+  bauto_state_update(gs, b, BP_THREE_ARG,           4);
+  bauto_state_update(gs, b, BP_FOUR_ARG,            5);
+
   bauto_state_update(gs, b, BP_SIMPLE_DEFINITIONS,  3);
-  bauto_state_update(gs, b, BP_FUNCTION_DEFINITION, 4);
   bauto_state_update(gs, b, BP_LAMBDA_DEFINITION,   3);
-  bauto_state_update(gs, b, BP_FN_ONE_ARG,          2);
+  bauto_state_update(gs, b, BP_FUNCTION_DEFINITION, 4);
 }
 
 int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {

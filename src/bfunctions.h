@@ -9,6 +9,7 @@
 #include "btypes.h"
 
 beorn_state* bpop(beorn_state* curr, int i);
+
 beorn_state* bpush(beorn_state* curr);
 
 long double get_number(beorn_state* v);

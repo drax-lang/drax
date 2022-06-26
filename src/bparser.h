@@ -13,7 +13,10 @@ typedef enum esm {
   BP_SIMPLE_DEFINITIONS,
   BP_FUNCTION_DEFINITION,
   BP_LAMBDA_DEFINITION,
-  BP_FN_ONE_ARG,
+  BP_ONE_ARG,
+  BP_TWO_ARG,
+  BP_THREE_ARG,
+  BP_FOUR_ARG,
 } esm;
 
 typedef struct bpsm {
