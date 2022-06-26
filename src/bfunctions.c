@@ -237,6 +237,31 @@ beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
   return pck;
 }
 
+beorn_state* bb_cat(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'cat' missing two arguments.");
+  BASSERT(exp->length > 3,  BTYPE_ERROR, "'cat' expected only two arguments.");
+  BASSERT(exp->child[1]->type != BT_STRING,  BTYPE_ERROR, "'cat' expects string only");
+
+  del_bstate(bpop(exp, 0));
+  
+  char* lstr = exp->child[0]->cval;
+  char* rstr = exp->child[1]->cval;
+
+  size_t ls = strlen(lstr);
+  size_t rs = strlen(rstr);
+  char* result = (char*) malloc(sizeof(char) * (ls + rs + 1));
+  
+  strncpy(result, lstr, ls);
+  result[ls] = '\0';
+  strncat(result, rstr, rs);
+  result[ls + rs] = '\0';
+
+  del_bstate(exp);
+
+  return new_string(result);
+}
+
 beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (if true {()})");
   BASSERT(exp->length <= 3, BTYPE_ERROR, "'if' missing two arguments.");
@@ -614,6 +639,7 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "set",     bb_set);
   put_function_env(&native, "let",     bb_let);
   put_function_env(&native, "fun",     bb_fun);
+  put_function_env(&native, "cat",     bb_cat);
 
   put_function_env(&native, "+",       do_op);
   put_function_env(&native, "-",       do_op);

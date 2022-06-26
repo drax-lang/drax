@@ -28,6 +28,8 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
 
 beorn_state* bb_let(beorn_env* benv, beorn_state* exp);
 
+beorn_state* bb_cat(beorn_env* benv, beorn_state* exp);
+
 beorn_state* bb_if(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_equal(beorn_env* benv, beorn_state* exp);
