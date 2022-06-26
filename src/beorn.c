@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <editline/readline.h>
 #include "bparser.h"
 #include "bvm.h"
 #include "bprint.h"
@@ -10,12 +9,26 @@
 #include "bio.h"
 #include "beorn.h"
 
+#ifdef _B_BUILF_FULL
+  #include <editline/readline.h>
+#else
+  #include "bshell.h"
+#endif
+
+
+
 int interactive_shell(beorn_env* benv) {
   initial_info();
   
   while (1) {
-    char* input = readline("> ");
-    add_history(input);
+    #ifdef _B_BUILF_FULL
+      char* input = readline("> ");
+      add_history(input);
+    #else
+      char* input = b_read_content();
+    #endif
+
+
     beorn_state* out = beorn_parser(input);
 
     if (out->type == BT_ERROR) {

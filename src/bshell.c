@@ -1,15 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "bshell.h"
 
 #define BUFFER_SIZE 2048
 #define BSLL_CHAR "> "
 
 static char buffer[BUFFER_SIZE];
-
-void breg_history(char* content) {
-    // fputs(content, stdout);
-}
 
 char* b_read_content() {
   fputs(BSLL_CHAR, stdout);
@@ -24,6 +21,5 @@ char* b_read_content() {
   
   tmp[sz] = '\0';
 
-//   breg_history(tmp);
   return tmp;
 }

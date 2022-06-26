@@ -10,6 +10,7 @@ FILES= ./src/bvm.c \
        ./src/bparser.c \
        ./src/bfunctions.c \
        ./src/bprint.c \
+       ./src/bshell.c \
 	   ./src/bflags.c \
 	   ./src/bio.c \
        ./src/beorn.c
@@ -41,11 +42,20 @@ FLAGS=  -std=c99 \
 		$(LIBS) \
 		$(OUTBIN)
 
+BEORN_BUILD_FULL=-D_B_BUILF_FULL
+
+DEFAULT_BUILD = \
+		$(CC) \
+		$(FLAGS) \
+		$(FILES) \
+		$(ASM_LINKS) \
+		$(BEORN_BUILD_FULL)
+
 all:
-	$(CC) $(FLAGS) $(FILES) $(ASM_LINKS)
+	$(DEFAULT_BUILD)
 
 debug:
-	$(CC) $(FLAGS) $(DEBUGF) $(FILES) $(ASM_LINKS)
+	$(DEFAULT_BUILD) $(DEBUGF)
 
 run:
 	./bin/$(APP)
