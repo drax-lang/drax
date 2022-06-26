@@ -32,7 +32,19 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_equal(beorn_env* benv, beorn_state* exp);
 
+beorn_state* bb_double_equal(beorn_env* benv, beorn_state* exp);
+
 beorn_state* bb_diff(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_less(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_bigger(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_less_equal(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_bigger_equal(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_print(beorn_env* benv, beorn_state* exp);
 

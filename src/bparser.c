@@ -64,9 +64,9 @@ beorn_state* new_parser_error(const char* msg) {
 }
 
 int is_symbol(const char c) {
-  char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_-0123456789?!=";
+  char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_-0123456789?!=<>";
   
-  for (size_t i = 0; i < 67; i++)
+  for (size_t i = 0; i < 69; i++)
   {
     if (c == accepted_chars[i])
       return 1;

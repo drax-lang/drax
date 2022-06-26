@@ -142,7 +142,7 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
 
   bset_env(benv, exp->child[1], exp->child[2]);
-  beorn_state* pck = new_pack("none");
+  beorn_state* pck = new_pack("");
   pck->closed = 1;
   del_bstate(exp);
   return pck;
@@ -243,7 +243,7 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two or three arguments.");
   BASSERT(exp->child[1]->type != BT_INTEGER, BTYPE_ERROR, "'if' with invalid argument");
   
-  beorn_state* result = NULL;
+  beorn_state* result = new_pack("");
   beorn_state* r_exp = NULL;
   if (exp->child[1]->ival) {
     r_exp = bpop(exp, 2);
@@ -268,9 +268,9 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   return result;
 }
 
-beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
+beorn_state* bb_double_equal(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (== 5 5)");
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (== 5 5 5)");
   BASSERT(exp->length <= 1, BTYPE_ERROR, "'==' missing at least one argument.");
   
   del_bstate(bpop(exp, 0));
@@ -307,10 +307,10 @@ beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
   return new_integer(1);
 }
 
-beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
+beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (!= 4 5)");
-  BASSERT(exp->length <= 1, BTYPE_ERROR, "'!=' missing at least one argument.");
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (!== 4 5)");
+  BASSERT(exp->length <= 1, BTYPE_ERROR, "'!==' missing at least one argument.");
   
   del_bstate(bpop(exp, 0));
 
@@ -340,6 +340,218 @@ beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
     default: breturn_and_realease_expr(exp, 1);
     }
 
+  }
+
+  del_bstate(exp);
+  return new_integer(0);
+}
+
+beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (= 5 5)");
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'=' missing at least two argument.");
+  BASSERT(exp->length > 3, BTYPE_ERROR, "'=' waits only two arguments.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* first = exp->child[0];
+
+  if (exp->child[1]->type != first->type) {
+    del_bstate(exp);
+    return new_integer(0);
+  }
+  
+  switch (first->type)
+  {
+    case BT_INTEGER: 
+      if (exp->child[1]->ival != first->ival)
+        breturn_and_realease_expr(exp, 0);
+
+    case BT_FLOAT: 
+      if (exp->child[1]->fval != first->fval)
+        breturn_and_realease_expr(exp, 0);
+
+    case BT_STRING: 
+      if (strcmp(exp->child[1]->cval, first->cval) != 0)
+        breturn_and_realease_expr(exp, 0);
+  
+    default: breturn_and_realease_expr(exp, 0);
+  }
+
+  del_bstate(exp);
+  return new_integer(1);
+}
+
+beorn_state* bb_less(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'<' missing at least two argument.");
+  BASSERT(exp->length > 3, BTYPE_ERROR, "'<' waits only two arguments.");
+  BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'<' not supported to type.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* first = exp->child[0];
+  
+  int result = 0;
+  switch (first->type)
+  {
+    case BT_INTEGER:
+      if (exp->child[1]->type == BT_INTEGER) {
+        result = first->ival < exp->child[1]->ival;
+      } else {
+        result = first->ival < exp->child[1]->fval;
+      }
+
+      breturn_and_realease_expr(exp, result);
+
+    case BT_FLOAT: 
+      if (exp->child[1]->type == BT_FLOAT) {
+        result = first->fval < exp->child[1]->fval;
+      } else {
+        result = first->fval < exp->child[1]->ival;
+      }
+      
+      breturn_and_realease_expr(exp, result);
+  
+    default: breturn_and_realease_expr(exp, 0);
+  }
+}
+
+beorn_state* bb_less_equal(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'<' missing at least two argument.");
+  BASSERT(exp->length > 3, BTYPE_ERROR, "'<' waits only two arguments.");
+  BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'<' not supported to type.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* first = exp->child[0];
+  
+  int result = 0;
+  switch (first->type)
+  {
+    case BT_INTEGER:
+      if (exp->child[1]->type == BT_INTEGER) {
+        result = first->ival <= exp->child[1]->ival;
+      } else {
+        result = first->ival <= exp->child[1]->fval;
+      }
+
+      breturn_and_realease_expr(exp, result);
+
+    case BT_FLOAT: 
+      if (exp->child[1]->type == BT_FLOAT) {
+        result = first->fval <= exp->child[1]->fval;
+      } else {
+        result = first->fval <= exp->child[1]->ival;
+      }
+      
+      breturn_and_realease_expr(exp, result);
+  
+    default: breturn_and_realease_expr(exp, 0);
+  }
+}
+
+beorn_state* bb_bigger(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'>' missing at least two argument.");
+  BASSERT(exp->length > 3, BTYPE_ERROR, "'>' waits only two arguments.");
+  BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'>' not supported to type.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* first = exp->child[0];
+  
+  int result = 0;
+  switch (first->type)
+  {
+    case BT_INTEGER:
+      if (exp->child[1]->type == BT_INTEGER) {
+        result = first->ival > exp->child[1]->ival;
+      } else {
+        result = first->ival > exp->child[1]->fval;
+      }
+
+      breturn_and_realease_expr(exp, result);
+
+    case BT_FLOAT: 
+      if (exp->child[1]->type == BT_FLOAT) {
+        result = first->fval > exp->child[1]->fval;
+      } else {
+        result = first->fval > exp->child[1]->ival;
+      }
+      
+      breturn_and_realease_expr(exp, result);
+  
+    default: breturn_and_realease_expr(exp, 0);
+  }
+}
+
+beorn_state* bb_bigger_equal(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'>' missing at least two argument.");
+  BASSERT(exp->length > 3, BTYPE_ERROR, "'>' waits only two arguments.");
+  BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'>' not supported to type.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* first = exp->child[0];
+  
+  int result = 0;
+  switch (first->type)
+  {
+    case BT_INTEGER:
+      if (exp->child[1]->type == BT_INTEGER) {
+        result = first->ival >= exp->child[1]->ival;
+      } else {
+        result = first->ival >= exp->child[1]->fval;
+      }
+
+      breturn_and_realease_expr(exp, result);
+
+    case BT_FLOAT: 
+      if (exp->child[1]->type == BT_FLOAT) {
+        result = first->fval >= exp->child[1]->fval;
+      } else {
+        result = first->fval >= exp->child[1]->ival;
+      }
+      
+      breturn_and_realease_expr(exp, result);
+  
+    default: breturn_and_realease_expr(exp, 0);
+  }
+}
+
+beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (!= 4 5)");
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'!=' missing at least one argument.");
+  BASSERT(exp->length > 3, BTYPE_ERROR, "'!=' waits only two arguments.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* first = exp->child[0];
+
+  if (exp->child[1]->type != first->type) {
+    del_bstate(exp);
+    return new_integer(1);
+  }
+  
+  switch (first->type)
+  {
+    case BT_INTEGER: 
+      if (exp->child[1]->ival != first->ival)
+        breturn_and_realease_expr(exp, 1);
+
+    case BT_FLOAT: 
+      if (exp->child[1]->fval != first->fval)
+        breturn_and_realease_expr(exp, 1);
+
+    case BT_STRING: 
+      if (strcmp(exp->child[1]->cval, first->cval) != 0)
+        breturn_and_realease_expr(exp, 1);
+  
+    default: breturn_and_realease_expr(exp, 1);
   }
 
   del_bstate(exp);
@@ -407,11 +619,20 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "-",       do_op);
   put_function_env(&native, "*",       do_op);
   put_function_env(&native, "/",       do_op);
+
+  put_function_env(&native, "==",      bb_double_equal);
+  put_function_env(&native, "!==",     bb_double_diff);
+  
+  put_function_env(&native, "=",       bb_equal);
+  put_function_env(&native, "!=",      bb_diff);
+  put_function_env(&native, "<",       bb_less);
+  put_function_env(&native, ">",       bb_bigger);
+  put_function_env(&native, "<=",      bb_less_equal);
+  put_function_env(&native, ">=",      bb_bigger_equal);
+
   put_function_env(&native, "typeof",  bb_typeof);
   put_function_env(&native, "lambda",  bb_lambda);
   put_function_env(&native, "if",      bb_if);
-  put_function_env(&native, "==",      bb_equal);
-  put_function_env(&native, "!=",      bb_diff);
   put_function_env(&native, "print",   bb_print);
   put_function_env(&native, "import",  bb_import);
   
