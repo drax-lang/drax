@@ -11,6 +11,8 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr);
 
 beorn_state* process_symbol(beorn_env* benv, beorn_state* curr);
 
+beorn_state* process_list(beorn_env* benv, beorn_state* curr);
+
 beorn_state* process(beorn_env* benv, beorn_state* curr);
 
 #endif

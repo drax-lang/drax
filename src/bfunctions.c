@@ -12,6 +12,24 @@
   }                                               \
   break;
 
+#define bcond_op_default(first, exp, op)             \
+    int result = 0;                                  \
+    switch (first->type) {                           \
+    case BT_INTEGER:                                 \
+      if (exp->child[1]->type == BT_INTEGER) {       \
+        result = first->ival op exp->child[1]->ival; \
+      } else {                                       \
+        result = first->ival op exp->child[1]->fval; \
+      } breturn_and_realease_expr(exp, result);      \
+    case BT_FLOAT:                                   \
+      if (exp->child[1]->type == BT_FLOAT) {         \
+        result = first->fval op exp->child[1]->fval; \
+      } else {                                       \
+        result = first->fval op exp->child[1]->ival; \
+      } breturn_and_realease_expr(exp, result);      \
+    default: breturn_and_realease_expr(exp, 0); }    \
+
+
 beorn_state* bpop(beorn_state* curr, int i){
   beorn_state* ele = curr->child[i];
 
@@ -414,67 +432,19 @@ beorn_state* bb_less(beorn_env* benv, beorn_state* exp) {
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'<' not supported to type.");
   
   del_bstate(bpop(exp, 0));
-
   beorn_state* first = exp->child[0];
-  
-  int result = 0;
-  switch (first->type)
-  {
-    case BT_INTEGER:
-      if (exp->child[1]->type == BT_INTEGER) {
-        result = first->ival < exp->child[1]->ival;
-      } else {
-        result = first->ival < exp->child[1]->fval;
-      }
-
-      breturn_and_realease_expr(exp, result);
-
-    case BT_FLOAT: 
-      if (exp->child[1]->type == BT_FLOAT) {
-        result = first->fval < exp->child[1]->fval;
-      } else {
-        result = first->fval < exp->child[1]->ival;
-      }
-      
-      breturn_and_realease_expr(exp, result);
-  
-    default: breturn_and_realease_expr(exp, 0);
-  }
+  bcond_op_default(first, exp, <);
 }
 
 beorn_state* bb_less_equal(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'<' missing at least two argument.");
-  BASSERT(exp->length > 3, BTYPE_ERROR, "'<' waits only two arguments.");
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'<=' missing at least two argument.");
+  BASSERT(exp->length > 3, BTYPE_ERROR, "'<=' waits only two arguments.");
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'<' not supported to type.");
   
   del_bstate(bpop(exp, 0));
-
   beorn_state* first = exp->child[0];
-  
-  int result = 0;
-  switch (first->type)
-  {
-    case BT_INTEGER:
-      if (exp->child[1]->type == BT_INTEGER) {
-        result = first->ival <= exp->child[1]->ival;
-      } else {
-        result = first->ival <= exp->child[1]->fval;
-      }
-
-      breturn_and_realease_expr(exp, result);
-
-    case BT_FLOAT: 
-      if (exp->child[1]->type == BT_FLOAT) {
-        result = first->fval <= exp->child[1]->fval;
-      } else {
-        result = first->fval <= exp->child[1]->ival;
-      }
-      
-      breturn_and_realease_expr(exp, result);
-  
-    default: breturn_and_realease_expr(exp, 0);
-  }
+  bcond_op_default(first, exp, <=);
 }
 
 beorn_state* bb_bigger(beorn_env* benv, beorn_state* exp) {
@@ -484,67 +454,19 @@ beorn_state* bb_bigger(beorn_env* benv, beorn_state* exp) {
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'>' not supported to type.");
   
   del_bstate(bpop(exp, 0));
-
   beorn_state* first = exp->child[0];
-  
-  int result = 0;
-  switch (first->type)
-  {
-    case BT_INTEGER:
-      if (exp->child[1]->type == BT_INTEGER) {
-        result = first->ival > exp->child[1]->ival;
-      } else {
-        result = first->ival > exp->child[1]->fval;
-      }
-
-      breturn_and_realease_expr(exp, result);
-
-    case BT_FLOAT: 
-      if (exp->child[1]->type == BT_FLOAT) {
-        result = first->fval > exp->child[1]->fval;
-      } else {
-        result = first->fval > exp->child[1]->ival;
-      }
-      
-      breturn_and_realease_expr(exp, result);
-  
-    default: breturn_and_realease_expr(exp, 0);
-  }
+  bcond_op_default(first, exp, >);
 }
 
 beorn_state* bb_bigger_equal(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'>' missing at least two argument.");
-  BASSERT(exp->length > 3, BTYPE_ERROR, "'>' waits only two arguments.");
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'>=' missing at least two argument.");
+  BASSERT(exp->length > 3, BTYPE_ERROR, "'>=' waits only two arguments.");
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'>' not supported to type.");
   
   del_bstate(bpop(exp, 0));
-
   beorn_state* first = exp->child[0];
-  
-  int result = 0;
-  switch (first->type)
-  {
-    case BT_INTEGER:
-      if (exp->child[1]->type == BT_INTEGER) {
-        result = first->ival >= exp->child[1]->ival;
-      } else {
-        result = first->ival >= exp->child[1]->fval;
-      }
-
-      breturn_and_realease_expr(exp, result);
-
-    case BT_FLOAT: 
-      if (exp->child[1]->type == BT_FLOAT) {
-        result = first->fval >= exp->child[1]->fval;
-      } else {
-        result = first->fval >= exp->child[1]->ival;
-      }
-      
-      breturn_and_realease_expr(exp, result);
-  
-    default: breturn_and_realease_expr(exp, 0);
-  }
+  bcond_op_default(first, exp, >=);
 }
 
 beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
@@ -716,7 +638,7 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
 
   // lambda
   beorn_state* resolved = process(benv, bs);
-  
+
   if (resolved->type == BT_LAMBDA) {
     return call_function_lambda(benv, resolved, exp);
   }
@@ -725,6 +647,7 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
     return call_func_builtin(benv->global, exp);
   
   beorn_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", bs->cval);
+  del_bstate(resolved);
   del_bstate(exp);
 
   return err;

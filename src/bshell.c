@@ -12,8 +12,8 @@ char* b_read_content() {
   fputs(BSLL_CHAR, stdout);
   fgets(buffer, BUFFER_SIZE, stdin);
 
-  size_t sz = strlen(buffer);
-  char* tmp = malloc(sz);
+  size_t sz = strlen(buffer + 1);
+  char* tmp = (char*) malloc(sz * sizeof(char));
 
   for (size_t i = 0; i < sz; i++) {
       tmp[i] = buffer[i];

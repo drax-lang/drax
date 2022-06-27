@@ -56,6 +56,15 @@ beorn_state* process_symbol(beorn_env* benv, beorn_state* curr) {
   return new_error(BREFERENCE_ERROR, "symbol '%s' not found.", curr->cval);
 }
 
+beorn_state* process_list(beorn_env* benv, beorn_state* curr) {
+  for (int i = 0; i < curr->length; i++)
+  {
+    curr->child[i] = process(benv, curr->child[i]);
+  }
+
+  return curr;
+}
+
 beorn_state* process(beorn_env* benv, beorn_state* curr) {
   switch (curr->type) {
     case BT_PROGRAM:
@@ -63,10 +72,10 @@ beorn_state* process(beorn_env* benv, beorn_state* curr) {
     case BT_FLOAT:
     case BT_STRING:
     case BT_ERROR:
-    case BT_LIST:
     case BT_FUNCTION:
     case BT_LAMBDA:
     case BT_PACK:       return curr;
+    case BT_LIST:       return process_list(benv, curr);
     case BT_SYMBOL:     return process_symbol(benv, curr);
     case BT_EXPRESSION: return process_expression(benv, curr);
     

@@ -65,7 +65,10 @@ int process_file(beorn_env* benv, char** argv) {
   } else {
     for (int i = 0; i < out->length; i++) {
         beorn_state* evaluated = process(benv, out->child[i]);
-        if (evaluated->type == BT_ERROR) bprint(evaluated);
+        if (evaluated->type == BT_ERROR) {
+          bprint(evaluated);
+          bbreak_line();
+        }
     }
     del_bstate(out);
   }

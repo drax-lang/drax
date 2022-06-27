@@ -341,9 +341,10 @@ beorn_state* beorn_parser(char *input) {
         while (b_index < strlen(input)) {
           char sc = input[b_index];
 
-          b_index++;
           if (sc == '\n')
             break;
+            
+          b_index++;
         }
         break;
       }
