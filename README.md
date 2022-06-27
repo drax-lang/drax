@@ -1,25 +1,14 @@
-# Beorn
+# What is Beorn ? 
+Beorn is an ongoing research and development project. <br />
+The proposal is to build a functional, dynamic and extremely light language. <br/>
 
-Beorn is a simple functional language implementation. <br/>
-The proposal is to implement a functional language written in c.
-### Examples
+### Features
 
-```beorn
-fun say [text] {
-    (print text)
-}
 
-(say "Hello World")
-```
 
 ### Contributing
 
 Must be installed libedit
-
-Arch Linux
-```
-sudo pacman -S libedit
-```
 
 Run initial environment settings with:
 

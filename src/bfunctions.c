@@ -1,6 +1,6 @@
-#include "bfunctions.h"
 #include <stdlib.h>
 #include <string.h>
+#include "bfunctions.h"
 #include "bvm.h"
 #include "bparser.h"
 #include "bprint.h"
@@ -81,7 +81,6 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
   beorn_state* x = bpop(curr, 0);
   x = process(benv, x);
 
-
   if ((op == '-') && curr->length == 0) {
     if (x->type == BT_INTEGER) {
       x->ival = -x->ival;
@@ -141,7 +140,6 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
 }
 
 beorn_state* bb_typeof(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (type-of 123)");
   BASSERT(exp->length == 1, BTYPE_ERROR, "missing one argument.");
   BASSERT(exp->length > 2,  BTYPE_ERROR, "expected only one argument.");
 
@@ -154,7 +152,6 @@ beorn_state* bb_typeof(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (set name 123)");
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
   BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
   BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
@@ -167,7 +164,6 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression in lambda function.");
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
   BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
   BASSERT(exp->child[1]->type != BT_LIST, BTYPE_ERROR, "exprected a list of args to lambda function.");
@@ -185,7 +181,6 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression in function.");
   BASSERT(exp->length <= 3, BTYPE_ERROR, "'set' missing two arguments.");
   BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two arguments.");
   BASSERT(exp->child[1]->type != BT_SYMBOL, BTYPE_ERROR, "exprected a symbol to define function name.");
@@ -243,7 +238,6 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
 
 beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (set name 123)");
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
   BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
   BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
@@ -281,7 +275,6 @@ beorn_state* bb_cat(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (if true {()})");
   BASSERT(exp->length <= 3, BTYPE_ERROR, "'if' missing two arguments.");
   BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two or three arguments.");
   BASSERT(exp->child[1]->type != BT_INTEGER, BTYPE_ERROR, "'if' with invalid argument");
@@ -313,7 +306,6 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_double_equal(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (== 5 5 5)");
   BASSERT(exp->length <= 1, BTYPE_ERROR, "'==' missing at least one argument.");
   
   del_bstate(bpop(exp, 0));
@@ -352,7 +344,6 @@ beorn_state* bb_double_equal(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (!== 4 5)");
   BASSERT(exp->length <= 1, BTYPE_ERROR, "'!==' missing at least one argument.");
   
   del_bstate(bpop(exp, 0));
@@ -391,7 +382,6 @@ beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (= 5 5)");
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'=' missing at least two argument.");
   BASSERT(exp->length > 3, BTYPE_ERROR, "'=' waits only two arguments.");
   
@@ -471,7 +461,6 @@ beorn_state* bb_bigger_equal(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->type != BT_EXPRESSION, BTYPE_ERROR, "expeted expression, example:\n  (!= 4 5)");
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'!=' missing at least one argument.");
   BASSERT(exp->length > 3, BTYPE_ERROR, "'!=' waits only two arguments.");
   
