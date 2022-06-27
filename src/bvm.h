@@ -15,4 +15,8 @@ beorn_state* process_list(beorn_env* benv, beorn_state* curr);
 
 beorn_state* process(beorn_env* benv, beorn_state* curr);
 
+void __run_bs__(beorn_env* benv, beorn_state* curr);
+
+void __run__(beorn_env* benv, beorn_state* curr);
+
 #endif

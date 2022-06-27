@@ -368,7 +368,7 @@ beorn_state* beorn_parser(char *input) {
                 if (initialize_new_state(gsb, cbpsm) == 0)
                  return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
 
-                add_child(0, bs, new_definition());              
+                add_child(0, bs, new_definition());
               }
 
               add_child(gsb, bs, new_symbol(bword));

@@ -529,17 +529,8 @@ beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
   }
 
   beorn_state* out = beorn_parser(content);
-
-  if (out->type == BT_ERROR) {
-    bprint(out);
-    bbreak_line();
-  } else {
-    for (int i = 0; i < out->length; i++) {
-        beorn_state* evaluated = process(benv, out->child[i]);
-        if (evaluated->type == BT_ERROR) bprint(evaluated);
-    }
-    del_bstate(out);
-  }
+  
+  __run__(benv, out);
 
   return new_pack("");
 }

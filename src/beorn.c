@@ -28,21 +28,9 @@ int interactive_shell(beorn_env* benv) {
       char* input = b_read_content();
     #endif
 
-
     beorn_state* out = beorn_parser(input);
 
-    if (out->type == BT_ERROR) {
-      bprint(out);
-      putchar('\n');
-    } else {
-      for (int i = 0; i < out->length; i++) {
-        beorn_state* evaluated = process(benv, out->child[i]);
-        bprint(evaluated);
-        bbreak_line();
-      }
-      del_bstate(out);
-    }
-
+    __run__(benv, out);
     free(input);
   }
   return 0;
@@ -58,20 +46,7 @@ int process_file(beorn_env* benv, char** argv) {
   }
 
   beorn_state* out = beorn_parser(content);
-
-  if (out->type == BT_ERROR) {
-    bprint(out);
-    bbreak_line();
-  } else {
-    for (int i = 0; i < out->length; i++) {
-        beorn_state* evaluated = process(benv, out->child[i]);
-        if (evaluated->type == BT_ERROR) {
-          bprint(evaluated);
-          bbreak_line();
-        }
-    }
-    del_bstate(out);
-  }
+  __run__(benv, out);
 
   return 0;
 }

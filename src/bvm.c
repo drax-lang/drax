@@ -1,8 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "bvm.h"
-#include "bfunctions.h"
+#include "bprint.h"
 #include "btypes.h"
+#include "bfunctions.h"
 
 beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
   if(curr->length == 0)
@@ -81,4 +82,27 @@ beorn_state* process(beorn_env* benv, beorn_state* curr) {
     
     default: return new_error(BUNKNOWN_TYPE_ERROR, "type '%s' not found.", btype_to_str(curr->type));
   }
+}
+
+/**
+ * run all childs of beorn state.
+ */
+void __run_bs__(beorn_env* benv, beorn_state* curr) {
+  if (curr->type == BT_ERROR) {
+    bprint(curr);
+    bbreak_line();
+  } else {
+    for (int i = 0; i < curr->length; i++) {
+        beorn_state* evaluated = process(benv, curr->child[i]);
+        if (evaluated->type == BT_ERROR) {
+          bprint(evaluated);
+          bbreak_line();
+        }
+    }
+    del_bstate(curr);
+  }
+}
+
+void __run__(beorn_env* benv, beorn_state* curr) {
+  __run_bs__(benv, curr);
 }
