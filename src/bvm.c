@@ -39,7 +39,6 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
 
   beorn_state* r = call_func_builtin(benv, curr);
 
-  // call_lamda
   return r;
 }
 
@@ -87,22 +86,27 @@ beorn_state* process(beorn_env* benv, beorn_state* curr) {
 /**
  * run all childs of beorn state.
  */
-void __run_bs__(beorn_env* benv, beorn_state* curr) {
+void __run_bs__(beorn_env* benv, beorn_state* curr, int inter_mode) {
   if (curr->type == BT_ERROR) {
     bprint(curr);
     bbreak_line();
   } else {
     for (int i = 0; i < curr->length; i++) {
-        beorn_state* evaluated = process(benv, curr->child[i]);
-        if (evaluated->type == BT_ERROR) {
-          bprint(evaluated);
-          bbreak_line();
-        }
+      beorn_state* evaluated = process(benv, curr->child[i]);
+      if (evaluated->type == BT_ERROR) {
+        bprint(evaluated);
+        bbreak_line();
+      }
+
+      if (inter_mode) {
+        bprint(evaluated);
+        bbreak_line();
+      }
     }
     del_bstate(curr);
   }
 }
 
-void __run__(beorn_env* benv, beorn_state* curr) {
-  __run_bs__(benv, curr);
+void __run__(beorn_env* benv, beorn_state* curr, int inter_mode) {
+  __run_bs__(benv, curr, inter_mode);
 }

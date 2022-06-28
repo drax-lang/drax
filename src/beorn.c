@@ -30,7 +30,7 @@ int interactive_shell(beorn_env* benv) {
 
     beorn_state* out = beorn_parser(input);
 
-    __run__(benv, out);
+    __run__(benv, out, 1);
     free(input);
   }
   return 0;
@@ -46,7 +46,7 @@ int process_file(beorn_env* benv, char** argv) {
   }
 
   beorn_state* out = beorn_parser(content);
-  __run__(benv, out);
+  __run__(benv, out, 0);
 
   return 0;
 }

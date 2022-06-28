@@ -530,7 +530,7 @@ beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
 
   beorn_state* out = beorn_parser(content);
   
-  __run__(benv, out);
+  __run__(benv, out, 0);
 
   return new_pack("");
 }
