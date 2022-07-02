@@ -4,11 +4,12 @@
 #include "blex.h"
 
 size_t b_index = 0;
+char* buffer;
 
 static const char *const beorn_tokens [] = {
   "}", "{", "]", "[", ",", "do", 
   "end", "float", "fun", "if", "import", "integer",
-  "lambda", ")", "(", "\"", "string", "<symbol>", 
+  "lambda", ")", "(", "string", "<symbol>", 
   
   /* cmp */ 
   "!=", "!==", "!===",
@@ -60,9 +61,9 @@ int is_number(const char c) {
   return 0;
 }
 
-b_token* bmake_string(blex_types type, char* val) {
+b_token* bmake_string(char* val) {
   b_token* v =(b_token*) malloc(sizeof(b_token));
-  v->type = type;
+  v->type = TK_STRING;
   v->cval = val;
   b_index++;
   return v;
@@ -113,15 +114,16 @@ b_token* bmake_float(blex_types type, long double val) {
   return v;
 }
 
-int init_lexan() {
+int init_lexan(char* b) {
   b_index = 0;
+  buffer = b;
   return b_index;
 }
 
-b_token* lexan(char* input) {
+b_token* lexan() {
   char* bword = 0;
-  while (b_index < strlen(input)) {
-   char c = input[b_index];
+  while (b_index < strlen(buffer)) {
+   char c = buffer[b_index];
 
     switch (c)
     {
@@ -140,15 +142,15 @@ b_token* lexan(char* input) {
       case '7':
       case '8':
       case '9': {
-        if ((c == '-') && (!is_number(input[b_index + 1]))) {
+        if ((c == '-') && (!is_number(buffer[b_index + 1]))) {
           return bmake_symbol(TK_SUB);
         }
 
         char* num = append_char("", c);
 
         int isf = 0;
-        while (b_index < strlen(input)) {
-          char sc = input[b_index + 1];
+        while (b_index < strlen(buffer)) {
+          char sc = buffer[b_index + 1];
 
           if (!is_number(sc)) break;
           if (sc == '.') isf = 1;
@@ -168,8 +170,8 @@ b_token* lexan(char* input) {
       };
 
       case '#': {
-        while (b_index < strlen(input)) {
-          char sc = input[b_index];
+        while (b_index < strlen(buffer)) {
+          char sc = buffer[b_index];
 
           if (sc == '\n')
             break;
@@ -189,13 +191,26 @@ b_token* lexan(char* input) {
       case ')': return bmake_symbol(TK_PAR_CLOSE);
       case '[': return bmake_symbol(TK_BRACKET_OPEN);
       case ']': return bmake_symbol(TK_BRACKET_CLOSE);
-      case '"': return bmake_symbol(TK_QUOTE);
+      case ',': return bmake_symbol(TK_COMMA);
+      case '"': {
+        while (b_index < strlen(buffer)) {
+          b_index++;
+          char sc = buffer[b_index];
+
+          if (sc == '"') {
+            return bmake_string(bword);
+          };
+
+          bword = append_char(bword, sc);
+        }
+        break;
+      }
 
       default: {
         if (is_symbol(c)) {
           bword = append_char(bword, c);
-          while (b_index < strlen(input)) {
-            char sc = input[b_index + 1];
+          while (b_index < strlen(buffer)) {
+            char sc = buffer[b_index + 1];
 
             if(is_symbol(sc)) {
               bword = append_char(bword, sc);

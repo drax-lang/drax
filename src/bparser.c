@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "bparser.h"
+#include "blex.h"
+
+b_token* gtoken;
+int ignore_command = 0;
 
 /* state handler */
 stack_bpsm* create_stack_bpsm() {
@@ -38,20 +42,6 @@ int add_elem_stack_bpsm(stack_bpsm* gsb) {
 }
 
 /* helpers */
-char* append_char(const char *str, const char c) {
-  size_t size = 0;
-  if (str != 0) size = strlen(str);
-
-  char *s = (char *) calloc(size + 2, sizeof(char));
-
-  for (size_t i = 0; i < size; i++) {
-    s[i] = str[i];
-  }
-
-  s[size] = c;
-  s[size + 1] = '\0';
-  return s;
-}
 
 beorn_state* new_definition() {
   beorn_state* bdef = new_expression("(");
@@ -63,34 +53,11 @@ beorn_state* new_parser_error(const char* msg) {
   return err;
 }
 
-int is_symbol(const char c) {
-  char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_-0123456789?!=<>";
-  
-  for (size_t i = 0; i < 69; i++)
-  {
-    if (c == accepted_chars[i])
-      return 1;
-  }
-  
-  return 0;
-}
-
-int is_number(const char c) {
-  char accepted_num[] = ".0123456789";
-  
-  for (size_t i = 0; i < 11; i++) {
-    if (c == accepted_num[i])
-      return 1;
-  }
-  
-  return 0;
-}
-
 int is_simple_expressions(const char* key) {
-  return (strcmp("import", key) == 0) || 
+  return (strcmp("import", key) == 0) ||
          (strcmp("set", key) == 0) ||
          (strcmp("let", key) == 0) ||
-         (strcmp("fun", key) == 0) || 
+         (strcmp("fun", key) == 0) ||
          (strcmp("lambda", key) == 0) ||
          (strcmp("if", key) == 0);
 }
@@ -176,7 +143,6 @@ int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {
     increment_stack_bpsm(gs);
     return 1;
   }
-
 }
 
 int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct) {
@@ -201,6 +167,154 @@ int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct) {
   return 0;
 }
 
+void next_token() {
+  if (ignore_command) {
+    ignore_command = 0;
+    return;
+  };
+
+  gtoken = lexan();
+}
+
+void ignore_next_command() {
+  ignore_command= 1;
+}
+
+void fatal(const char *msg) {
+    fprintf(stderr, "%s\n", msg);
+    exit(1);
+}
+
+/*
+ * Handle expression tree
+ */
+
+beorn_value* get_curr_bvalue() {
+  beorn_value* v = (beorn_value*) malloc(sizeof(beorn_value));
+  
+  switch (gtoken->type)
+  {
+  case TK_INTEGER:
+    v->ival = gtoken->ival;
+    break;
+  
+  case TK_FLOAT:
+    v->fval = gtoken->fval;
+    break;
+
+  case TK_SYMBOL:
+  // case TK_FUN: // handle function
+    v->cval = gtoken->cval;
+    break;
+
+  default:
+    fatal("unspected type on expression!");
+    break;
+  }
+
+  return v;
+}
+
+blex_types get_crr_type() {
+  if (NULL == gtoken) return 0;
+  return gtoken->type;
+}
+
+b_operator get_operator() {
+  switch (gtoken->type)
+  {
+    case TK_ADD: return BADD;
+    case TK_SUB: return BSUB;
+    case TK_MUL: return BMUL;
+    case TK_DIV: return BDIV;
+    default: return BINVALID;
+  }
+}
+
+expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left, 
+  expr_tree *right, beorn_value *value
+) {
+    struct expr_tree *n = (struct expr_tree*) malloc(sizeof(struct expr_tree));
+    if (n == NULL) {
+        fatal("unable to Malloc New Structure Tree in \'create_new_node()\' Function in tree.c File");
+    }
+    n->type = type;
+    n->op = operation;
+    n->left = left;
+    n->right = right;
+    n->value = value;
+    return n;
+}
+
+expr_tree *value_expr() {
+    if (gtoken->type == TK_INTEGER || gtoken->type == TK_FLOAT) {
+        expr_tree *result = new_node(gtoken->type, BNONE, NULL, NULL, get_curr_bvalue());
+        next_token();
+        return result;
+    }
+    fatal("can't determine value for token");
+    return NULL;
+}
+
+expr_tree *mult_expr() {
+    expr_tree *expr = value_expr();
+    while (gtoken->type == TK_MUL || gtoken->type == TK_DIV) {
+        b_operator op = get_operator();
+        next_token();
+        expr_tree *expr2 = value_expr();
+        expr = new_node(gtoken->type, op, expr, expr2, NULL);
+    }
+    return expr;
+}
+
+expr_tree *add_expr() {
+    expr_tree *expr = mult_expr();
+    while (gtoken->type == TK_ADD || gtoken->type == TK_SUB) {
+        b_operator op = get_operator();
+        next_token();
+        expr_tree *expr2 = mult_expr();
+        expr = new_node(gtoken->type, op, expr, expr2, NULL);
+    }
+    return expr;
+}
+
+expr_tree *build_expr_tree() {
+    expr_tree *expr = add_expr();
+    return expr;
+}
+
+void infix_to_bexpression(beorn_state* bs, expr_tree *expr) {
+  if (NULL == expr) return;
+
+  if ((BNONE == expr->op) && ((TK_INTEGER == expr->type) || (TK_FLOAT == expr->type))) {
+    if (TK_INTEGER == expr->type) { add_child(0, bs, new_integer(expr->value->ival)); }
+    if (TK_FLOAT == expr->type)   { add_child(0, bs, new_float(expr->value->fval));   }
+    free(expr);
+    return;
+  }
+
+  add_child(0, bs, new_expression(""));
+
+  switch (expr->op)
+  {
+    case BADD: add_child(0, bs, new_symbol("+")); break;
+    case BSUB: add_child(0, bs, new_symbol("-")); break;
+    case BMUL: add_child(0, bs, new_symbol("*")); break;
+    case BDIV: add_child(0, bs, new_symbol("/")); break;
+    
+    default:
+      fatal("invalid operation.");
+      break;
+  }
+
+  infix_to_bexpression(bs, expr->left);
+  infix_to_bexpression(bs, expr->right);
+  free(expr);
+  if(!close_pending_structs(0, bs, BT_EXPRESSION))
+    fatal("expression error, pair not found.");
+}
+
+
 beorn_state* beorn_parser(char *input) {
   stack_bpsm* gsb = create_stack_bpsm();
 
@@ -209,179 +323,135 @@ beorn_state* beorn_parser(char *input) {
   bs->child = (beorn_state**) malloc(sizeof(beorn_state*));
   bs->length = 0;
 
-  char* bword = 0;
-  size_t b_index = 0;
-  int b_parser_error = 0;
-  while (b_index < strlen(input) && (!b_parser_error)) {
-    char c = input[b_index];
+  init_lexan(input);
+  gtoken = NULL;
+
+  while (TK_EOF != get_crr_type()) {
     auto_state_update(gsb, bs);
 
-    switch (c)
-    {
-      case ' ': break;
-      case '\n': break;
-      case '\r': break;
-      case ',': break;
+    next_token();
+     
+     switch (gtoken->type)
+     {
+      case TK_SYMBOL:
+        char* rigth_symbol = gtoken->cval;
+        next_token();
 
-      case '-':
-      case '0':
-      case '1':
-      case '2':
-      case '3':
-      case '4':
-      case '5':
-      case '6':
-      case '7':
-      case '8':
-      case '9': {
-        if ((c == '-') && (!is_number(input[b_index + 1]))) {
-          char* ctmp = append_char(bword, c);
-          add_child(gsb, bs, new_symbol(ctmp));
-          bword = 0;
+        if (TK_EQ == gtoken->type) {
+          if (initialize_new_state(gsb, BP_SIMPLE_DEFINITIONS) == 0)
+            return new_error(BPARSER_ERROR, "Fail to initialize definition");
+
+          next_token();
+          add_child(0,   bs, new_definition(""));
+          add_child(gsb, bs, new_symbol("set"));
+          add_child(gsb, bs, new_symbol(rigth_symbol));
+          ignore_next_command();
           break;
         }
 
-        char* num = append_char("", c);
-
-        int isf = 0;
-        while (b_index < strlen(input)) {
-          char sc = input[b_index + 1];
-
-          if (!is_number(sc)) break;
-          if (sc == '.') isf = 1;
-
-          b_index++;
-          num = append_char(num, sc);
+        if (TK_PAR_OPEN == gtoken->type) {
+          next_token();
+          add_child(0, bs, new_definition(""));
+          add_child(0, bs, new_symbol(rigth_symbol));
+          ignore_next_command();
+          break;
         }
 
-        if (!isf) {
-          int vi = strtol(num, NULL, 10);
-          add_child(gsb, bs, new_integer(vi));
-        } else {
-          long double vf = strtold(num, NULL);
-          add_child(gsb, bs, new_float(vf));
-        }
+        add_child(gsb, bs, new_symbol(rigth_symbol));
         break;
-      };
+      
+      case TK_IF: break;
 
-      case '{':
-        bword = append_char(bword, c);
-        add_child(gsb, bs, new_pack(bword));
+
+      case TK_IMPORT: 
+          next_token();
+          add_child(0, bs, new_definition(""));
+          add_child(0, bs, new_symbol("import"));
+          if (TK_STRING != gtoken->type) { fatal("invalid import name."); }
+          add_child(0, bs, new_string(gtoken->cval));
+        break;
+
+      case TK_FUN:
+        add_child(0, bs, new_definition(""));
+        add_child(0, bs, new_symbol("fun"));
+        next_token();
+
+        if (TK_SYMBOL != gtoken->type) { fatal("invalid function name."); }
+          
+        add_child(0, bs, new_symbol(gtoken->cval));
+        next_token();
+
+        if (TK_PAR_OPEN != gtoken->type) { fatal("invalid function name."); }
+
+        next_token();
+
+        int catching_params = 1;
         
-        if (initialize_new_state(gsb, BP_DINAMIC) == 0)
-          return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
+        add_child(0, bs, new_list(""));
+        while (catching_params) {
+          if (TK_SYMBOL != gtoken->type) { fatal("invalid function param."); }
 
-        bword = 0;
+          add_child(0, bs, new_symbol(gtoken->cval));
+          next_token();
+
+          catching_params = (TK_COMMA == gtoken->type);
+          if (catching_params) { next_token(); }
+        }
+        
+        if(!close_pending_structs(gsb, bs, BT_LIST))
+          return new_parser_error("params pair not found."); // fix
+        
+        if (TK_PAR_CLOSE!= gtoken->type) { fatal("pair not identified to params."); }
+
+        next_token();
+
+        if (TK_DO != gtoken->type) { fatal("bad definition to function."); }
+        add_child(0, bs, new_pack(""));
         break;
-      case '}':
-        if(!close_pending_structs(gsb, bs, BT_PACK))
-          return new_parser_error("pack freeze pair not found.");
+
+      case TK_LAMBDA: break;
+
+      case TK_FLOAT: 
+      case TK_INTEGER:
+        expr_tree* trr = build_expr_tree();
+        infix_to_bexpression(bs, trr);
         break;
-
-      case '+':
-      case '*':
-      case '/': {
-        char* ctmp = append_char(bword, c);
-        add_child(gsb, bs, new_symbol(ctmp));
-        bword = 0;
+      case TK_STRING:
+        add_child(gsb, bs, new_string(gtoken->cval));
         break;
-      }
-
-      case '(': {
-        char* ctmp = append_char(bword, c);
-        add_child(gsb, bs, new_expression(ctmp));
-
-        if (initialize_new_state(gsb, BP_DINAMIC) == 0)
-          return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
-
-        bword = 0;
-        break;
-      }
-
-      case ')': {
+      case TK_PAR_CLOSE:
         if(!close_pending_structs(gsb, bs, BT_EXPRESSION))
           return new_parser_error("expression pair not found.");
         break;
-      }
-
-      case '[': {
-        char* ctmp = append_char(bword, c);
-        add_child(gsb, bs, new_list(ctmp));
+      case TK_BRACE_OPEN: break;
+      case TK_BRACE_CLOSE: break;
+      case TK_BRACKET_OPEN: {
+        add_child(gsb, bs, new_list(""));
 
         if (initialize_new_state(gsb, BP_DINAMIC) == 0)
-          return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
+          return new_error(BPARSER_ERROR, "fail to create list.");
 
-        bword = 0;
         break;
       }
 
-      case ']': {
+      case TK_BRACKET_CLOSE: {
         if(!close_pending_structs(gsb, bs, BT_LIST))
           return new_parser_error("list pair not found.");
         break;
       }
-      
-      case '"': {
-        while (b_index < strlen(input)) {
-          b_index++;
-          char sc = input[b_index];
 
-          if (sc == '"') {
-            add_child(gsb, bs, new_string(bword));
-            bword = 0;
-            break;
-          };
+      case TK_END:
+        if(!close_pending_structs(gsb, bs, BT_PACK))
+          return new_parser_error("pack freeze pair not found."); // fix
 
-          bword = append_char(bword, sc);
-        }
+        if(!close_pending_structs(gsb, bs, BT_EXPRESSION))
+          return new_parser_error("function pair not found."); // fix
         break;
-      }
 
-      case '#': {
-        while (b_index < strlen(input)) {
-          char sc = input[b_index];
-
-          if (sc == '\n')
-            break;
-            
-          b_index++;
-        }
-        break;
-      }
-
-      default: {
-        if (is_symbol(c)) {
-          bword = append_char(bword, c);
-          while (b_index < strlen(input)) {
-            char sc = input[b_index + 1];
-
-            if(is_symbol(sc)) {
-              bword = append_char(bword, sc);
-              b_index ++;
-            } else {
-
-              if ((is_simple_expressions(bword)) &&
-                  ((bs->length == 0) || ((bs->length > 0) && (bs->child[bs->length -1]->closed == 1)))
-                ) {
-                esm cbpsm = keyword_to_bpsm(bword);
-
-                if (initialize_new_state(gsb, cbpsm) == 0)
-                 return new_error(BPARSER_ERROR, "Invalid format to '%s'", bword);
-
-                add_child(0, bs, new_definition());
-              }
-
-              add_child(gsb, bs, new_symbol(bword));
-              bword = 0;
-              break;
-            }   
-          }
-        }
-        break;
-      }
-    }
-
-    b_index++;
+     default:
+       break;
+     }
+    
   }
   
   free(gsb);
