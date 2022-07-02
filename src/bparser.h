@@ -8,7 +8,8 @@
 #include "btypes.h"
 #include "blex.h"
 
-typedef enum esm { 
+/* alias handler */
+typedef enum esm {
   BP_NONE,
   BP_DINAMIC,
   BP_SIMPLE_DEFINITIONS,
@@ -29,6 +30,17 @@ typedef struct stack_bpsm {
   bpsm** bpsm;
   int size;
 } stack_bpsm;
+
+/* process comma */
+typedef enum b_afp_types {
+  BAFP_NOME,
+  BAFP_WAITING_COMMAND,
+  BAFP_WAITING_PARAMS,
+} b_afp_types;
+typedef struct b_afp {
+  b_afp_types** child;
+  int size;
+} b_afp;
 
 typedef enum b_operator {
     BINVALID,
@@ -53,24 +65,29 @@ typedef struct expr_tree {
     beorn_value* value;
 } expr_tree;
 
-/* state handler */
-stack_bpsm* create_stack_bpsm();
+/* alias functions handler */
+int create_stack_bpsm();
 
-int increment_stack_bpsm(stack_bpsm* gsb);
+int increment_stack_bpsm();
 
-int del_first_stack_bpsm(stack_bpsm* gsb);
+int del_first_stack_bpsm();
 
-int add_elem_stack_bpsm(stack_bpsm* gsb);
+int add_elem_stack_bpsm();
+
+/* process comma */
+b_afp* create_afp();
+
+int increment_afp(b_afp* afp);
+
+int update_state_afp(b_afp* afp, b_afp_types t);
+
+int del_first_afp(b_afp* afp);
 
 /* helpers */
 
 beorn_state* new_definition();
 
 beorn_state* new_parser_error(const char* msg);
-
-int is_simple_expressions(const char* key);
-
-esm keyword_to_bpsm(const char* key);
 
 int initialize_new_state(stack_bpsm* gs, esm s);
 
@@ -107,6 +124,10 @@ expr_tree *add_expr();
 expr_tree *build_expr_tree();
 
 void infix_to_bexpression(beorn_state* bs, expr_tree *expr);
+
+int get_args_by_comma();
+
+void process_token();
 
 beorn_state* beorn_parser(char *input);
 

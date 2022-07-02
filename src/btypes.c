@@ -54,38 +54,35 @@ beorn_state* new_symbol(const char* s) {
   return v;
 }
 
-beorn_state* new_pack(const char* s) {
+beorn_state* new_pack() {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_PACK;
-  v->cval = (char *) malloc((strlen(s) + 1) * sizeof(char));
+  v->cval = NULL;
   v->child = NULL;
   v->length = 0;
   v->closed = 0;
-  strcpy(v->cval, s);
   return v;
 }
 
-beorn_state* new_expression(const char* s) {
+beorn_state* new_expression() {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->blenv = new_env();
   v->type = BT_EXPRESSION;
-  v->cval = (char *) malloc((strlen(s) + 1) * sizeof(char));
+  v->cval = NULL;
   v->child = NULL;
   v->length = 0;
   v->closed = 0;
-  strcpy(v->cval, s);
   return v;
 }
 
-beorn_state* new_list(const char* s) {
+beorn_state* new_list() {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->blenv = NULL;
   v->type = BT_LIST;
-  v->cval = (char *) malloc((strlen(s) + 1) * sizeof(char));
+  v->cval = NULL;
   v->child = NULL;
   v->length = 0;
   v->closed = 0;
-  strcpy(v->cval, s);
   return v;
 }
 

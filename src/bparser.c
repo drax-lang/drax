@@ -4,24 +4,27 @@
 #include "bparser.h"
 #include "blex.h"
 
+beorn_state* bs;
 b_token* gtoken;
+stack_bpsm* gsb;
+
 int ignore_command = 0;
 
-/* state handler */
-stack_bpsm* create_stack_bpsm() {
-  stack_bpsm* gsb = (stack_bpsm*) malloc(sizeof(stack_bpsm));
+/* alias handler */
+int create_stack_bpsm() {
+  gsb = (stack_bpsm*) malloc(sizeof(stack_bpsm));
   gsb->size = 0;
   gsb->bpsm = (bpsm**) malloc(sizeof(bpsm*));
-  return gsb;
+  return 0;
 }
 
-int increment_stack_bpsm(stack_bpsm* gsb) {
+int increment_stack_bpsm() {
   if ((NULL == gsb) || (gsb->size == 0)) return 0;
   gsb->bpsm[gsb->size - 1]->count++;
   return 0;
 }
 
-int del_first_stack_bpsm(stack_bpsm* gsb) {
+int del_first_stack_bpsm() {
   if ((NULL == gsb) || (gsb->size == 0)) return 0;
 
   free(gsb->bpsm[gsb->size -1]);
@@ -30,7 +33,7 @@ int del_first_stack_bpsm(stack_bpsm* gsb) {
   return 0;
 }
 
-int add_elem_stack_bpsm(stack_bpsm* gsb) {
+int add_elem_stack_bpsm() {
   if (NULL == gsb) return 0;
 
   gsb->size++;
@@ -41,43 +44,49 @@ int add_elem_stack_bpsm(stack_bpsm* gsb) {
   return 0;
 }
 
+/* process comma */
+
+b_afp* create_afp() {
+  b_afp* afp = (b_afp*) malloc(sizeof(b_afp));
+  afp->child = (b_afp_types**) malloc(sizeof(b_afp_types*));
+  afp->size = 0;
+  return afp;
+}
+
+int increment_afp(b_afp* afp) {
+  if (NULL == afp) return 0;
+
+  afp->size++;
+  afp->child = (b_afp_types**) realloc(afp->child, sizeof(b_afp_types*) * afp->size);
+  afp->child[afp->size -1] = BAFP_NOME;
+  return 0;
+}
+
+int update_state_afp(b_afp* afp, b_afp_types t) {
+  if ((NULL == afp) || (0 == afp->size)) return 0;
+  afp->child[afp->size - 1] = &t;
+  return 0;
+}
+
+int del_first_afp(b_afp* afp) {
+  if ((NULL == afp) || (afp->size == 0)) return 0;
+
+  free(afp->child[afp->size -1]);
+  afp->size--;
+  afp->child = (b_afp_types**) realloc(afp->child, sizeof(b_afp_types*) * afp->size);
+  return 0;
+}
+
 /* helpers */
 
 beorn_state* new_definition() {
-  beorn_state* bdef = new_expression("(");
+  beorn_state* bdef = new_expression();
   return bdef;
 }
 
 beorn_state* new_parser_error(const char* msg) {
   beorn_state* err = new_error(BPARSER_ERROR, msg);
   return err;
-}
-
-int is_simple_expressions(const char* key) {
-  return (strcmp("import", key) == 0) ||
-         (strcmp("set", key) == 0) ||
-         (strcmp("let", key) == 0) ||
-         (strcmp("fun", key) == 0) ||
-         (strcmp("lambda", key) == 0) ||
-         (strcmp("if", key) == 0);
-}
-
-esm keyword_to_bpsm(const char* key) {
-  if (strcmp("set", key) == 0) {
-    return BP_SIMPLE_DEFINITIONS;
-  } else if (strcmp("let", key) == 0) {
-    return BP_SIMPLE_DEFINITIONS;
-  } else if (strcmp("lambda", key) == 0) {
-    return BP_LAMBDA_DEFINITION;
-  } else if (strcmp("fun", key) == 0) {
-    return BP_FUNCTION_DEFINITION;
-  } else if (strcmp("import", key) == 0) {
-    return BP_ONE_ARG;
-  } else if (strcmp("if", key) == 0) {
-    return BP_THREE_ARG;
-  }
-
-  return BP_NONE;
 }
 
 int initialize_new_state(stack_bpsm* gs, esm s) {
@@ -118,6 +127,7 @@ int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {
     root->child = (beorn_state**) malloc(sizeof(beorn_state*));
     root->child[0] = child;
     increment_stack_bpsm(gs);
+
     return 1;
   } else {
     beorn_state* crr;
@@ -283,17 +293,17 @@ expr_tree *build_expr_tree() {
     return expr;
 }
 
-void infix_to_bexpression(beorn_state* bs, expr_tree *expr) {
+void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
   if (NULL == expr) return;
 
   if ((BNONE == expr->op) && ((TK_INTEGER == expr->type) || (TK_FLOAT == expr->type))) {
-    if (TK_INTEGER == expr->type) { add_child(0, bs, new_integer(expr->value->ival)); }
-    if (TK_FLOAT == expr->type)   { add_child(0, bs, new_float(expr->value->fval));   }
+    if (TK_INTEGER == expr->type) { add_child(0, sbs, new_integer(expr->value->ival)); }
+    if (TK_FLOAT == expr->type)   { add_child(0, sbs, new_float(expr->value->fval));   }
     free(expr);
     return;
   }
 
-  add_child(0, bs, new_expression(""));
+  add_child(0, bs, new_expression());
 
   switch (expr->op)
   {
@@ -314,11 +324,219 @@ void infix_to_bexpression(beorn_state* bs, expr_tree *expr) {
     fatal("expression error, pair not found.");
 }
 
+int get_args_by_comma() {
+  int processing = 1;
+
+  while (processing)
+  {
+    process_token();
+    processing = gtoken->type == TK_COMMA; 
+
+    if (processing) next_token();
+  }
+  return 0;
+}
+
+/* main language definition */
+
+static int beorn_call_function(char* rigth_symbol) {
+  if (TK_PAR_OPEN != gtoken->type) return 0;
+  next_token();
+  add_child(0, bs, new_definition(""));
+  add_child(0, bs, new_symbol(rigth_symbol));
+  // ignore_next_command();
+  get_args_by_comma();
+  return 1;
+}
+
+static int beorn_define_var(char* rigth_symbol) {
+  if (TK_EQ != gtoken->type) return 0;
+
+  if (initialize_new_state(gsb, BP_SIMPLE_DEFINITIONS) == 0) {
+    fatal("Fail to initialize definition");
+    return 1;
+  }
+
+  next_token();
+  add_child(0,   bs, new_definition(""));
+  add_child(gsb, bs, new_symbol("set"));
+  add_child(gsb, bs, new_symbol(rigth_symbol));
+  process_token();
+
+  if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+      fatal("function pair not found.");
+  }
+
+  return 1;
+}
+
+static int beorn_import_file() {
+  next_token();
+  add_child(0, bs, new_definition(""));
+  add_child(0, bs, new_symbol("import"));
+  if (TK_STRING != gtoken->type) { fatal("invalid import name."); }
+  add_child(0, bs, new_string(gtoken->cval));
+
+  if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+      fatal("function pair not found.");
+  }
+
+  return 1;
+}
+
+static int beorn_end_function() {
+  if(!close_pending_structs(0, bs, BT_PACK)) {
+    fatal("pack freeze pair not found.");
+    return 1;
+  }
+
+  if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+    fatal("function pair not found.");
+    return 1;
+  }
+
+  return 0;
+}
+
+static int beorn_function_definition() {
+  add_child(0, bs, new_definition());
+  add_child(0, bs, new_symbol("fun"));
+  next_token();
+
+  if (TK_SYMBOL != gtoken->type) { fatal("invalid function name."); }
+    
+  add_child(0, bs, new_symbol(gtoken->cval));
+  next_token();
+
+  if (TK_PAR_OPEN != gtoken->type) { fatal("invalid function name."); }
+
+  next_token();
+
+  int process = 1;
+  
+  add_child(0, bs, new_list());
+  while (process) {
+    if (TK_SYMBOL != gtoken->type) { fatal("invalid function param."); }
+
+    add_child(0, bs, new_symbol(gtoken->cval));
+    next_token();
+
+    process = (TK_COMMA == gtoken->type);
+    if (process) { next_token(); }
+  }
+  
+  if(!close_pending_structs(gsb, bs, BT_LIST))
+    fatal("params pair not found.");
+  
+  if (TK_PAR_CLOSE!= gtoken->type) { fatal("pair not identified to params."); }
+
+  next_token();
+
+  if (TK_DO != gtoken->type) { fatal("bad definition to function."); }
+  add_child(0, bs, new_pack());
+  next_token();
+
+  process = 1;
+  while (process) {
+    if (TK_END == gtoken->type) {
+      beorn_end_function();
+      return 1;
+    }
+    process_token();
+
+    if (TK_END == gtoken->type) {
+      beorn_end_function();
+      return 1;
+    }
+    process = ((TK_EOF != gtoken->type) && (TK_END != gtoken->type));
+  }
+
+  return 1;
+}
+
+/* return int and register message on global state */
+void process_token() {
+  switch (gtoken->type) {
+
+    case TK_FLOAT: 
+    case TK_INTEGER: // need see next wihtout change the main state
+      expr_tree* trr = build_expr_tree();
+      infix_to_bexpression(bs, trr);
+      // ignore_next_command();
+      break;
+
+    case TK_SYMBOL: {
+      char* rigth_symbol = gtoken->cval;
+      next_token();
+
+      if (beorn_define_var(rigth_symbol)) { break; };
+      if (beorn_call_function(rigth_symbol)) { break; };
+
+      add_child(gsb, bs, new_symbol(rigth_symbol));
+      break;
+    }
+
+    case TK_IF: break;
+
+    case TK_IMPORT:
+      beorn_import_file();
+      break;
+
+    case TK_FUN:
+      beorn_function_definition();
+      next_token();
+      break;
+
+    case TK_LAMBDA: break;
+
+    case TK_STRING:
+      add_child(gsb, bs, new_string(gtoken->cval));
+      next_token();
+      break;
+
+    case TK_PAR_CLOSE:
+      if(!close_pending_structs(gsb, bs, BT_EXPRESSION))
+        fatal("expression pair not found.");
+      next_token();
+      break;
+
+    case TK_BRACE_OPEN: break;
+    case TK_BRACE_CLOSE: break;
+    case TK_BRACKET_OPEN: {
+      add_child(gsb, bs, new_list());
+
+      if (initialize_new_state(gsb, BP_DINAMIC) == 0)
+        fatal("fail to create list.");
+
+      next_token();
+      get_args_by_comma();
+      break;
+    }
+
+    case TK_BRACKET_CLOSE: {
+      if(!close_pending_structs(gsb, bs, BT_LIST))
+        fatal("list pair not found.");
+      next_token();
+      break;
+    }
+
+    case TK_END: {
+      beorn_end_function();
+      next_token();
+      break;
+    }
+
+    default:
+      fatal("syntax error");
+      break;
+  }
+}
 
 beorn_state* beorn_parser(char *input) {
-  stack_bpsm* gsb = create_stack_bpsm();
+  create_stack_bpsm();
+  // b_afp* gafp = create_afp();
 
-  beorn_state* bs = (beorn_state*) malloc(sizeof(beorn_state));
+  bs = (beorn_state*) malloc(sizeof(beorn_state));
   bs->type = BT_PROGRAM;
   bs->child = (beorn_state**) malloc(sizeof(beorn_state*));
   bs->length = 0;
@@ -326,132 +544,12 @@ beorn_state* beorn_parser(char *input) {
   init_lexan(input);
   gtoken = NULL;
 
+  next_token();
   while (TK_EOF != get_crr_type()) {
     auto_state_update(gsb, bs);
 
-    next_token();
-     
-     switch (gtoken->type)
-     {
-      case TK_SYMBOL:
-        char* rigth_symbol = gtoken->cval;
-        next_token();
-
-        if (TK_EQ == gtoken->type) {
-          if (initialize_new_state(gsb, BP_SIMPLE_DEFINITIONS) == 0)
-            return new_error(BPARSER_ERROR, "Fail to initialize definition");
-
-          next_token();
-          add_child(0,   bs, new_definition(""));
-          add_child(gsb, bs, new_symbol("set"));
-          add_child(gsb, bs, new_symbol(rigth_symbol));
-          ignore_next_command();
-          break;
-        }
-
-        if (TK_PAR_OPEN == gtoken->type) {
-          next_token();
-          add_child(0, bs, new_definition(""));
-          add_child(0, bs, new_symbol(rigth_symbol));
-          ignore_next_command();
-          break;
-        }
-
-        add_child(gsb, bs, new_symbol(rigth_symbol));
-        break;
-      
-      case TK_IF: break;
-
-
-      case TK_IMPORT: 
-          next_token();
-          add_child(0, bs, new_definition(""));
-          add_child(0, bs, new_symbol("import"));
-          if (TK_STRING != gtoken->type) { fatal("invalid import name."); }
-          add_child(0, bs, new_string(gtoken->cval));
-        break;
-
-      case TK_FUN:
-        add_child(0, bs, new_definition(""));
-        add_child(0, bs, new_symbol("fun"));
-        next_token();
-
-        if (TK_SYMBOL != gtoken->type) { fatal("invalid function name."); }
-          
-        add_child(0, bs, new_symbol(gtoken->cval));
-        next_token();
-
-        if (TK_PAR_OPEN != gtoken->type) { fatal("invalid function name."); }
-
-        next_token();
-
-        int catching_params = 1;
-        
-        add_child(0, bs, new_list(""));
-        while (catching_params) {
-          if (TK_SYMBOL != gtoken->type) { fatal("invalid function param."); }
-
-          add_child(0, bs, new_symbol(gtoken->cval));
-          next_token();
-
-          catching_params = (TK_COMMA == gtoken->type);
-          if (catching_params) { next_token(); }
-        }
-        
-        if(!close_pending_structs(gsb, bs, BT_LIST))
-          return new_parser_error("params pair not found."); // fix
-        
-        if (TK_PAR_CLOSE!= gtoken->type) { fatal("pair not identified to params."); }
-
-        next_token();
-
-        if (TK_DO != gtoken->type) { fatal("bad definition to function."); }
-        add_child(0, bs, new_pack(""));
-        break;
-
-      case TK_LAMBDA: break;
-
-      case TK_FLOAT: 
-      case TK_INTEGER:
-        expr_tree* trr = build_expr_tree();
-        infix_to_bexpression(bs, trr);
-        break;
-      case TK_STRING:
-        add_child(gsb, bs, new_string(gtoken->cval));
-        break;
-      case TK_PAR_CLOSE:
-        if(!close_pending_structs(gsb, bs, BT_EXPRESSION))
-          return new_parser_error("expression pair not found.");
-        break;
-      case TK_BRACE_OPEN: break;
-      case TK_BRACE_CLOSE: break;
-      case TK_BRACKET_OPEN: {
-        add_child(gsb, bs, new_list(""));
-
-        if (initialize_new_state(gsb, BP_DINAMIC) == 0)
-          return new_error(BPARSER_ERROR, "fail to create list.");
-
-        break;
-      }
-
-      case TK_BRACKET_CLOSE: {
-        if(!close_pending_structs(gsb, bs, BT_LIST))
-          return new_parser_error("list pair not found.");
-        break;
-      }
-
-      case TK_END:
-        if(!close_pending_structs(gsb, bs, BT_PACK))
-          return new_parser_error("pack freeze pair not found."); // fix
-
-        if(!close_pending_structs(gsb, bs, BT_EXPRESSION))
-          return new_parser_error("function pair not found."); // fix
-        break;
-
-     default:
-       break;
-     }
-    
+    // next_token();
+    process_token();
   }
   
   free(gsb);

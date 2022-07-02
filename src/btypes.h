@@ -72,9 +72,9 @@ beorn_state* new_integer(long iv);
 beorn_state* new_float(long double fv);
 beorn_state* new_string(const char* s);
 beorn_state* new_symbol(const char* s);
-beorn_state* new_pack(const char* s);
-beorn_state* new_expression(const char* s);
-beorn_state* new_list(const char* s);
+beorn_state* new_pack();
+beorn_state* new_expression();
+beorn_state* new_list();
 beorn_state* new_function(beorn_func fn);
 beorn_state* new_lambda(beorn_env* global);
 

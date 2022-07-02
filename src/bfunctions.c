@@ -157,7 +157,7 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
 
   bset_env(benv, exp->child[1], exp->child[2]);
-  beorn_state* pck = new_pack("");
+  beorn_state* pck = new_pack();
   pck->closed = 1;
   del_bstate(exp);
   return pck;
@@ -193,7 +193,7 @@ beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
   lbd->child[0] = exp->child[2];
   lbd->child[1] = exp->child[3];
 
-  beorn_state* expfun = new_expression("none");
+  beorn_state* expfun = new_expression();
   expfun->child = (beorn_state**) malloc(sizeof(beorn_state) * 2);
   expfun->length = 3;
   expfun->child[0] = new_symbol("set");
@@ -243,7 +243,7 @@ beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
 
   bset_env(exp->blenv, exp->child[1], exp->child[2]);
-  beorn_state* pck = new_pack("none");
+  beorn_state* pck = new_pack();
   pck->closed = 1;
   del_bstate(exp);
   return pck;
@@ -279,7 +279,7 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two or three arguments.");
   BASSERT(exp->child[1]->type != BT_INTEGER, BTYPE_ERROR, "'if' with invalid argument");
   
-  beorn_state* result = new_pack("");
+  beorn_state* result = new_pack();
   beorn_state* r_exp = NULL;
   if (exp->child[1]->ival) {
     r_exp = bpop(exp, 2);
@@ -297,7 +297,7 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   } else if (r_exp != NULL) {
     result = process(benv, r_exp);
   } else {
-    result = new_pack("");
+    result = new_pack();
   }
 
   del_bstate(exp);
@@ -321,19 +321,19 @@ beorn_state* bb_double_equal(beorn_env* benv, beorn_state* exp) {
     
     switch (exp->child[i]->type)
     {
-      case BT_INTEGER: 
+      case BT_INTEGER:
         if (exp->child[i]->ival != first->ival)
           breturn_and_realease_expr(exp, 0);
 
-      case BT_FLOAT: 
+      case BT_FLOAT:
         if (exp->child[i]->fval != first->fval)
           breturn_and_realease_expr(exp, 0);
 
-      case BT_STRING: 
+      case BT_STRING:
         if (strcmp(exp->child[i]->cval, first->cval) != 0)
           breturn_and_realease_expr(exp, 0);
-    
-    default: breturn_and_realease_expr(exp, 0);
+
+      default: breturn_and_realease_expr(exp, 0);
     }
 
   }
@@ -505,7 +505,7 @@ beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
   }
   
   bbreak_line();
-  return new_pack("");
+  return new_pack();
 }
 
 void put_function_env(beorn_env** benv, const char* name, beorn_func fn) {
@@ -532,7 +532,7 @@ beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
   
   __run__(benv, out, 0);
 
-  return new_pack("");
+  return new_pack();
 }
 
 void load_buildtin_functions(beorn_env** benv) {

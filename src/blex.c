@@ -39,9 +39,9 @@ char* append_char(const char *str, const char c) {
 }
 
 int is_symbol(const char c) {
-  char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_0123456789?!=<>";
+  char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_0123456789?";
   
-  for (size_t i = 0; i < 68; i++)
+  for (size_t i = 0; i < 65; i++)
   {
     if (c == accepted_chars[i])
       return 1;
@@ -191,6 +191,23 @@ b_token* lexan() {
       case ')': return bmake_symbol(TK_PAR_CLOSE);
       case '[': return bmake_symbol(TK_BRACKET_OPEN);
       case ']': return bmake_symbol(TK_BRACKET_CLOSE);
+      case '>': 
+        if ('=' == buffer[b_index+1]) { return bmake_symbol(TK_BE); }
+        return bmake_symbol(TK_BG);
+
+      case '<':
+        if ('=' == buffer[b_index+1]) { return bmake_symbol(TK_LE); }
+        return bmake_symbol(TK_LS);
+      
+      case '=':
+        if ('=' == buffer[b_index+1] && '=' == buffer[b_index+2]) {
+          return bmake_symbol(TK_TEQ); 
+        }
+
+        if ('=' == buffer[b_index+1]) { return bmake_symbol(TK_DEQ); }
+        return bmake_symbol(TK_EQ); 
+
+      // case '!': return bmake_symbol(TK_NOT_EQ);
       case ',': return bmake_symbol(TK_COMMA);
       case '"': {
         while (b_index < strlen(buffer)) {
