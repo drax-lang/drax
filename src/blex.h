@@ -63,6 +63,8 @@ b_token* bmake_return(char* keyword);
 
 int init_lexan(char* b);
 
+b_token* b_check_next();
+
 b_token* lexan();
 
 #endif

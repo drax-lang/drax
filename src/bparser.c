@@ -199,30 +199,19 @@ void fatal(const char *msg) {
  * Handle expression tree
  */
 
-beorn_value* get_curr_bvalue() {
-  beorn_value* v = (beorn_value*) malloc(sizeof(beorn_value));
-  
+beorn_state* get_curr_bvalue() {  
   switch (gtoken->type)
   {
-  case TK_INTEGER:
-    v->ival = gtoken->ival;
-    break;
+  case TK_INTEGER: return new_integer(gtoken->ival);
   
-  case TK_FLOAT:
-    v->fval = gtoken->fval;
-    break;
-
-  case TK_SYMBOL:
-  // case TK_FUN: // handle function
-    v->cval = gtoken->cval;
-    break;
+  case TK_FLOAT: return new_float(gtoken->fval);
 
   default:
-    fatal("unspected type on expression!");
+    fatal("Unspected expression type!");
     break;
   }
 
-  return v;
+  return NULL;
 }
 
 blex_types get_crr_type() {
@@ -242,12 +231,10 @@ b_operator get_operator() {
 }
 
 expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left, 
-  expr_tree *right, beorn_value *value
+  expr_tree *right, beorn_state *value
 ) {
     struct expr_tree *n = (struct expr_tree*) malloc(sizeof(struct expr_tree));
-    if (n == NULL) {
-        fatal("unable to Malloc New Structure Tree in \'create_new_node()\' Function in tree.c File");
-    }
+    if (n == NULL) { fatal("Unable to malloc addrs."); }
     n->type = type;
     n->op = operation;
     n->left = left;
@@ -257,13 +244,31 @@ expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left,
 }
 
 expr_tree *value_expr() {
-    if (gtoken->type == TK_INTEGER || gtoken->type == TK_FLOAT) {
-        expr_tree *result = new_node(gtoken->type, BNONE, NULL, NULL, get_curr_bvalue());
-        next_token();
-        return result;
+  if (TK_SYMBOL == gtoken->type) {
+    char* rigth_symbol = gtoken->cval;
+    next_token();
+    if (TK_PAR_OPEN == gtoken->type)  {
+      fatal("Resource unsuported.");
+
+    //   beorn_state* crr_bs = new_definition();
+    //   add_child(0, crr_bs, new_symbol(rigth_symbol));
+    //   get_args_by_comma(); // problem here
+
+    //   next_token();
+    } else {
+      expr_tree *result = new_node(TK_SYMBOL, BNONE, NULL, NULL, new_symbol(rigth_symbol));
+      return result;
     }
-    fatal("can't determine value for token");
-    return NULL;
+  }
+
+  if ((TK_INTEGER == gtoken->type) || (TK_FLOAT == gtoken->type)) {
+      expr_tree *result = new_node(gtoken->type, BNONE, NULL, NULL, get_curr_bvalue());
+      next_token();
+      return result;
+  }
+
+  fatal("ArithmeticError, bad argument to expression.");
+  return NULL;
 }
 
 expr_tree *mult_expr() {
@@ -296,9 +301,10 @@ expr_tree *build_expr_tree() {
 void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
   if (NULL == expr) return;
 
-  if ((BNONE == expr->op) && ((TK_INTEGER == expr->type) || (TK_FLOAT == expr->type))) {
-    if (TK_INTEGER == expr->type) { add_child(0, sbs, new_integer(expr->value->ival)); }
-    if (TK_FLOAT == expr->type)   { add_child(0, sbs, new_float(expr->value->fval));   }
+  if ((BNONE == expr->op) &&
+      ((TK_INTEGER == expr->type) || (TK_FLOAT == expr->type) || (TK_SYMBOL == expr->type))
+  ) {
+    add_child(0, sbs, expr->value);
     free(expr);
     return;
   }
@@ -339,18 +345,39 @@ int get_args_by_comma() {
 
 /* main language definition */
 
-static int beorn_call_function(char* rigth_symbol) {
-  if (TK_PAR_OPEN != gtoken->type) return 0;
+static void beorn_arith_expression() {
+  expr_tree* trr = build_expr_tree();
+  infix_to_bexpression(bs, trr);
+}
+
+static int beorn_call_function() {
+  b_token* nxt = b_check_next();
+  if (TK_PAR_OPEN != nxt->type) {
+    free(nxt);
+    return 0;
+  }
+
+  free(nxt);
+  char* rigth_symbol = gtoken->cval;
+  next_token();
+
   next_token();
   add_child(0, bs, new_definition(""));
   add_child(0, bs, new_symbol(rigth_symbol));
-  // ignore_next_command();
   get_args_by_comma();
   return 1;
 }
 
-static int beorn_define_var(char* rigth_symbol) {
-  if (TK_EQ != gtoken->type) return 0;
+static int beorn_define_var() {
+  b_token* nxt = b_check_next();
+  if (TK_EQ != nxt->type) {
+    free(nxt);
+    return 0;
+  }
+
+  free(nxt);
+  char* rigth_symbol = gtoken->cval;
+  next_token();
 
   if (initialize_new_state(gsb, BP_SIMPLE_DEFINITIONS) == 0) {
     fatal("Fail to initialize definition");
@@ -367,6 +394,23 @@ static int beorn_define_var(char* rigth_symbol) {
       fatal("function pair not found.");
   }
 
+  return 1;
+}
+
+static int is_arith_op(blex_types type) {
+  return (type == TK_ADD) || (type == TK_DIV) || 
+         (type == TK_MUL) || (type == TK_SUB);
+}
+
+static int beorn_arith_op() {
+  b_token* nxt = b_check_next();
+  if (!is_arith_op(nxt->type)) {
+    free(nxt);
+    return 0;
+  }
+
+  free(nxt);
+  beorn_arith_expression();
   return 1;
 }
 
@@ -459,20 +503,25 @@ void process_token() {
   switch (gtoken->type) {
 
     case TK_FLOAT: 
-    case TK_INTEGER: // need see next wihtout change the main state
-      expr_tree* trr = build_expr_tree();
-      infix_to_bexpression(bs, trr);
-      // ignore_next_command();
+      if (beorn_arith_op()) { break; }
+      add_child(gsb, bs, new_float(gtoken->fval));
+      next_token();
+      break;
+
+    case TK_INTEGER:
+      // if next is opration pass(optimization)
+      if (beorn_arith_op()) { break; }
+      add_child(gsb, bs, new_integer(gtoken->ival));
+      next_token();
       break;
 
     case TK_SYMBOL: {
-      char* rigth_symbol = gtoken->cval;
+      if (beorn_define_var()) { break; };
+      if (beorn_call_function()) { break; };
+      if (beorn_arith_op()) { break; }
+
+      add_child(gsb, bs, new_symbol(gtoken->cval));
       next_token();
-
-      if (beorn_define_var(rigth_symbol)) { break; };
-      if (beorn_call_function(rigth_symbol)) { break; };
-
-      add_child(gsb, bs, new_symbol(rigth_symbol));
       break;
     }
 
@@ -527,7 +576,7 @@ void process_token() {
     }
 
     default:
-      fatal("syntax error");
+      fatal("Generic error, syntax error.");
       break;
   }
 }

@@ -62,7 +62,7 @@ typedef struct expr_tree {
     b_operator op;
     struct expr_tree *left;
     struct expr_tree *right;
-    beorn_value* value;
+    beorn_state* value;
 } expr_tree;
 
 /* alias functions handler */
@@ -105,14 +105,14 @@ void ignore_next_command();
 
 void fatal(const char *msg);
 
-beorn_value* get_curr_bvalue();
+beorn_state* get_curr_bvalue();
 
 blex_types get_crr_type();
 
 b_operator get_operator();
 
 expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left, 
-  expr_tree *right, beorn_value *value
+  expr_tree *right, beorn_state *value
 );
 
 expr_tree *value_expr();

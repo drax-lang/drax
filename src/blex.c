@@ -120,6 +120,14 @@ int init_lexan(char* b) {
   return b_index;
 }
 
+b_token* b_check_next() {
+  size_t i_bk = b_index;
+
+  b_token* r = lexan();
+  b_index = i_bk;
+  return r; 
+}
+
 b_token* lexan() {
   char* bword = 0;
   while (b_index < strlen(buffer)) {
@@ -233,10 +241,10 @@ b_token* lexan() {
               bword = append_char(bword, sc);
               b_index ++;
             } else {
-
               return bmake_return(bword);
             }
           }
+          return bmake_return(bword);
         }
       }
     }
