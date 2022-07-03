@@ -248,13 +248,16 @@ expr_tree *value_expr() {
     char* rigth_symbol = gtoken->cval;
     next_token();
     if (TK_PAR_OPEN == gtoken->type)  {
-      fatal("Resource unsuported.");
 
-    //   beorn_state* crr_bs = new_definition();
-    //   add_child(0, crr_bs, new_symbol(rigth_symbol));
-    //   get_args_by_comma(); // problem here
-
-    //   next_token();
+      beorn_state* crr_bs = new_definition();
+      add_child(0, crr_bs, new_symbol(rigth_symbol));
+      beorn_state* bkp_bs = bs;
+      bs = crr_bs;
+      next_token();
+      get_args_by_comma();
+      bs = bkp_bs;
+      expr_tree *result = new_node(TK_SYMBOL, BNONE, NULL, NULL, crr_bs);
+      return result;
     } else {
       expr_tree *result = new_node(TK_SYMBOL, BNONE, NULL, NULL, new_symbol(rigth_symbol));
       return result;
@@ -362,7 +365,7 @@ static int beorn_call_function() {
   next_token();
 
   next_token();
-  add_child(0, bs, new_definition(""));
+  add_child(0, bs, new_definition());
   add_child(0, bs, new_symbol(rigth_symbol));
   get_args_by_comma();
   return 1;
@@ -385,7 +388,7 @@ static int beorn_define_var() {
   }
 
   next_token();
-  add_child(0,   bs, new_definition(""));
+  add_child(0,   bs, new_definition());
   add_child(gsb, bs, new_symbol("set"));
   add_child(gsb, bs, new_symbol(rigth_symbol));
   process_token();
@@ -416,7 +419,7 @@ static int beorn_arith_op() {
 
 static int beorn_import_file() {
   next_token();
-  add_child(0, bs, new_definition(""));
+  add_child(0, bs, new_definition());
   add_child(0, bs, new_symbol("import"));
   if (TK_STRING != gtoken->type) { fatal("invalid import name."); }
   add_child(0, bs, new_string(gtoken->cval));
