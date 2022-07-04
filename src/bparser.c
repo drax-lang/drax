@@ -9,7 +9,7 @@ b_token* gtoken;
 stack_bpsm* gsb;
 bg_error* gberr;
 
-int ignore_command = 0;
+int gcurr_line_number = 1;
 
 /* alias handler */
 int create_stack_bpsm() {
@@ -107,6 +107,10 @@ beorn_state* get_last_state(beorn_state* root) {
   return curr;
 }
 
+/**
+ * Add new nodes to AST.
+ * Always the last open expression.
+ */
 int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {
   if (root->length <= 0) {
     root->length++;
@@ -141,6 +145,9 @@ int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {
   }
 }
 
+/**
+ * Close the last open expression/sub expression in AST.
+ */
 int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct) {
   if (root->length == 0) return 0;
 
@@ -164,27 +171,22 @@ int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct) {
 }
 
 void next_token() {
-  if (ignore_command) {
-    ignore_command = 0;
-    return;
-  };
-
   gtoken = lexan();
-}
 
-void ignore_next_command() {
-  ignore_command= 1;
+  if (TK_BREAK_LINE == gtoken->type) {
+    gcurr_line_number++;
+  }
 }
 
 void fatal(const char *msg) {
   if (gberr->has_error) return;
 
   gberr->has_error = 1;
-  gberr->state_error = new_error(BSYNTAX_ERROR, msg); // Add stack trace
+  gberr->state_error = new_error(BSYNTAX_ERROR, msg);
 }
 
-/*
- * Handle expression tree
+/**
+ * Helpers to arith. expression tree.
  */
 
 beorn_state* get_curr_bvalue() {  
@@ -221,8 +223,8 @@ b_operator get_operator() {
 expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left, 
   expr_tree *right, beorn_state *value
 ) {
-    struct expr_tree *n = (struct expr_tree*) malloc(sizeof(struct expr_tree));
-    if (n == NULL) { fatal("Unable to malloc addrs."); }
+    expr_tree *n = (expr_tree*) malloc(sizeof(expr_tree));
+    if (NULL == n) { fatal("Memory error, fail to process expression"); }
     n->type = type;
     n->op = operation;
     n->left = left;
@@ -246,7 +248,7 @@ expr_tree *value_expr() {
 
       beorn_state* crr_bs = get_last_state(bs);
       expr_tree *result = new_node(TK_SYMBOL, BNONE, NULL, NULL, crr_bs);
-      next_token(); /// debug get_args_by_comma
+      next_token();
       return result;
     } else {
       expr_tree *result = new_node(TK_SYMBOL, BNONE, NULL, NULL, new_symbol(rigth_symbol));
@@ -291,6 +293,10 @@ expr_tree *build_expr_tree() {
     return expr;
 }
 
+/**
+ * Convert expression to beorn expression
+ */
+
 void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
   if (NULL == expr) return;
 
@@ -318,7 +324,9 @@ void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
 
   infix_to_bexpression(bs, expr->left);
   infix_to_bexpression(bs, expr->right);
+
   free(expr);
+
   if(!close_pending_structs(0, bs, BT_EXPRESSION))
     fatal("expression error, pair not found.");
 }
@@ -329,14 +337,14 @@ int get_args_by_comma() {
   while (processing)
   {
     process_token();
-    processing = gtoken->type == TK_COMMA; 
+    processing = TK_COMMA == gtoken->type; 
 
     if (processing) next_token();
   }
   return 0;
 }
 
-/* main language definition */
+/* Main language definition */
 
 static void beorn_arith_expression() {
   expr_tree* trr = build_expr_tree();
@@ -391,10 +399,9 @@ static int beorn_define_var() {
 }
 
 static int is_arith_op(blex_types type) {
-  return (type == TK_ADD) || (type == TK_DIV) || 
-         (type == TK_MUL) || (type == TK_SUB);
+  return (TK_ADD == type) || (TK_DIV == type) || 
+         (TK_MUL == type) || (TK_SUB == type);
 }
-
 
 static int check_is_conclusion_token() {
   return 
@@ -418,13 +425,14 @@ static int curr_exp_is_arithm_op() {
   b_token* nxt = b_check_next(jump_count);
   size_t stack_counter = 0;
 
-  // is current is number
   if (is_arith_op(nxt->type))  { return 1; }
+  
+  /* if curr. expr. is number */
   if (arithm_simple_terminator(nxt->type)) { return 0; }
 
   while (cnte_proc) {
-    if (nxt->type == TK_PAR_OPEN)  { stack_counter++; }
-    if (nxt->type == TK_PAR_CLOSE) { stack_counter--; }
+    if (TK_PAR_OPEN == nxt->type)  { stack_counter++; }
+    if (TK_PAR_CLOSE == nxt->type) { stack_counter--; }
     nxt = b_check_next(jump_count);
 
     if ((stack_counter == 0) && (is_arith_op(nxt->type))) return 1;
@@ -442,7 +450,7 @@ static int beorn_arith_op() {
 
   beorn_arith_expression();
   if (!check_is_conclusion_token()) {
-    fatal("SyntaxError");
+    fatal("Unspected token");
   }
   return 1;
 }
@@ -451,7 +459,8 @@ static int beorn_import_file() {
   next_token();
   add_child(0, bs, new_definition());
   add_child(0, bs, new_symbol("import"));
-  if (TK_STRING != gtoken->type) { fatal("invalid import name."); }
+
+  if (TK_STRING != gtoken->type) { fatal("Cannot use import to current definition"); }
   add_child(0, bs, new_string(gtoken->cval));
 
   if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
@@ -480,12 +489,12 @@ static int beorn_function_definition() {
   add_child(0, bs, new_symbol("fun"));
   next_token();
 
-  if (TK_SYMBOL != gtoken->type) { fatal("invalid function name."); }
-    
+  if (TK_SYMBOL != gtoken->type) { fatal("Invalid function name."); }
+
   add_child(0, bs, new_symbol(gtoken->cval));
   next_token();
 
-  if (TK_PAR_OPEN != gtoken->type) { fatal("invalid function name."); }
+  if (TK_PAR_OPEN != gtoken->type) { fatal("Bad definition to function."); }
 
   next_token();
 
@@ -493,7 +502,7 @@ static int beorn_function_definition() {
   
   add_child(0, bs, new_list());
   while (process) {
-    if (TK_SYMBOL != gtoken->type) { fatal("invalid function param."); }
+    if (TK_SYMBOL != gtoken->type) { fatal("Invalid function param."); }
 
     add_child(0, bs, new_symbol(gtoken->cval));
     next_token();
@@ -502,8 +511,7 @@ static int beorn_function_definition() {
     if (process) { next_token(); }
   }
   
-  if(!close_pending_structs(gsb, bs, BT_LIST))
-    fatal("params pair not found.");
+  if(!close_pending_structs(gsb, bs, BT_LIST)) { fatal("params pair not found."); }
   
   if (TK_PAR_CLOSE!= gtoken->type) { fatal("pair not identified to params."); }
 
@@ -531,7 +539,6 @@ static int beorn_function_definition() {
   return 1;
 }
 
-/* return int and register message on global state */
 void process_token() {
   switch (gtoken->type) {
     case TK_BREAK_LINE:
@@ -560,7 +567,7 @@ void process_token() {
       break;
     }
 
-    case TK_IF: /* pending */break;
+    case TK_IF: /* pending */ next_token(); break;
 
     case TK_IMPORT:
       beorn_import_file();
@@ -584,8 +591,8 @@ void process_token() {
       next_token();
       break;
 
-    case TK_BRACE_OPEN: break;
-    case TK_BRACE_CLOSE: break;
+    case TK_BRACE_OPEN: /* pending */ next_token(); break;
+    case TK_BRACE_CLOSE: /* pending */ next_token(); break;
     case TK_BRACKET_OPEN: {
       add_child(gsb, bs, new_list());
 
@@ -618,6 +625,8 @@ void process_token() {
 }
 
 beorn_state* beorn_parser(char *input) {
+  gcurr_line_number = 1;
+  
   create_stack_bpsm();
   gberr = (bg_error*) malloc(sizeof(bg_error));
   gberr->line = 0;
