@@ -43,7 +43,7 @@ beorn_state* new_float(long double fv) {
 beorn_state* new_string(const char* s) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_STRING;
-  v->cval = (char *) malloc((strlen(s) + 1) * sizeof(char));
+  v->cval = (char *) calloc(sizeof(char), strlen(s) + 1);
   v->child = NULL;
   v->length = 0;
   v->closed = 1;
@@ -54,7 +54,7 @@ beorn_state* new_string(const char* s) {
 beorn_state* new_symbol(const char* s) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_SYMBOL;
-  v->cval = (char *) malloc((strlen(s) + 1) * sizeof(char));
+  v->cval = (char *) calloc(sizeof(char), strlen(s) + 1);
   v->child = NULL;
   strcpy(v->cval, s);
   v->length = 0;
