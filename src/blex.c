@@ -72,6 +72,7 @@ b_token* bmake_string(char* val) {
 b_token* bmake_symbol(blex_types type) {
   b_token* v =(b_token*) malloc(sizeof(b_token));
   v->type = type;
+  v->cval = NULL;
   b_index++;
   return v;
 };

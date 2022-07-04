@@ -179,7 +179,7 @@ void next_token() {
   }
 }
 
-void fatal(const char *msg) {
+void set_gberror(const char *msg) {
   if (gberr->has_error) return;
 
   gberr->has_error = 1;
@@ -193,13 +193,13 @@ void fatal(const char *msg) {
 beorn_state* get_curr_bvalue() {  
   switch (gtoken->type)
   {
-  case TK_INTEGER: return new_integer(gtoken->ival);
-  
-  case TK_FLOAT: return new_float(gtoken->fval);
+    case TK_INTEGER: return new_integer(gtoken->ival);
+    
+    case TK_FLOAT: return new_float(gtoken->fval);
 
-  default:
-    fatal("Unspected expression type!");
-    break;
+    default:
+      set_gberror("Unspected expression type!");
+      break;
   }
 
   return NULL;
@@ -225,7 +225,7 @@ expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left,
   expr_tree *right, beorn_state *value
 ) {
     expr_tree *n = (expr_tree*) malloc(sizeof(expr_tree));
-    if (NULL == n) { fatal("Memory error, fail to process expression"); }
+    if (NULL == n) { set_gberror("Memory error, fail to process expression"); }
     n->type = type;
     n->op = operation;
     n->left = left;
@@ -244,8 +244,8 @@ expr_tree *value_expr() {
       next_token();
       get_args_by_comma();
 
-      if(!close_pending_structs(0, bs, BT_EXPRESSION))
-        fatal("expression error, pair not found.");
+      if(!close_pending_structs(0, bs, BT_EXPRESSION)) 
+        set_gberror("expression error, pair not found.");
 
       beorn_state* crr_bs = get_last_state(bs);
       expr_tree *result = new_node(TK_SYMBOL, BNONE, NULL, NULL, crr_bs);
@@ -263,7 +263,7 @@ expr_tree *value_expr() {
       return result;
   }
 
-  fatal("ArithmeticError, bad argument to expression.");
+  set_gberror("ArithmeticError, bad argument to expression.");
   return NULL;
 }
 
@@ -319,7 +319,7 @@ void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
     case BDIV: add_child(0, bs, new_symbol("/")); break;
     
     default:
-      fatal("invalid operation.");
+      set_gberror("invalid operation.");
       break;
   }
 
@@ -329,7 +329,7 @@ void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
   free(expr);
 
   if(!close_pending_structs(0, bs, BT_EXPRESSION))
-    fatal("expression error, pair not found.");
+    set_gberror("expression error, pair not found.");
 }
 
 int get_args_by_comma() {
@@ -382,7 +382,7 @@ static int beorn_define_var() {
   next_token();
 
   if (initialize_new_state(gsb, BP_SIMPLE_DEFINITIONS) == 0) {
-    fatal("Fail to initialize definition");
+    set_gberror("Fail to initialize definition");
     return 1;
   }
 
@@ -393,7 +393,7 @@ static int beorn_define_var() {
   process_token();
 
   if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
-      fatal("function pair not found.");
+      set_gberror("function pair not found.");
   }
 
   return 1;
@@ -451,7 +451,7 @@ static int beorn_arith_op() {
 
   beorn_arith_expression();
   if (!check_is_conclusion_token()) {
-    fatal("Unspected token");
+    set_gberror("Unspected token");
   }
   return 1;
 }
@@ -461,11 +461,11 @@ static int beorn_import_file() {
   add_child(0, bs, new_definition());
   add_child(0, bs, new_symbol("import"));
 
-  if (TK_STRING != gtoken->type) { fatal("Cannot use import to current definition"); }
+  if (TK_STRING != gtoken->type) { set_gberror("Cannot use import to current definition"); }
   add_child(0, bs, new_string(gtoken->cval));
 
   if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
-      fatal("function pair not found.");
+      set_gberror("function pair not found.");
   }
 
   return 1;
@@ -473,12 +473,12 @@ static int beorn_import_file() {
 
 static int beorn_end_function() {
   if(!close_pending_structs(0, bs, BT_PACK)) {
-    fatal("pack freeze pair not found.");
+    set_gberror("pack freeze pair not found.");
     return 1;
   }
 
   if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
-    fatal("function pair not found.");
+    set_gberror("function pair not found.");
     return 1;
   }
 
@@ -490,12 +490,12 @@ static int beorn_function_definition() {
   add_child(0, bs, new_symbol("fun"));
   next_token();
 
-  if (TK_SYMBOL != gtoken->type) { fatal("Invalid function name."); }
+  if (TK_SYMBOL != gtoken->type) { set_gberror("Invalid function name."); }
 
   add_child(0, bs, new_symbol(gtoken->cval));
   next_token();
 
-  if (TK_PAR_OPEN != gtoken->type) { fatal("Bad definition to function."); }
+  if (TK_PAR_OPEN != gtoken->type) { set_gberror("Bad definition to function."); }
 
   next_token();
 
@@ -503,7 +503,10 @@ static int beorn_function_definition() {
   
   add_child(0, bs, new_list());
   while (process) {
-    if (TK_SYMBOL != gtoken->type) { fatal("Invalid function param."); }
+    if (TK_SYMBOL != gtoken->type) {
+      set_gberror("Invalid function param.");
+      return 1;
+    }
 
     add_child(0, bs, new_symbol(gtoken->cval));
     next_token();
@@ -512,13 +515,22 @@ static int beorn_function_definition() {
     if (process) { next_token(); }
   }
   
-  if(!close_pending_structs(gsb, bs, BT_LIST)) { fatal("params pair not found."); }
+  if(!close_pending_structs(gsb, bs, BT_LIST)) {
+    set_gberror("params pair not found.");
+    return 1;
+  }
   
-  if (TK_PAR_CLOSE!= gtoken->type) { fatal("pair not identified to params."); }
+  if (TK_PAR_CLOSE!= gtoken->type) {
+    set_gberror("pair not identified to params.");
+    return 1;
+  }
 
   next_token();
 
-  if (TK_DO != gtoken->type) { fatal("bad definition to function."); }
+  if (TK_DO != gtoken->type) { 
+    set_gberror("bad definition to function.");
+    return 1;
+  }
   add_child(0, bs, new_pack());
   next_token();
 
@@ -588,7 +600,7 @@ void process_token() {
 
     case TK_PAR_CLOSE:
       if(!close_pending_structs(gsb, bs, BT_EXPRESSION))
-        fatal("expression pair not found.");
+        set_gberror("expression pair not found.");
       next_token();
       break;
 
@@ -598,7 +610,7 @@ void process_token() {
       add_child(gsb, bs, new_list());
 
       if (initialize_new_state(gsb, BP_DINAMIC) == 0)
-        fatal("fail to create list.");
+        set_gberror("fail to create list.");
 
       next_token();
       get_args_by_comma();
@@ -607,7 +619,7 @@ void process_token() {
 
     case TK_BRACKET_CLOSE: {
       if(!close_pending_structs(gsb, bs, BT_LIST))
-        fatal("list pair not found.");
+        set_gberror("list pair not found.");
       next_token();
       break;
     }
@@ -619,7 +631,7 @@ void process_token() {
     }
 
     default:
-      fatal("Unspected token.");
+      set_gberror("Unspected token.");
       next_token();
       break;
   }
@@ -649,7 +661,8 @@ beorn_state* beorn_parser(char *input) {
     process_token();
     
     if (gberr->has_error) {
-      free(gsb); free(bs);
+      free(gsb);
+      del_bstate(bs);
       return gberr->state_error;
     }
   }

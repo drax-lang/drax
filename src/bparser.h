@@ -89,7 +89,7 @@ int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct);
 
 void next_token();
 
-void fatal(const char *msg);
+void set_gberror(const char *msg);
 
 beorn_state* get_curr_bvalue();
 
