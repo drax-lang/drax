@@ -95,6 +95,8 @@ int bauto_state_update(stack_bpsm* gs, beorn_state* b, esm tp, int lenght);
 
 void auto_state_update(stack_bpsm* gs, beorn_state* b);
 
+beorn_state* get_last_state();
+
 int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child);
 
 int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct);

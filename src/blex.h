@@ -23,6 +23,7 @@ typedef enum blex_types {
   /* bool op */
   TK_LS, TK_BG, TK_LE, TK_BE,
 
+  TK_BREAK_LINE,
   /* last element */
   TK_EOF,
 
@@ -63,7 +64,7 @@ b_token* bmake_return(char* keyword);
 
 int init_lexan(char* b);
 
-b_token* b_check_next();
+b_token* b_check_next(int* nump);
 
 b_token* lexan();
 

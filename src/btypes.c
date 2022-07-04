@@ -25,6 +25,8 @@ beorn_state* new_integer(long iv) {
   v->type = BT_INTEGER;
   v->ival = iv;
   v->child = NULL;
+  v->length = 0;
+  v->closed = 1;
   return v;
 }
 
@@ -33,6 +35,8 @@ beorn_state* new_float(long double fv) {
   v->type = BT_FLOAT;
   v->fval = fv;
   v->child = NULL;
+  v->length = 0;
+  v->closed = 1;
   return v;
 }
 
@@ -41,6 +45,8 @@ beorn_state* new_string(const char* s) {
   v->type = BT_STRING;
   v->cval = (char *) malloc((strlen(s) + 1) * sizeof(char));
   v->child = NULL;
+  v->length = 0;
+  v->closed = 1;
   strcpy(v->cval, s);
   return v;
 }
@@ -51,6 +57,8 @@ beorn_state* new_symbol(const char* s) {
   v->cval = (char *) malloc((strlen(s) + 1) * sizeof(char));
   v->child = NULL;
   strcpy(v->cval, s);
+  v->length = 0;
+  v->closed = 1;
   return v;
 }
 
@@ -101,6 +109,7 @@ beorn_state* new_lambda(beorn_env* global) {
   v->blenv = new_env();
   v->blenv->global = global;
   v->child = (beorn_state**) malloc(sizeof(beorn_state*) * 2);
+  v->length = 0;
   return v;
 };
 

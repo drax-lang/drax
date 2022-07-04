@@ -19,7 +19,7 @@ static const char *const beorn_tokens [] = {
   "+", "/", "*", "-",
 
   /* bool op */
-  "ls", "bg", "le", "be", "<EOF>"
+  "ls", "bg", "le", "be", "\n","<EOF>"
 };
 
 
@@ -120,10 +120,16 @@ int init_lexan(char* b) {
   return b_index;
 }
 
-b_token* b_check_next() {
+b_token* b_check_next(int* jump) {
   size_t i_bk = b_index;
+  if ((NULL != jump) && (*jump > 0)) {
+    b_index = *jump;
+  }
 
   b_token* r = lexan();
+
+  if (NULL != jump) { *jump = b_index; }
+
   b_index = i_bk;
   return r; 
 }
@@ -136,8 +142,8 @@ b_token* lexan() {
     switch (c)
     {
       case ' ': break;
-      case '\n': break;
       case '\r': break;
+      case '\n': return bmake_symbol(TK_BREAK_LINE);
 
       case '-':
       case '0':
