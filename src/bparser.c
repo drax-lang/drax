@@ -7,6 +7,7 @@
 beorn_state* bs;
 b_token* gtoken;
 stack_bpsm* gsb;
+bg_error* gberr;
 
 int ignore_command = 0;
 
@@ -41,39 +42,6 @@ int add_elem_stack_bpsm() {
   gsb->bpsm[gsb->size -1] = (bpsm*) malloc(sizeof(bpsm));
   gsb->bpsm[gsb->size -1]->mode = BP_NONE;
   gsb->bpsm[gsb->size -1]->count = 0;
-  return 0;
-}
-
-/* process comma */
-
-b_afp* create_afp() {
-  b_afp* afp = (b_afp*) malloc(sizeof(b_afp));
-  afp->child = (b_afp_types**) malloc(sizeof(b_afp_types*));
-  afp->size = 0;
-  return afp;
-}
-
-int increment_afp(b_afp* afp) {
-  if (NULL == afp) return 0;
-
-  afp->size++;
-  afp->child = (b_afp_types**) realloc(afp->child, sizeof(b_afp_types*) * afp->size);
-  afp->child[afp->size -1] = BAFP_NOME;
-  return 0;
-}
-
-int update_state_afp(b_afp* afp, b_afp_types t) {
-  if ((NULL == afp) || (0 == afp->size)) return 0;
-  afp->child[afp->size - 1] = &t;
-  return 0;
-}
-
-int del_first_afp(b_afp* afp) {
-  if ((NULL == afp) || (afp->size == 0)) return 0;
-
-  free(afp->child[afp->size -1]);
-  afp->size--;
-  afp->child = (b_afp_types**) realloc(afp->child, sizeof(b_afp_types*) * afp->size);
   return 0;
 }
 
@@ -209,8 +177,10 @@ void ignore_next_command() {
 }
 
 void fatal(const char *msg) {
-    fprintf(stderr, "%s\n", msg);
-    exit(1);
+  if (gberr->has_error) return;
+
+  gberr->has_error = 1;
+  gberr->state_error = new_error(BSYNTAX_ERROR, msg); // Add stack trace
 }
 
 /*
@@ -590,7 +560,7 @@ void process_token() {
       break;
     }
 
-    case TK_IF: break;
+    case TK_IF: /* pending */break;
 
     case TK_IMPORT:
       beorn_import_file();
@@ -641,14 +611,18 @@ void process_token() {
     }
 
     default:
-      fatal("Generic error, syntax error.");
+      fatal("Unspected token.");
+      next_token();
       break;
   }
 }
 
 beorn_state* beorn_parser(char *input) {
   create_stack_bpsm();
-  // b_afp* gafp = create_afp();
+  gberr = (bg_error*) malloc(sizeof(bg_error));
+  gberr->line = 0;
+  gberr->has_error = 0;
+  gberr->state_error = NULL;
 
   bs = (beorn_state*) malloc(sizeof(beorn_state));
   bs->type = BT_PROGRAM;
@@ -662,8 +636,12 @@ beorn_state* beorn_parser(char *input) {
   next_token();
   while (TK_EOF != get_crr_type()) {
     auto_state_update(gsb, bs);
-
     process_token();
+    
+    if (gberr->has_error) {
+      free(gsb); free(bs);
+      return gberr->state_error;
+    }
   }
   
   free(gsb);

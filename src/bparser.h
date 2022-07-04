@@ -31,17 +31,6 @@ typedef struct stack_bpsm {
   int size;
 } stack_bpsm;
 
-/* process comma */
-typedef enum b_afp_types {
-  BAFP_NOME,
-  BAFP_WAITING_COMMAND,
-  BAFP_WAITING_PARAMS,
-} b_afp_types;
-typedef struct b_afp {
-  b_afp_types** child;
-  int size;
-} b_afp;
-
 typedef enum b_operator {
     BINVALID,
     BNONE,
@@ -65,6 +54,12 @@ typedef struct expr_tree {
     beorn_state* value;
 } expr_tree;
 
+typedef struct bg_error {
+  int has_error;
+  size_t line;
+  beorn_state* state_error;
+} bg_error;
+
 /* alias functions handler */
 int create_stack_bpsm();
 
@@ -73,15 +68,6 @@ int increment_stack_bpsm();
 int del_first_stack_bpsm();
 
 int add_elem_stack_bpsm();
-
-/* process comma */
-b_afp* create_afp();
-
-int increment_afp(b_afp* afp);
-
-int update_state_afp(b_afp* afp, b_afp_types t);
-
-int del_first_afp(b_afp* afp);
 
 /* helpers */
 
