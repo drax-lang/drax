@@ -171,6 +171,7 @@ int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct) {
 }
 
 void next_token() {
+  free(gtoken);
   gtoken = lexan();
 
   if (TK_BREAK_LINE == gtoken->type) {

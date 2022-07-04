@@ -224,8 +224,9 @@ void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {
   e->symbol = (char**) realloc(e->symbol, sizeof(char*) * e->length);
 
   e->bval[e->length -1] = bcopy_state(value);
-  e->symbol[e->length -1] = (char*) malloc(strlen(key->cval) * sizeof(char));
+  e->symbol[e->length -1] = (char*) malloc((strlen(key->cval) + 1) * sizeof(char));
   strcpy(e->symbol[e->length -1], key->cval);
+  free(key->cval);
 }
 
 void bset_env(beorn_env* e, beorn_state* key, beorn_state* value) {
