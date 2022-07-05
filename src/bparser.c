@@ -498,7 +498,7 @@ static int beorn_import_file() {
   return 1;
 }
 
-static int beorn_end_function() {
+static int beorn_end_definition() {
   if(!close_pending_structs(0, bs, BT_PACK)) {
     set_gberror("pack freeze pair not found.");
     return 1;
@@ -566,18 +566,84 @@ static int beorn_function_definition() {
   process = 1;
   while (process) {
     if (TK_END == gtoken->type) {
-      beorn_end_function();
+      beorn_end_definition();
       return 1;
     }
     process_token();
 
     if (TK_END == gtoken->type) {
-      beorn_end_function();
+      beorn_end_definition();
       return 1;
     }
     process = ((TK_EOF != gtoken->type) && (TK_END != gtoken->type));
   }
 
+  return 1;
+}
+
+/* if definition */
+
+static int beorn_if_definition() {
+  add_child(0, bs, new_definition());
+  add_child(0, bs, new_symbol("if"));
+
+  next_token();
+  process_token();
+
+  if (TK_DO != gtoken->type) { 
+    set_gberror("Fail to define 'if', unspected token.");
+    return 1;
+  }
+
+  add_child(0, bs, new_pack());
+
+  next_token();
+  int process = 1;
+  while (process) {
+    
+    process = (
+      (TK_EOF != gtoken->type) &&
+      (TK_END != gtoken->type) &&
+      (TK_ELSE != gtoken->type)
+    );
+
+    if (process) { process_token(); }
+  }
+
+  if(!close_pending_structs(0, bs, BT_PACK)) {
+    set_gberror("pack freeze pair not found.");
+    return 1;
+  }
+
+  if (TK_ELSE == gtoken->type) {
+
+    add_child(0, bs, new_pack());
+
+    next_token();
+    process = 1;
+    while (process) {
+
+      process = (
+        (TK_EOF != gtoken->type) &&
+        (TK_END != gtoken->type) &&
+        (TK_ELSE != gtoken->type)
+      );
+
+      if (process) { process_token(); }
+    }
+  } else {
+    add_child(0, bs, new_pack());
+  }
+
+  if (TK_END != gtoken->type) { 
+    set_gberror("Fail to define 'if', unspected token.");
+    return 1;
+  }
+
+  beorn_end_definition();
+
+  next_token();
+  
   return 1;
 }
 
@@ -587,7 +653,7 @@ void process_token() {
       next_token();
       break;
 
-    case TK_FLOAT: 
+    case TK_FLOAT:
       if (beorn_arith_op()) { break; }
       add_child(gsb, bs, new_float(gtoken->fval));
       next_token();
@@ -609,7 +675,7 @@ void process_token() {
 
     case TK_SYMBOL: {
       if (beorn_define_var()) { break; };
-      if (beorn_arith_op()) { break; }
+      if (beorn_arith_op()) { break; };
       if (beorn_call_function()) { break; };
 
       add_child(gsb, bs, new_symbol(gtoken->cval));
@@ -618,7 +684,9 @@ void process_token() {
       break;
     }
 
-    case TK_IF: /* pending */ next_token(); break;
+    case TK_IF:
+      beorn_if_definition();
+      break;
 
     case TK_IMPORT:
       beorn_import_file();
@@ -663,7 +731,7 @@ void process_token() {
     }
 
     case TK_END: {
-      beorn_end_function();
+      beorn_end_definition();
       next_token();
       break;
     }

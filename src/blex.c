@@ -8,8 +8,8 @@ char* buffer;
 
 static const char *const beorn_tokens [] = {
   "}", "{", "]", "[", ",", "do", 
-  "end", "float", "fun", "if", "import", "integer",
-  "lambda", ")", "(", "string", "<symbol>", 
+  "end", "float", "fun", "if", "else", "import", 
+  "integer", "lambda", ")", "(", "string", "<symbol>", 
   
   /* cmp */ 
   "!=", "!==", "!===",
