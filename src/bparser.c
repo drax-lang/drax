@@ -599,12 +599,19 @@ void process_token() {
       next_token();
       break;
 
+    case TK_PAR_OPEN:
+      next_token();
+      process_token();
+      next_token();
+      break;
+
     case TK_SYMBOL: {
       if (beorn_define_var()) { break; };
       if (beorn_arith_op()) { break; }
       if (beorn_call_function()) { break; };
 
       add_child(gsb, bs, new_symbol(gtoken->cval));
+      
       next_token();
       break;
     }
