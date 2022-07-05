@@ -273,12 +273,23 @@ expr_tree *value_expr() {
   return NULL;
 }
 
+expr_tree *preference_expr() {
+    if (gtoken->type == TK_PAR_OPEN) {
+      next_token();
+      expr_tree *expr = add_expr();
+      next_token();
+      return expr;
+    }
+
+    return value_expr();
+}
+
 expr_tree *mult_expr() {
-    expr_tree *expr = value_expr();
+    expr_tree *expr = preference_expr();
     while (gtoken->type == TK_MUL || gtoken->type == TK_DIV) {
         b_operator op = get_operator();
         next_token();
-        expr_tree *expr2 = value_expr();
+        expr_tree *expr2 = preference_expr();
         expr = new_node(gtoken->type, op, expr, expr2, NULL);
     }
     return expr;
@@ -481,6 +492,8 @@ static int beorn_import_file() {
   if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
       set_gberror("function pair not found.");
   }
+
+  next_token();
 
   return 1;
 }

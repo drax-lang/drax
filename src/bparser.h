@@ -105,6 +105,8 @@ expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left,
 
 expr_tree *value_expr();
 
+expr_tree *preference_expr();
+
 expr_tree *mult_expr();
 
 expr_tree *add_expr();
