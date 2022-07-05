@@ -602,6 +602,8 @@ void process_token() {
     case TK_PAR_OPEN:
       next_token();
       process_token();
+
+      if (TK_PAR_CLOSE != gtoken->type) { set_gberror("Expression pair not found."); }
       next_token();
       break;
 
@@ -636,7 +638,7 @@ void process_token() {
 
     case TK_PAR_CLOSE:
       if(!close_pending_structs(gsb, bs, BT_EXPRESSION))
-        set_gberror("expression pair not found.");
+        set_gberror("Expression pair not found.");
       next_token();
       break;
 
@@ -645,8 +647,8 @@ void process_token() {
     case TK_BRACKET_OPEN: {
       add_child(gsb, bs, new_list());
 
-      if (initialize_new_state(gsb, BP_DINAMIC) == 0)
-        set_gberror("fail to create list.");
+      // if (initialize_new_state(gsb, BP_DINAMIC) == 0)
+        // set_gberror("Fail to create list.");
 
       next_token();
       get_args_by_comma();
