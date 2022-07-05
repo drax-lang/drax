@@ -11,6 +11,7 @@ beorn_state* new_error(berrors_type t, const char* s, ...) {
   v->et = t;
   v->length = 0;
   v->child = NULL;
+  v->call_definition = 0;
 
   va_list va;
   va_start(va, s);
@@ -27,6 +28,7 @@ beorn_state* new_integer(long iv) {
   v->child = NULL;
   v->length = 0;
   v->closed = 1;
+  v->call_definition = 0;
   return v;
 }
 
@@ -37,6 +39,7 @@ beorn_state* new_float(long double fv) {
   v->child = NULL;
   v->length = 0;
   v->closed = 1;
+  v->call_definition = 0;
   return v;
 }
 
@@ -47,6 +50,7 @@ beorn_state* new_string(const char* s) {
   v->child = NULL;
   v->length = 0;
   v->closed = 1;
+  v->call_definition = 0;
   strcpy(v->cval, s);
   return v;
 }
@@ -63,6 +67,7 @@ beorn_state* new_symbol(const char* s) {
   v->child = NULL;
   v->length = 0;
   v->closed = 1;
+  v->call_definition = 0;
   return v;
 }
 
@@ -73,6 +78,7 @@ beorn_state* new_pack() {
   v->child = NULL;
   v->length = 0;
   v->closed = 0;
+  v->call_definition = 0;
   return v;
 }
 
@@ -84,6 +90,7 @@ beorn_state* new_expression() {
   v->child = NULL;
   v->length = 0;
   v->closed = 0;
+  v->call_definition = 0;
   return v;
 }
 
@@ -95,6 +102,7 @@ beorn_state* new_list() {
   v->child = NULL;
   v->length = 0;
   v->closed = 0;
+  v->call_definition = 0;
   return v;
 }
 
@@ -103,6 +111,7 @@ beorn_state* new_function(beorn_func fn) {
   v->type = BT_FUNCTION;
   v->bfunc = fn;
   v->child = NULL;
+  v->call_definition = 0;
   return v;
 };
 
@@ -114,6 +123,7 @@ beorn_state* new_lambda(beorn_env* global) {
   v->blenv->global = global;
   v->child = (beorn_state**) malloc(sizeof(beorn_state*) * 2);
   v->length = 0;
+  v->call_definition = 0;
   return v;
 };
 

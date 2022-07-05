@@ -73,8 +73,13 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
           (curr->child[i]->type != BT_EXPRESSION)
         )
     {
-      del_bstate(curr);
-      return new_error(BTYPE_ERROR, "unsupported type.");
+      if (curr->child[i]->type == BT_ERROR) {
+        char* msg = curr->child[i]->cval;
+        del_bstate(curr);
+        return new_error(BTYPE_ERROR, msg);
+      } else {
+        return new_error(BTYPE_ERROR, "unsupported type.");
+      }
     }
   }
 

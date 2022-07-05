@@ -52,6 +52,12 @@ beorn_state* new_definition() {
   return bdef;
 }
 
+beorn_state* new_call_definition() {
+  beorn_state* bdef = new_expression();
+  bdef->call_definition = 1;
+  return bdef;
+}
+
 beorn_state* new_parser_error(const char* msg) {
   beorn_state* err = new_error(BPARSER_ERROR, msg);
   return err;
@@ -334,15 +340,19 @@ void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
 
 int get_args_by_comma() {
   int processing = 1;
+  int param_qtt = 0;
 
   while (processing)
   {
     process_token();
     processing = TK_COMMA == gtoken->type; 
 
-    if (processing) next_token();
+    if (processing) {
+      next_token();
+      param_qtt++;
+    }
   }
-  return 0;
+  return param_qtt;
 }
 
 /* Main language definition */
@@ -364,9 +374,10 @@ static int beorn_call_function() {
   next_token();
 
   next_token();
-  add_child(0, bs, new_definition());
+  add_child(0, bs, new_call_definition());
   add_child(0, bs, new_symbol(rigth_symbol));
   get_args_by_comma();
+
   return 1;
 }
 
@@ -461,7 +472,10 @@ static int beorn_import_file() {
   add_child(0, bs, new_definition());
   add_child(0, bs, new_symbol("import"));
 
-  if (TK_STRING != gtoken->type) { set_gberror("Cannot use import to current definition"); }
+  if (TK_STRING != gtoken->type) {
+    set_gberror("Cannot use import to current definition");
+    return 1;
+  }
   add_child(0, bs, new_string(gtoken->cval));
 
   if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
@@ -502,17 +516,19 @@ static int beorn_function_definition() {
   int process = 1;
   
   add_child(0, bs, new_list());
-  while (process) {
-    if (TK_SYMBOL != gtoken->type) {
-      set_gberror("Invalid function param.");
-      return 1;
+  if (TK_PAR_CLOSE != gtoken->type) {
+    while (process) {
+      if (TK_SYMBOL != gtoken->type) {
+        set_gberror("Invalid function param.");
+        return 1;
+      }
+
+      add_child(0, bs, new_symbol(gtoken->cval));
+      next_token();
+
+      process = (TK_COMMA == gtoken->type);
+      if (process) { next_token(); }
     }
-
-    add_child(0, bs, new_symbol(gtoken->cval));
-    next_token();
-
-    process = (TK_COMMA == gtoken->type);
-    if (process) { next_token(); }
   }
   
   if(!close_pending_structs(gsb, bs, BT_LIST)) {

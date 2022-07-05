@@ -51,6 +51,7 @@ typedef struct beorn_state {
   berrors_type et;
   int length;
   int closed;
+  int call_definition;
   char* cval;
   long ival;
   long double fval;
