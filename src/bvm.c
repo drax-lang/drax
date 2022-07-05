@@ -23,7 +23,7 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
     }
   }
 
-  if (curr->length == 1) {
+  if ((curr->length == 1) && (!curr->call_definition)) {
     beorn_state* res = curr->child[0];
     free(curr);
     return res;
@@ -96,9 +96,7 @@ void __run_bs__(beorn_env* benv, beorn_state* curr, int inter_mode) {
       if (evaluated->type == BT_ERROR) {
         bprint(evaluated);
         bbreak_line();
-      }
-
-      if (inter_mode) {
+      } else if (inter_mode) {
         bprint(evaluated);
         bbreak_line();
       }
