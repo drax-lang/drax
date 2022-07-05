@@ -296,8 +296,7 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
     for (int i = 0; i < r_exp->length; i++) {
       if (result != NULL) del_bstate(result);
 
-      beorn_state* tmp = bpop(r_exp, i);
-      result = process(benv, tmp);
+      result = process(benv, r_exp->child[i]);
     }
   } else if (r_exp != NULL) {
     result = process(benv, r_exp);
