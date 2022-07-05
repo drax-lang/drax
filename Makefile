@@ -13,6 +13,7 @@ FILES= ./src/bvm.c \
        ./src/bshell.c \
 	   ./src/bflags.c \
 	   ./src/bio.c \
+	   ./src/blex.c \
        ./src/beorn.c
 
 DEBUGF= -ggdb \
