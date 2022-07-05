@@ -73,6 +73,8 @@ int add_elem_stack_bpsm();
 
 beorn_state* new_definition();
 
+beorn_state* new_call_definition();
+
 beorn_state* new_parser_error(const char* msg);
 
 int initialize_new_state(stack_bpsm* gs, esm s);
