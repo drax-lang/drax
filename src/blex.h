@@ -66,6 +66,8 @@ int init_lexan(char* b);
 
 b_token* b_check_next(int* nump);
 
+b_token* b_check_prev();
+
 b_token* lexan();
 
 #endif

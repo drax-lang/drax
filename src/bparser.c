@@ -666,6 +666,7 @@ void process_token() {
       break;
 
     case TK_PAR_OPEN:
+      if (beorn_arith_op()) { break; };
       next_token();
       process_token();
 

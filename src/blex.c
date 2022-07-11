@@ -4,6 +4,7 @@
 #include "blex.h"
 
 size_t b_index = 0;
+size_t b_prev_index = 0;
 char* buffer;
 
 static const char *const beorn_tokens [] = {
@@ -132,10 +133,19 @@ b_token* b_check_next(int* jump) {
   if (NULL != jump) { *jump = b_index; }
 
   b_index = i_bk;
-  return r; 
+  return r;
+}
+
+b_token* b_check_prev() {
+  size_t i_bk = b_index;
+  b_index = b_prev_index;
+  b_token* r = lexan();
+  b_index = i_bk;
+  return r;
 }
 
 b_token* lexan() {
+  b_prev_index = b_index;
   char* bword = 0;
   while (b_index < strlen(buffer)) {
    char c = buffer[b_index];
@@ -207,19 +217,29 @@ b_token* lexan() {
       case '[': return bmake_symbol(TK_BRACKET_OPEN);
       case ']': return bmake_symbol(TK_BRACKET_CLOSE);
       case '>': 
-        if ('=' == buffer[b_index+1]) { return bmake_symbol(TK_BE); }
+        if ('=' == buffer[b_index+1]) {
+          b_index++;
+          return bmake_symbol(TK_BE);
+        }
         return bmake_symbol(TK_BG);
 
       case '<':
-        if ('=' == buffer[b_index+1]) { return bmake_symbol(TK_LE); }
+        if ('=' == buffer[b_index+1]) {
+          b_index++;
+          return bmake_symbol(TK_LE);
+        }
         return bmake_symbol(TK_LS);
       
       case '=':
         if ('=' == buffer[b_index+1] && '=' == buffer[b_index+2]) {
+          b_index += 2;
           return bmake_symbol(TK_TEQ); 
         }
 
-        if ('=' == buffer[b_index+1]) { return bmake_symbol(TK_DEQ); }
+        if ('=' == buffer[b_index+1]) {
+          b_index++;
+          return bmake_symbol(TK_DEQ);
+        }
         return bmake_symbol(TK_EQ); 
 
       // case '!': return bmake_symbol(TK_NOT_EQ);
