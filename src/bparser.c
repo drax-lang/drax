@@ -105,6 +105,7 @@ beorn_state* get_last_state(beorn_state* root) {
        (root->child[root->length - 1]->closed == 0))
   {
     curr = get_last_state(root->child[root->length - 1]);
+    return curr;
   }
   
   curr = root->child[root->length - 1];
@@ -583,6 +584,45 @@ static int beorn_function_definition() {
 
 /* if definition */
 
+static int is_bool_op(blex_types type) {
+  return (TK_DEQ == type) || (TK_TEQ == type) || 
+         (TK_LE == type)  || (TK_LS == type)  ||
+         (TK_BE == type)  || (TK_BG == type);
+}
+
+static const char* bbool_to_str(blex_types type) {
+  switch (type) {
+    case TK_DEQ: return "==";
+    case TK_TEQ: return "===";
+    case TK_LE:  return "<=";
+    case TK_LS:  return "<";
+    case TK_BE:  return ">=";
+    case TK_BG:  return ">";
+  
+    default:
+    set_gberror("bool symbol with unspected type.");
+    return "";
+  }
+}
+
+static int process_bool_expr() {
+  if (is_bool_op(gtoken->type)) {
+    beorn_state* left = get_last_state(bs);
+    add_child(0, bs, new_expression());
+    add_child(0, bs, new_symbol(bbool_to_str(gtoken->type)));
+    add_child(0, bs, left);
+    next_token();
+    process_token();
+   
+    if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+      set_gberror("bool pair not found.");
+      return 1;
+    }
+    return 1;
+  }
+  return 0;
+}
+
 static int beorn_if_definition() {
   add_child(0, bs, new_definition());
   add_child(0, bs, new_symbol("if"));
@@ -680,7 +720,6 @@ void process_token() {
       if (beorn_call_function()) { break; };
 
       add_child(gsb, bs, new_symbol(gtoken->cval));
-      
       next_token();
       break;
     }
@@ -716,9 +755,6 @@ void process_token() {
     case TK_BRACKET_OPEN: {
       add_child(gsb, bs, new_list());
 
-      // if (initialize_new_state(gsb, BP_DINAMIC) == 0)
-        // set_gberror("Fail to create list.");
-
       next_token();
       get_args_by_comma();
       break;
@@ -742,6 +778,8 @@ void process_token() {
       next_token();
       break;
   }
+
+  process_bool_expr();
 }
 
 beorn_state* beorn_parser(char *input) {
