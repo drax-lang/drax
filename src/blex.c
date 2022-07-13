@@ -230,6 +230,18 @@ b_token* lexan() {
         }
         return bmake_symbol(TK_LS);
       
+      case '!':
+        if ('=' == buffer[b_index+1] && '=' == buffer[b_index+2]) {
+          b_index+= 2;
+          return bmake_symbol(TK_NOT_DEQ);
+        }
+
+        if ('=' == buffer[b_index+1]) {
+          b_index++;
+          return bmake_symbol(TK_NOT_EQ);
+        }
+        break; /* unspected */
+
       case '=':
         if ('=' == buffer[b_index+1] && '=' == buffer[b_index+2]) {
           b_index += 2;

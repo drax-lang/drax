@@ -585,13 +585,16 @@ static int beorn_function_definition() {
 /* if definition */
 
 static int is_bool_op(blex_types type) {
-  return (TK_DEQ == type) || (TK_TEQ == type) || 
-         (TK_LE == type)  || (TK_LS == type)  ||
-         (TK_BE == type)  || (TK_BG == type);
+  return (TK_DEQ == type)    || (TK_TEQ == type)     || 
+         (TK_LE == type)     || (TK_LS == type)      ||
+         (TK_NOT_EQ == type) || (TK_NOT_DEQ == type) ||
+         (TK_BE == type)     || (TK_BG == type);
 }
 
 static const char* bbool_to_str(blex_types type) {
   switch (type) {
+    case TK_NOT_EQ: return "!=";
+    case TK_NOT_DEQ: return "!==";
     case TK_DEQ: return "==";
     case TK_TEQ: return "===";
     case TK_LE:  return "<=";
