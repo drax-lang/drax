@@ -48,6 +48,10 @@ beorn_state* bb_bigger_equal(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp);
 
+beorn_state* bb_or(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_and(beorn_env* benv, beorn_state* exp);
+
 beorn_state* bb_print(beorn_env* benv, beorn_state* exp);
 
 void put_function_env(beorn_env** benv, const char* name, beorn_func fn);

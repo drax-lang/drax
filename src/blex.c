@@ -11,6 +11,8 @@ static const char *const beorn_tokens [] = {
   "}", "{", "]", "[", ",", "do", 
   "end", "float", "fun", "if", "else", "import", 
   "integer", "lambda", ")", "(", "string", "<symbol>", 
+
+  "and", "or",
   
   /* cmp */ 
   "!=", "!==", "!===",

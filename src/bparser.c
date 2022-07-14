@@ -11,6 +11,8 @@ bg_error* gberr;
 
 int gcurr_line_number = 1;
 
+g_act_state* global_act_state;
+
 /* alias handler */
 int create_stack_bpsm() {
   gsb = (stack_bpsm*) malloc(sizeof(stack_bpsm));
@@ -610,6 +612,7 @@ static const char* bbool_to_str(blex_types type) {
 
 static int process_bool_expr() {
   if (is_bool_op(gtoken->type)) {
+    global_act_state->state = AS_BOOL;
     beorn_state* left = get_last_state(bs);
     add_child(0, bs, new_expression());
     add_child(0, bs, new_symbol(bbool_to_str(gtoken->type)));
@@ -617,6 +620,7 @@ static int process_bool_expr() {
     next_token();
     process_token();
    
+    global_act_state->state = AS_NONE;
     if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
       set_gberror("bool pair not found.");
       return 1;
@@ -688,6 +692,39 @@ static int beorn_if_definition() {
   next_token();
   
   return 1;
+}
+
+static const char* blogic_to_str(blex_types type) {
+  switch (type) {
+    case TK_AND:  return "and";
+    case TK_OR:  return "or";
+  
+    default:
+    set_gberror("logic symbol with unspected type.");
+    return "";
+  }
+}
+
+static int is_logic_op(blex_types type) {
+  return (TK_AND == type) || (TK_OR == type);
+}
+
+static int process_logic_gates() {
+  if (is_logic_op(gtoken->type)) {
+    beorn_state* left = get_last_state(bs);
+    add_child(0, bs, new_expression());
+    add_child(0, bs, new_symbol(blogic_to_str(gtoken->type)));
+    add_child(0, bs, left);
+    next_token();
+    process_token();
+   
+    if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+      set_gberror("logic pair not found.");
+      return 1;
+    }
+    return 1;
+  }
+  return 0;
 }
 
 void process_token() {
@@ -783,10 +820,18 @@ void process_token() {
   }
 
   process_bool_expr();
+
+  /* Only if other process is finished */
+  if (AS_NONE == global_act_state->state) {
+    process_logic_gates();
+  };
 }
 
 beorn_state* beorn_parser(char *input) {
   gcurr_line_number = 1;
+
+  global_act_state = (g_act_state*) malloc(sizeof(g_act_state));
+  global_act_state->state = AS_NONE;
   
   create_stack_bpsm();
   gberr = (bg_error*) malloc(sizeof(bg_error));

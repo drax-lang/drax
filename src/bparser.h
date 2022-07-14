@@ -60,6 +60,17 @@ typedef struct bg_error {
   beorn_state* state_error;
 } bg_error;
 
+/* Handler active state */
+typedef enum type_act_state {
+  AS_NONE,
+  AS_BOOL,
+  AS_LOGIC
+} type_act_state;
+
+typedef struct g_act_state {
+  type_act_state state;
+} g_act_state;
+
 /* alias functions handler */
 int create_stack_bpsm();
 

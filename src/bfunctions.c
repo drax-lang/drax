@@ -498,6 +498,34 @@ beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
   return new_integer(0);
 }
 
+beorn_state* bb_and(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->length <= 1, BTYPE_ERROR, "'and' missing arguments.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* left = exp->child[0];
+  beorn_state* rigth = exp->child[1];
+
+  int result = (left->ival && rigth->ival);
+  del_bstate(exp);
+  return new_integer(result);
+}
+
+beorn_state* bb_or(beorn_env* benv, beorn_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->length <= 1, BTYPE_ERROR, "'and' missing arguments.");
+  
+  del_bstate(bpop(exp, 0));
+
+  beorn_state* left = exp->child[0];
+  beorn_state* rigth = exp->child[1];
+
+  int result = (left->ival || rigth->ival);
+  del_bstate(exp);
+  return new_integer(result);
+}
+
 beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
   bpop(exp, 0);
@@ -561,6 +589,9 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, ">",       bb_bigger);
   put_function_env(&native, "<=",      bb_less_equal);
   put_function_env(&native, ">=",      bb_bigger_equal);
+
+  put_function_env(&native, "and",     bb_and);
+  put_function_env(&native, "or",     bb_or);
 
   put_function_env(&native, "typeof",  bb_typeof);
   put_function_env(&native, "lambda",  bb_lambda);

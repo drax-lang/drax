@@ -13,6 +13,9 @@ typedef enum blex_types {
   TK_FUN, TK_IF, TK_ELSE, TK_IMPORT, TK_INTEGER, TK_LAMBDA,
   TK_PAR_CLOSE, TK_PAR_OPEN, TK_STRING, TK_SYMBOL, 
   
+  /* logic */
+  TK_AND, TK_OR,
+
   /* cmp */ 
   TK_NOT_EQ, TK_NOT_DEQ, TK_NOT_TEQ,
   TK_EQ, TK_DEQ, TK_TEQ,
