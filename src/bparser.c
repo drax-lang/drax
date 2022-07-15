@@ -797,12 +797,15 @@ void process_token() {
 
       next_token();
       get_args_by_comma();
-      break;
-    }
+    
+      if (TK_BRACKET_CLOSE != gtoken->type) {
+        set_gberror("list pair not found.");
+        break;
+      }
 
-    case TK_BRACKET_CLOSE: {
       if(!close_pending_structs(gsb, bs, BT_LIST))
         set_gberror("list pair not found.");
+      
       next_token();
       break;
     }

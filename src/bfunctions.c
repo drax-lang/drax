@@ -591,7 +591,7 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, ">=",      bb_bigger_equal);
 
   put_function_env(&native, "and",     bb_and);
-  put_function_env(&native, "or",     bb_or);
+  put_function_env(&native, "or",      bb_or);
 
   put_function_env(&native, "typeof",  bb_typeof);
   put_function_env(&native, "lambda",  bb_lambda);

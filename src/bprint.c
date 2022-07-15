@@ -21,7 +21,10 @@ void bprint_list(beorn_state* curr) {
   putchar('[');
   for (int i = 0; i < curr->length; i++) {
     bprint(curr->child[i]);
-    if (i + 1 < curr->length) putchar(' ');
+    if (i + 1 < curr->length) {
+      putchar(',');
+      putchar(' ');
+    }
   }
   putchar(']');
 }
