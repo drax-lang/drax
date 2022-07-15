@@ -23,6 +23,8 @@ void bprint_expression(beorn_state* curr);
 
 void bprint(beorn_state* curr);
 
+void bprint_default(beorn_state* curr, int sstr);
+
 void bbreak_line();
 
 void bspace_line();

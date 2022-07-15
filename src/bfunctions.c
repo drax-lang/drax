@@ -532,7 +532,7 @@ beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
 
   for (int i = 0; i < exp->length; i++)
   {
-    bprint(process(benv, exp->child[i]));
+    bprint_default(process(benv, exp->child[i]), 0);
     bspace_line();
   }
   
