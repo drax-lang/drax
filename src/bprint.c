@@ -42,13 +42,17 @@ void bprint(beorn_state* curr) {
   bprint_default(curr, 1);
 }
 
-#define prtstr(sstr, cval) if (sstr) {  \
-        printf("\"%s\"", cval);         \
-      } else {                          \
-        printf("%s", cval); }
+static int prtstr(int sstr, char* cval) {
+  if (sstr) {
+    printf("\"%s\"", cval);
+  } else {
+    printf("%s", cval);
+  }
+  return 1;
+}
 
 void bprint_default(beorn_state* curr, int sstr) {
-  switch (curr->type) {   
+  switch (curr->type) {
     case BT_INTEGER:      printf("%ld", curr->ival);    break;
     case BT_FLOAT:        printf("%Lf", curr->fval);    break;
     case BT_STRING:       prtstr(sstr,  curr->cval);    break;

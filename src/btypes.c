@@ -44,14 +44,22 @@ beorn_state* new_float(long double fv) {
 }
 
 beorn_state* new_string(const char* s) {
+  int strsize = 0;
+  
+  if (NULL != s)
+    strsize = strlen(s);
+
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_STRING;
-  v->cval = (char *) calloc(sizeof(char), strlen(s) + 1);
+  v->cval = (char *) calloc(sizeof(char), strsize + 1);
   v->child = NULL;
   v->length = 0;
   v->closed = 1;
   v->call_definition = 0;
-  strcpy(v->cval, s);
+
+  if (NULL != s)
+    strcpy(v->cval, s);
+    
   return v;
 }
 
@@ -153,7 +161,7 @@ void del_bstate(beorn_state* curr) {
       }
 
     default: {
-      break;    
+      break;
     }
   }
 

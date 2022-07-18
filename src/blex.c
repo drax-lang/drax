@@ -256,7 +256,6 @@ b_token* lexan() {
         }
         return bmake_symbol(TK_EQ); 
 
-      // case '!': return bmake_symbol(TK_NOT_EQ);
       case ',': return bmake_symbol(TK_COMMA);
       case '"': {
         while (b_index < strlen(buffer)) {

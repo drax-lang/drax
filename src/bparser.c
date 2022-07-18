@@ -777,7 +777,7 @@ void process_token() {
       next_token();
       break;
 
-    case TK_LAMBDA: break;
+    case TK_LAMBDA: /* pending */ next_token(); break;
 
     case TK_STRING:
       add_child(gsb, bs, new_string(gtoken->cval));

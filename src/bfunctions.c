@@ -219,7 +219,7 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
 
   BASSERT(
     func->child[0]->length != exp->length, BTYPE_ERROR, 
-    "Lambda Function with number of non-compatible arguments"
+    "Function with number of non-compatible arguments"
   );
 
   // add lenv
@@ -228,15 +228,18 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
   }
 
   beorn_state* res = NULL;
-  for (int i = 0; i < func->child[1]->length; i++) {
-    if (res != NULL)
+  int size = func->child[1]->length;
+  for (int i = 0; i < size; i++) {
+    if (res != NULL) {
       del_bstate(res);
+    }
 
     res = process(func->blenv, func->child[1]->child[i]);
   }
 
-  if (res == NULL)
-    return new_error(BRUNTIME_ERROR, "Empty return of process");
+  if (res == NULL) {
+    return new_pack();
+  }
 
   return res;
 }
