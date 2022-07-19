@@ -29,22 +29,6 @@
       } breturn_and_realease_expr(exp, result);      \
     default: breturn_and_realease_expr(exp, 0); }    \
 
-
-beorn_state* bpop(beorn_state* curr, int i){
-  beorn_state* ele = curr->child[i];
-
-  memmove(&curr->child[i], &curr->child[i+1],
-    sizeof(beorn_state*) * (curr->length -i -1));
-
-  curr->length--;
-  curr->child = (beorn_state**) realloc(curr->child, sizeof(beorn_state*) * curr->length);
-  return ele;
-}
-
-beorn_state* bpush(beorn_state* curr) {
-  return curr;
-}
-
 long double get_number(beorn_state* v) {
   switch (v->type)
   {
@@ -562,12 +546,57 @@ beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
   
     return new_error(BFILE_NOT_FOUND, "Cannot find file: '%s'", pm);
   }
-
   beorn_state* out = beorn_parser(content);
   
   __run__(benv, out, 0);
 
   return new_pack();
+}
+
+beorn_state* bb_get(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->length != 3, BUNSPECTED_TYPE, "Expected two arguments");
+  BASSERT(exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list as argument.");
+
+  UNUSED(benv);
+  int idx = exp->child[2]->ival;
+  if (idx < 0) {
+    idx = exp->child[1]->length + idx;
+  }
+
+  if ((idx >= exp->child[1]->length) || (idx < 0)) {
+    return new_pack();
+  }
+
+  return exp->child[1]->child[idx];
+}
+
+beorn_state* bb_put(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->length != 3, BUNSPECTED_TYPE, "Expected two arguments");
+  BASSERT(exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list as first argument.");
+  UNUSED(benv);
+  exp->child[1]->length++;
+  exp->child[1]->child = (beorn_state**) realloc(exp->child[1]->child, (sizeof(beorn_state*)) * exp->child[1]->length);
+  exp->child[1]->child[exp->child[1]->length -1] = exp->child[2];
+
+  return exp->child[1];
+}
+
+beorn_state* bb_hd(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->length != 2, BUNSPECTED_TYPE, "Expected only one argument");
+  BASSERT(exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list as first argument.");
+  UNUSED(benv);
+  beorn_state* first = bpop(exp->child[1], 0);
+  del_bstate(exp->child[1]);
+  return first;
+}
+
+beorn_state* bb_tl(beorn_env* benv, beorn_state* exp) {
+  BASSERT(exp->length != 2, BUNSPECTED_TYPE, "Expected only one argument");
+  BASSERT(exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list as argument.");
+  UNUSED(benv);
+  beorn_state* first = bpop(exp->child[1], 0);
+  del_bstate(first);
+  return exp->child[1];
 }
 
 void load_buildtin_functions(beorn_env** benv) {
@@ -601,7 +630,11 @@ void load_buildtin_functions(beorn_env** benv) {
   put_function_env(&native, "if",      bb_if);
   put_function_env(&native, "print",   bb_print);
   put_function_env(&native, "import",  bb_import);
-  
+
+  put_function_env(&native, "get",     bb_get);
+  put_function_env(&native, "put",     bb_put);
+  put_function_env(&native, "hd",      bb_hd);
+  put_function_env(&native, "tl",      bb_tl);
 }
 
 beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {

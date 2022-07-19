@@ -8,10 +8,6 @@
 #include <string.h>
 #include "btypes.h"
 
-beorn_state* bpop(beorn_state* curr, int i);
-
-beorn_state* bpush(beorn_state* curr);
-
 long double get_number(beorn_state* v);
 
 beorn_state* do_op(beorn_env* benv, beorn_state* curr);
@@ -53,6 +49,14 @@ beorn_state* bb_or(beorn_env* benv, beorn_state* exp);
 beorn_state* bb_and(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_print(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_get(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_put(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_hd(beorn_env* benv, beorn_state* exp);
+
+beorn_state* bb_tl(beorn_env* benv, beorn_state* exp);
 
 void put_function_env(beorn_env** benv, const char* name, beorn_func fn);
 

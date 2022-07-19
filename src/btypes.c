@@ -152,6 +152,8 @@ beorn_env* new_env() {
 
 void del_bstate(beorn_state* curr) {
 
+  if (curr == NULL) return;
+
   switch (curr->type) {
     case BT_PACK:
     case BT_LIST:
@@ -182,14 +184,14 @@ const char* berrors_to_str(berrors_type t) {
 
 const char* btype_to_str(types t) {
   switch (t) {
-    case BT_INTEGER:      return "Integer";
-    case BT_FLOAT:        return "Float";
-    case BT_STRING:       return "String";
-    case BT_PACK:         return "Pack";
-    case BT_SYMBOL:       return "Symbol";
-    case BT_EXPRESSION:   return "Expression";
-    case BT_LIST:         return "List";
-    default:              return "Unknown";
+    case BT_INTEGER:    return "Integer";
+    case BT_FLOAT:      return "Float";
+    case BT_STRING:     return "String";
+    case BT_PACK:       return "Pack";
+    case BT_SYMBOL:     return "Symbol";
+    case BT_EXPRESSION: return "Expression";
+    case BT_LIST:       return "List";
+    default:            return "Unknown";
   }
 }
 
@@ -229,6 +231,17 @@ beorn_state* bcopy_state(beorn_state* v) {
     default: ;
   }
   return x;
+}
+
+beorn_state* bpop(beorn_state* curr, int i){
+  beorn_state* ele = curr->child[i];
+
+  memmove(&curr->child[i], &curr->child[i+1],
+    sizeof(beorn_state*) * (curr->length -i -1));
+
+  curr->length--;
+  curr->child = (beorn_state**) realloc(curr->child, sizeof(beorn_state*) * curr->length);
+  return ele;
 }
 
 void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {

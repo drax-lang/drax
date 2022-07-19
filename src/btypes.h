@@ -89,8 +89,12 @@ const char* btype_to_str(types t);
 
 beorn_state* bcopy_state(beorn_state* v);
 
+beorn_state* bpop(beorn_state* v, int idx);
+
 void bput_env(beorn_env* e, beorn_state* key, beorn_state* value);
+
 void bset_env(beorn_env* e, beorn_state* key, beorn_state* value);
+
 void blet_env(beorn_env* e, beorn_state* key, beorn_state* value);
 
 #endif
