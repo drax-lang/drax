@@ -21,7 +21,8 @@ typedef enum types {
   BT_PACK,
   BT_LIST,
   BT_FUNCTION,
-  BT_LAMBDA
+  BT_LAMBDA,
+  BT_NIL
 } types;
 
 typedef enum bimode {
@@ -69,15 +70,26 @@ typedef struct beorn_env {
 } beorn_env;
 
 beorn_state* new_error(berrors_type t, const char* s, ...);
+
 beorn_state* new_integer(long iv);
+
 beorn_state* new_float(long double fv);
+
 beorn_state* new_string(const char* s);
+
 beorn_state* new_symbol(const char* s);
+
 beorn_state* new_pack();
+
 beorn_state* new_expression();
+
 beorn_state* new_list();
+
 beorn_state* new_function(beorn_func fn);
+
 beorn_state* new_lambda(beorn_env* global);
+
+beorn_state* new_nil();
 
 beorn_env* new_env();
 

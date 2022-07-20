@@ -118,6 +118,8 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
 
   del_bstate(curr);
 
+  if (x->type == BT_ERROR) return x;
+
   x->type = tval;
   if (tval == BT_FLOAT) {
     x->fval = r;
@@ -146,10 +148,8 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
 
   bset_env(benv, exp->child[1], exp->child[2]);
-  beorn_state* pck = new_pack();
-  pck->closed = 1;
   del_bstate(exp);
-  return pck;
+  return new_nil();
 }
 
 beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
@@ -222,7 +222,7 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
   }
 
   if (res == NULL) {
-    return new_pack();
+    return new_nil();
   }
 
   return res;
@@ -235,10 +235,8 @@ beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
 
   bset_env(exp->blenv, exp->child[1], exp->child[2]);
-  beorn_state* pck = new_pack();
-  pck->closed = 1;
   del_bstate(exp);
-  return pck;
+  return new_nil();
 }
 
 beorn_state* bb_cat(beorn_env* benv, beorn_state* exp) {
@@ -271,7 +269,7 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two or three arguments.");
   BASSERT(exp->child[1]->type != BT_INTEGER, BTYPE_ERROR, "'if' with invalid argument");
   
-  beorn_state* result = new_pack();
+  beorn_state* result = new_nil();
   beorn_state* r_exp = NULL;
   if (exp->child[1]->ival) {
     r_exp = bpop(exp, 2);
@@ -288,7 +286,7 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   } else if (r_exp != NULL) {
     result = process(benv, r_exp);
   } else {
-    result = new_pack();
+    result = new_nil();
   }
 
   del_bstate(exp);
@@ -323,6 +321,9 @@ beorn_state* bb_double_equal(beorn_env* benv, beorn_state* exp) {
       case BT_STRING:
         if (strcmp(exp->child[i]->cval, first->cval) != 0)
           breturn_and_realease_expr(exp, 0);
+
+      case BT_NIL:
+        breturn_and_realease_expr(exp, 1);
 
       default: breturn_and_realease_expr(exp, 0);
     }
@@ -362,6 +363,9 @@ beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp) {
         if (strcmp(exp->child[i]->cval, first->cval) != 0)
           breturn_and_realease_expr(exp, 1);
     
+      case BT_NIL:
+        breturn_and_realease_expr(exp, 0);
+
     default: breturn_and_realease_expr(exp, 1);
     }
 
@@ -399,6 +403,9 @@ beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
       if (strcmp(exp->child[1]->cval, first->cval) != 0)
         breturn_and_realease_expr(exp, 0);
   
+    case BT_NIL:
+      breturn_and_realease_expr(exp, 1);
+
     default: breturn_and_realease_expr(exp, 0);
   }
 
@@ -478,6 +485,9 @@ beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
       if (strcmp(exp->child[1]->cval, first->cval) != 0)
         breturn_and_realease_expr(exp, 1);
   
+      case BT_NIL:
+        breturn_and_realease_expr(exp, 0);
+
     default: breturn_and_realease_expr(exp, 1);
   }
 
@@ -524,7 +534,7 @@ beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
   }
   
   bbreak_line();
-  return new_pack();
+  return new_nil();
 }
 
 void put_function_env(beorn_env** benv, const char* name, beorn_func fn) {
@@ -550,7 +560,7 @@ beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
   
   __run__(benv, out, 0);
 
-  return new_pack();
+  return new_nil();
 }
 
 beorn_state* bb_get(beorn_env* benv, beorn_state* exp) {
@@ -564,7 +574,7 @@ beorn_state* bb_get(beorn_env* benv, beorn_state* exp) {
   }
 
   if ((idx >= exp->child[1]->length) || (idx < 0)) {
-    return new_pack();
+    return new_nil();
   }
 
   return exp->child[1]->child[idx];

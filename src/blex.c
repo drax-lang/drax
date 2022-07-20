@@ -22,7 +22,9 @@ static const char *const beorn_tokens [] = {
   "+", "/", "*", "-",
 
   /* bool op */
-  "ls", "bg", "le", "be", "\n","<EOF>"
+  "ls", "bg", "le", "be", 
+  
+  "nil", "\n","<EOF>"
 };
 
 

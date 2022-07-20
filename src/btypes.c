@@ -135,6 +135,18 @@ beorn_state* new_lambda(beorn_env* global) {
   return v;
 };
 
+beorn_state* new_nil() {
+  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  v->type = BT_NIL;
+  v->blenv = NULL;
+  v->cval = NULL;
+  v->child = NULL;
+  v->length = 0;
+  v->closed = 0;
+  v->call_definition = 0;
+  return v;
+}
+
 beorn_env* new_env() {
   beorn_env* blenv = (beorn_env*) malloc(sizeof(beorn_env));
   blenv->length = 0;

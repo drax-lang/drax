@@ -26,7 +26,10 @@ typedef enum blex_types {
   /* bool op */
   TK_LS, TK_BG, TK_LE, TK_BE,
 
+  TK_NIL,
+  
   TK_BREAK_LINE,
+
   /* last element */
   TK_EOF,
 

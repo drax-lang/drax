@@ -62,6 +62,7 @@ void bprint_default(beorn_state* curr, int sstr) {
     case BT_PACK:         bprint_pack(curr);            break;
     case BT_LIST:         bprint_list(curr);            break;
     case BT_EXPRESSION:   bprint_expression(curr);      break;
+    case BT_NIL:          printf("nil");                break;
     case BT_ERROR:        bshow_error(curr);            break;
     
     default:

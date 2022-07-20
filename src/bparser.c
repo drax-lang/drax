@@ -816,6 +816,12 @@ void process_token() {
       break;
     }
 
+    case TK_NIL: {
+      add_child(gsb, bs, new_nil());
+      next_token();
+      break;
+    }
+
     default:
       set_gberror("Unspected token.");
       next_token();
