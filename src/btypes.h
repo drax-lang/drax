@@ -47,9 +47,16 @@ typedef struct beorn_env beorn_env;
 typedef struct beorn_state beorn_state;
 
 typedef beorn_state*(*beorn_func)(beorn_env* e, struct beorn_state* s);
+
+typedef struct bstack_trace {
+  size_t line;
+  char* file;
+} bstack_trace;
+
 typedef struct beorn_state {
   types type;
   berrors_type et;
+  bstack_trace* trace;
   int length;
   int closed;
   int call_definition;

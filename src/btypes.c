@@ -12,7 +12,7 @@ beorn_state* new_error(berrors_type t, const char* s, ...) {
   v->length = 0;
   v->child = NULL;
   v->call_definition = 0;
-
+  v->trace = NULL;
   va_list va;
   va_start(va, s);
 
@@ -203,6 +203,8 @@ const char* btype_to_str(types t) {
     case BT_SYMBOL:     return "Symbol";
     case BT_EXPRESSION: return "Expression";
     case BT_LIST:       return "List";
+    case BT_NIL:        return "Nil";
+    case BT_ERROR:      return "Error";
     default:            return "Unknown";
   }
 }

@@ -203,7 +203,7 @@ b_token* lexan() {
           char sc = buffer[b_index];
 
           if (sc == '\n')
-            break;
+            return bmake_symbol(TK_BREAK_LINE);
             
           b_index++;
         }

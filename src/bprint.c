@@ -5,6 +5,10 @@
 
 void bshow_error(beorn_state* curr) {
   const char * et = berrors_to_str(curr->et);
+  if (NULL != curr->trace) {
+    printf("%sline: %ld, %s: %s%s", BRED, curr->trace->line, et, curr->cval, BDEF);    
+    return;
+  }
   printf("%s%s: %s%s", BRED, et, curr->cval, BDEF);
 }
 

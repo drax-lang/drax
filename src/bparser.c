@@ -122,6 +122,10 @@ void set_gberror(const char *msg) {
 
   gberr->has_error = 1;
   gberr->state_error = new_error(BSYNTAX_ERROR, msg);
+  gberr->state_error->trace = (bstack_trace*) malloc(sizeof(bstack_trace));
+  gberr->state_error->trace->line = gcurr_line_number;
+  gberr->state_error->trace->file = NULL;
+  gberr->line = gcurr_line_number;
 }
 
 /**
@@ -319,7 +323,20 @@ static int beorn_call_function() {
   next_token();
   add_child(bs, new_call_definition());
   add_child(bs, new_symbol(rigth_symbol));
-  get_args_by_comma();
+
+  if (TK_PAR_CLOSE != gtoken->type) {
+    get_args_by_comma();
+  }
+
+  if (TK_PAR_CLOSE != gtoken->type) {
+    set_gberror("missing ) after argument list.");
+  }
+
+  if(!close_pending_structs(bs, BT_EXPRESSION)) {
+    set_gberror("Expression pair not found.");
+  }
+
+  next_token();
 
   return 1;
 }
@@ -620,8 +637,8 @@ static int beorn_if_definition() {
 
 static const char* blogic_to_str(blex_types type) {
   switch (type) {
-    case TK_AND:  return "and";
-    case TK_OR:  return "or";
+    case TK_AND: return "and";
+    case TK_OR: return "or";
   
     default:
     set_gberror("logic symbol with unspected type.");
@@ -705,12 +722,6 @@ void process_token() {
 
     case TK_STRING:
       add_child(bs, new_string(gtoken->cval));
-      next_token();
-      break;
-
-    case TK_PAR_CLOSE:
-      if(!close_pending_structs(bs, BT_EXPRESSION))
-        set_gberror("Expression pair not found.");
       next_token();
       break;
 
