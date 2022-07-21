@@ -8,29 +8,6 @@
 #include "btypes.h"
 #include "blex.h"
 
-/* alias handler */
-typedef enum esm {
-  BP_NONE,
-  BP_DINAMIC,
-  BP_SIMPLE_DEFINITIONS,
-  BP_FUNCTION_DEFINITION,
-  BP_LAMBDA_DEFINITION,
-  BP_ONE_ARG,
-  BP_TWO_ARG,
-  BP_THREE_ARG,
-  BP_FOUR_ARG,
-} esm;
-
-typedef struct bpsm {
-  esm mode;
-  int count;
-} bpsm;
-
-typedef struct stack_bpsm {
-  bpsm** bpsm;
-  int size;
-} stack_bpsm;
-
 typedef enum b_operator {
     BINVALID,
     BNONE,
@@ -88,17 +65,11 @@ beorn_state* new_call_definition();
 
 beorn_state* new_parser_error(const char* msg);
 
-int initialize_new_state(stack_bpsm* gs, esm s);
-
-int bauto_state_update(stack_bpsm* gs, beorn_state* b, esm tp, int lenght);
-
-void auto_state_update(stack_bpsm* gs, beorn_state* b);
-
 beorn_state* get_last_state();
 
-int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child);
+int add_child(beorn_state* root, beorn_state* child);
 
-int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct);
+int close_pending_structs(beorn_state* root, types ct);
 
 void next_token();
 

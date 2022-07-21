@@ -15,8 +15,6 @@
   #include "bshell.h"
 #endif
 
-
-
 int interactive_shell(beorn_env* benv) {
   initial_info();
   

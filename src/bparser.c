@@ -6,49 +6,13 @@
 
 beorn_state* bs;
 b_token* gtoken;
-stack_bpsm* gsb;
 bg_error* gberr;
 
 int gcurr_line_number = 1;
 
 g_act_state* global_act_state;
 
-/* alias handler */
-int create_stack_bpsm() {
-  gsb = (stack_bpsm*) malloc(sizeof(stack_bpsm));
-  gsb->size = 0;
-  gsb->bpsm = (bpsm**) malloc(sizeof(bpsm*));
-  return 0;
-}
-
-int increment_stack_bpsm() {
-  if ((NULL == gsb) || (gsb->size == 0)) return 0;
-  gsb->bpsm[gsb->size - 1]->count++;
-  return 0;
-}
-
-int del_first_stack_bpsm() {
-  if ((NULL == gsb) || (gsb->size == 0)) return 0;
-
-  free(gsb->bpsm[gsb->size -1]);
-  gsb->size--;
-  gsb->bpsm = (bpsm**) realloc(gsb->bpsm, sizeof(bpsm*) * gsb->size);
-  return 0;
-}
-
-int add_elem_stack_bpsm() {
-  if (NULL == gsb) return 0;
-
-  gsb->size++;
-  gsb->bpsm = (bpsm**) realloc(gsb->bpsm, sizeof(bpsm*) * gsb->size);
-  gsb->bpsm[gsb->size -1] = (bpsm*) malloc(sizeof(bpsm));
-  gsb->bpsm[gsb->size -1]->mode = BP_NONE;
-  gsb->bpsm[gsb->size -1]->count = 0;
-  return 0;
-}
-
 /* helpers */
-
 beorn_state* new_definition() {
   beorn_state* bdef = new_expression();
   return bdef;
@@ -63,38 +27,6 @@ beorn_state* new_call_definition() {
 beorn_state* new_parser_error(const char* msg) {
   beorn_state* err = new_error(BPARSER_ERROR, msg);
   return err;
-}
-
-int initialize_new_state(stack_bpsm* gs, esm s) {
-  add_elem_stack_bpsm(gs);
-
-  gs->bpsm[gs->size -1]->mode = s;
-  return 1;
-}
-
-int bauto_state_update(stack_bpsm* gs, beorn_state* b, esm tp, int lenght) {
-  if (gs->size <= 0) return 0;
-
-  bpsm* curr = gs->bpsm[gs->size -1];
-  if (curr->mode == tp) {
-    if (curr->count == lenght) {
-      b->closed = 1;
-      close_pending_structs(gs, b, BT_EXPRESSION);   
-      del_first_stack_bpsm(gs);
-    }
-  }
-  return 0; 
-}
-
-void auto_state_update(stack_bpsm* gs, beorn_state* b) {
-  bauto_state_update(gs, b, BP_ONE_ARG,             2);
-  bauto_state_update(gs, b, BP_TWO_ARG,             3);
-  bauto_state_update(gs, b, BP_THREE_ARG,           4);
-  bauto_state_update(gs, b, BP_FOUR_ARG,            5);
-
-  bauto_state_update(gs, b, BP_SIMPLE_DEFINITIONS,  3);
-  bauto_state_update(gs, b, BP_LAMBDA_DEFINITION,   3);
-  bauto_state_update(gs, b, BP_FUNCTION_DEFINITION, 4);
 }
 
 beorn_state* get_last_state(beorn_state* root) {
@@ -120,12 +52,11 @@ beorn_state* get_last_state(beorn_state* root) {
  * Add new nodes to AST.
  * Always the last open expression.
  */
-int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {
+int add_child(beorn_state* root, beorn_state* child) {
   if (root->length <= 0) {
     root->length++;
     root->child = (beorn_state**) malloc(sizeof(beorn_state*));
     root->child[0] = child;
-    increment_stack_bpsm(gs);
 
     return 1;
   } else {
@@ -136,7 +67,7 @@ int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {
          (root->child[root->length - 1]->closed == 0))
     {
       crr  = root->child[root->length - 1];
-      if (add_child(gs, crr, child)) return 1;
+      if (add_child(crr, child)) return 1;
     } else {
       crr = root;
     }
@@ -149,7 +80,6 @@ int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {
       crr->child = (beorn_state**) realloc(crr->child, sizeof(beorn_state*) * crr->length);
     }
     crr->child[crr->length - 1] = child;
-    increment_stack_bpsm(gs);
     return 1;
   }
 }
@@ -157,7 +87,7 @@ int add_child(stack_bpsm* gs, beorn_state* root, beorn_state* child) {
 /**
  * Close the last open expression/sub expression in AST.
  */
-int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct) {
+int close_pending_structs(beorn_state* root, types ct) {
   if (root->length == 0) return 0;
 
   if (((root->child[root->length - 1]->type == BT_PACK) || 
@@ -165,12 +95,11 @@ int close_pending_structs(stack_bpsm* gs, beorn_state* root, types ct) {
        (root->child[root->length - 1]->type == BT_EXPRESSION)) &&
        (root->child[root->length - 1]->closed == 0))
   {
-    if (close_pending_structs(gs, root->child[root->length - 1], ct )) {
+    if (close_pending_structs(root->child[root->length - 1], ct )) {
       return 1;
     } else {
       if (root->child[root->length - 1]->type == ct) {
         root->child[root->length - 1]->closed = 1;
-        del_first_stack_bpsm(gs);
         return 1;
       }
     }
@@ -248,12 +177,12 @@ expr_tree *value_expr() {
     char* rigth_symbol = gtoken->cval;
     next_token();
     if (TK_PAR_OPEN == gtoken->type)  {
-      add_child(0, bs, new_definition());
-      add_child(0, bs, new_symbol(rigth_symbol));
+      add_child(bs, new_definition());
+      add_child(bs, new_symbol(rigth_symbol));
       next_token();
       get_args_by_comma();
 
-      if(!close_pending_structs(0, bs, BT_EXPRESSION)) 
+      if(!close_pending_structs(bs, BT_EXPRESSION)) 
         set_gberror("expression error, pair not found.");
 
       beorn_state* crr_bs = get_last_state(bs);
@@ -324,19 +253,19 @@ void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
   if ((BNONE == expr->op) &&
       ((TK_INTEGER == expr->type) || (TK_FLOAT == expr->type) || (TK_SYMBOL == expr->type))
   ) {
-    add_child(0, sbs, expr->value);
+    add_child(sbs, expr->value);
     free(expr);
     return;
   }
 
-  add_child(0, bs, new_expression());
+  add_child(bs, new_expression());
 
   switch (expr->op)
   {
-    case BADD: add_child(0, bs, new_symbol("+")); break;
-    case BSUB: add_child(0, bs, new_symbol("-")); break;
-    case BMUL: add_child(0, bs, new_symbol("*")); break;
-    case BDIV: add_child(0, bs, new_symbol("/")); break;
+    case BADD: add_child(bs, new_symbol("+")); break;
+    case BSUB: add_child(bs, new_symbol("-")); break;
+    case BMUL: add_child(bs, new_symbol("*")); break;
+    case BDIV: add_child(bs, new_symbol("/")); break;
     
     default:
       set_gberror("invalid operation.");
@@ -348,7 +277,7 @@ void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
 
   free(expr);
 
-  if(!close_pending_structs(0, bs, BT_EXPRESSION))
+  if(!close_pending_structs(bs, BT_EXPRESSION))
     set_gberror("expression error, pair not found.");
 }
 
@@ -388,8 +317,8 @@ static int beorn_call_function() {
   next_token();
 
   next_token();
-  add_child(0, bs, new_call_definition());
-  add_child(0, bs, new_symbol(rigth_symbol));
+  add_child(bs, new_call_definition());
+  add_child(bs, new_symbol(rigth_symbol));
   get_args_by_comma();
 
   return 1;
@@ -406,18 +335,13 @@ static int beorn_define_var() {
   char* rigth_symbol = gtoken->cval;
   next_token();
 
-  if (initialize_new_state(gsb, BP_SIMPLE_DEFINITIONS) == 0) {
-    set_gberror("Fail to initialize definition");
-    return 1;
-  }
-
   next_token();
-  add_child(0,   bs, new_definition());
-  add_child(gsb, bs, new_symbol("set"));
-  add_child(gsb, bs, new_symbol(rigth_symbol));
+  add_child(bs, new_definition());
+  add_child(bs, new_symbol("set"));
+  add_child(bs, new_symbol(rigth_symbol));
   process_token();
 
-  if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+  if(!close_pending_structs(bs, BT_EXPRESSION)) {
       set_gberror("function pair not found.");
   }
 
@@ -483,16 +407,16 @@ static int beorn_arith_op() {
 
 static int beorn_import_file() {
   next_token();
-  add_child(0, bs, new_definition());
-  add_child(0, bs, new_symbol("import"));
+  add_child(bs, new_definition());
+  add_child(bs, new_symbol("import"));
 
   if (TK_STRING != gtoken->type) {
     set_gberror("Cannot use import to current definition");
     return 1;
   }
-  add_child(0, bs, new_string(gtoken->cval));
+  add_child(bs, new_string(gtoken->cval));
 
-  if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+  if(!close_pending_structs(bs, BT_EXPRESSION)) {
       set_gberror("function pair not found.");
   }
 
@@ -502,12 +426,12 @@ static int beorn_import_file() {
 }
 
 static int beorn_end_definition() {
-  if(!close_pending_structs(0, bs, BT_PACK)) {
+  if(!close_pending_structs(bs, BT_PACK)) {
     set_gberror("pack freeze pair not found.");
     return 1;
   }
 
-  if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+  if(!close_pending_structs(bs, BT_EXPRESSION)) {
     set_gberror("function pair not found.");
     return 1;
   }
@@ -516,13 +440,13 @@ static int beorn_end_definition() {
 }
 
 static int beorn_function_definition() {
-  add_child(0, bs, new_definition());
-  add_child(0, bs, new_symbol("fun"));
+  add_child(bs, new_definition());
+  add_child(bs, new_symbol("fun"));
   next_token();
 
   if (TK_SYMBOL != gtoken->type) { set_gberror("Invalid function name."); }
 
-  add_child(0, bs, new_symbol(gtoken->cval));
+  add_child(bs, new_symbol(gtoken->cval));
   next_token();
 
   if (TK_PAR_OPEN != gtoken->type) { set_gberror("Bad definition to function."); }
@@ -531,7 +455,7 @@ static int beorn_function_definition() {
 
   int process = 1;
   
-  add_child(0, bs, new_list());
+  add_child(bs, new_list());
   if (TK_PAR_CLOSE != gtoken->type) {
     while (process) {
       if (TK_SYMBOL != gtoken->type) {
@@ -539,7 +463,7 @@ static int beorn_function_definition() {
         return 1;
       }
 
-      add_child(0, bs, new_symbol(gtoken->cval));
+      add_child(bs, new_symbol(gtoken->cval));
       next_token();
 
       process = (TK_COMMA == gtoken->type);
@@ -547,7 +471,7 @@ static int beorn_function_definition() {
     }
   }
   
-  if(!close_pending_structs(gsb, bs, BT_LIST)) {
+  if(!close_pending_structs(bs, BT_LIST)) {
     set_gberror("params pair not found.");
     return 1;
   }
@@ -563,7 +487,7 @@ static int beorn_function_definition() {
     set_gberror("bad definition to function.");
     return 1;
   }
-  add_child(0, bs, new_pack());
+  add_child(bs, new_pack());
   next_token();
 
   process = 1;
@@ -614,14 +538,14 @@ static int process_bool_expr() {
   if (is_bool_op(gtoken->type)) {
     global_act_state->state = AS_BOOL;
     beorn_state* left = get_last_state(bs);
-    add_child(0, bs, new_expression());
-    add_child(0, bs, new_symbol(bbool_to_str(gtoken->type)));
-    add_child(0, bs, left);
+    add_child(bs, new_expression());
+    add_child(bs, new_symbol(bbool_to_str(gtoken->type)));
+    add_child(bs, left);
     next_token();
     process_token();
    
     global_act_state->state = AS_NONE;
-    if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+    if(!close_pending_structs(bs, BT_EXPRESSION)) {
       set_gberror("bool pair not found.");
       return 1;
     }
@@ -631,8 +555,8 @@ static int process_bool_expr() {
 }
 
 static int beorn_if_definition() {
-  add_child(0, bs, new_definition());
-  add_child(0, bs, new_symbol("if"));
+  add_child(bs, new_definition());
+  add_child(bs, new_symbol("if"));
 
   next_token();
   process_token();
@@ -642,7 +566,7 @@ static int beorn_if_definition() {
     return 1;
   }
 
-  add_child(0, bs, new_pack());
+  add_child(bs, new_pack());
 
   next_token();
   int process = 1;
@@ -657,14 +581,14 @@ static int beorn_if_definition() {
     if (process) { process_token(); }
   }
 
-  if(!close_pending_structs(0, bs, BT_PACK)) {
+  if(!close_pending_structs(bs, BT_PACK)) {
     set_gberror("pack freeze pair not found.");
     return 1;
   }
 
   if (TK_ELSE == gtoken->type) {
 
-    add_child(0, bs, new_pack());
+    add_child(bs, new_pack());
 
     next_token();
     process = 1;
@@ -679,7 +603,7 @@ static int beorn_if_definition() {
       if (process) { process_token(); }
     }
   } else {
-    add_child(0, bs, new_pack());
+    add_child(bs, new_pack());
   }
 
   if (TK_END != gtoken->type) { 
@@ -712,13 +636,13 @@ static int is_logic_op(blex_types type) {
 static int process_logic_gates() {
   if (is_logic_op(gtoken->type)) {
     beorn_state* left = get_last_state(bs);
-    add_child(0, bs, new_expression());
-    add_child(0, bs, new_symbol(blogic_to_str(gtoken->type)));
-    add_child(0, bs, left);
+    add_child(bs, new_expression());
+    add_child(bs, new_symbol(blogic_to_str(gtoken->type)));
+    add_child(bs, left);
     next_token();
     process_token();
    
-    if(!close_pending_structs(0, bs, BT_EXPRESSION)) {
+    if(!close_pending_structs(bs, BT_EXPRESSION)) {
       set_gberror("logic pair not found.");
       return 1;
     }
@@ -735,13 +659,13 @@ void process_token() {
 
     case TK_FLOAT:
       if (beorn_arith_op()) { break; }
-      add_child(gsb, bs, new_float(gtoken->fval));
+      add_child(bs, new_float(gtoken->fval));
       next_token();
       break;
 
     case TK_INTEGER:
       if (beorn_arith_op()) { break; }
-      add_child(gsb, bs, new_integer(gtoken->ival));
+      add_child(bs, new_integer(gtoken->ival));
       next_token();
       break;
 
@@ -759,7 +683,7 @@ void process_token() {
       if (beorn_arith_op()) { break; };
       if (beorn_call_function()) { break; };
 
-      add_child(gsb, bs, new_symbol(gtoken->cval));
+      add_child(bs, new_symbol(gtoken->cval));
       next_token();
       break;
     }
@@ -780,12 +704,12 @@ void process_token() {
     case TK_LAMBDA: /* pending */ next_token(); break;
 
     case TK_STRING:
-      add_child(gsb, bs, new_string(gtoken->cval));
+      add_child(bs, new_string(gtoken->cval));
       next_token();
       break;
 
     case TK_PAR_CLOSE:
-      if(!close_pending_structs(gsb, bs, BT_EXPRESSION))
+      if(!close_pending_structs(bs, BT_EXPRESSION))
         set_gberror("Expression pair not found.");
       next_token();
       break;
@@ -793,17 +717,20 @@ void process_token() {
     case TK_BRACE_OPEN: /* pending */ next_token(); break;
     case TK_BRACE_CLOSE: /* pending */ next_token(); break;
     case TK_BRACKET_OPEN: {
-      add_child(gsb, bs, new_list());
+      add_child(bs, new_list());
 
       next_token();
-      get_args_by_comma();
+
+      if (TK_BRACKET_CLOSE != gtoken->type) {
+        get_args_by_comma();
+      }
     
       if (TK_BRACKET_CLOSE != gtoken->type) {
         set_gberror("list pair not found.");
         break;
       }
 
-      if(!close_pending_structs(gsb, bs, BT_LIST))
+      if(!close_pending_structs(bs, BT_LIST))
         set_gberror("list pair not found.");
       
       next_token();
@@ -817,7 +744,7 @@ void process_token() {
     }
 
     case TK_NIL: {
-      add_child(gsb, bs, new_nil());
+      add_child(bs, new_nil());
       next_token();
       break;
     }
@@ -842,7 +769,6 @@ beorn_state* beorn_parser(char *input) {
   global_act_state = (g_act_state*) malloc(sizeof(g_act_state));
   global_act_state->state = AS_NONE;
   
-  create_stack_bpsm();
   gberr = (bg_error*) malloc(sizeof(bg_error));
   gberr->line = 0;
   gberr->has_error = 0;
@@ -859,16 +785,13 @@ beorn_state* beorn_parser(char *input) {
 
   next_token();
   while (TK_EOF != get_crr_type()) {
-    auto_state_update(gsb, bs);
     process_token();
     
     if (gberr->has_error) {
-      free(gsb);
       del_bstate(bs);
       return gberr->state_error;
     }
   }
   
-  free(gsb);
   return bs;
 }
