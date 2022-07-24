@@ -68,7 +68,7 @@ int block_process(char* fun_n);
 
 beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp);
 
-void load_buildtin_functions(beorn_env** benv);
+void load_builtin_functions(beorn_env** benv);
 
 beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp);
 

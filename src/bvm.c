@@ -43,10 +43,10 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
 }
 
 beorn_state* process_symbol(beorn_env* benv, beorn_state* curr) {
-  for (int i = 0; i < benv->length; i++) {
-    if (strcmp(benv->symbol[i], curr->cval) == 0) {
-      return bcopy_state(benv->bval[i]);
-    }
+  beorn_state* bres = bget_env_value(benv, curr);
+
+  if(NULL != bres) {
+    return bres;
   }
 
   if (benv->global != NULL) {

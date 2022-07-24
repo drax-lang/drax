@@ -9,6 +9,8 @@
 
 #define UNUSED(x) (void)(x)
 
+#define BENV_HASH_SIZE 8
+
 typedef enum types {
   BT_UNKNOWN,
   BT_ERROR,
@@ -43,15 +45,27 @@ typedef enum berrors_type {
   BFILE_NOT_FOUND
 } berrors_type;
 
-typedef struct beorn_env beorn_env;
-typedef struct beorn_state beorn_state;
-
-typedef beorn_state*(*beorn_func)(beorn_env* e, struct beorn_state* s);
-
 typedef struct bstack_trace {
   size_t line;
   char* file;
 } bstack_trace;
+
+typedef struct beorn_env beorn_env;
+
+typedef struct beorn_state beorn_state;
+
+typedef beorn_state*(*beorn_func)(beorn_env* e, struct beorn_state* s);
+
+typedef struct bvars_pair {
+    size_t length;
+    char** key;
+    beorn_state** val;
+} bvars_pair;
+
+typedef struct bvar_hashs {
+    size_t cap;
+    bvars_pair** vars;
+} bvar_hashs;
 
 typedef struct beorn_state {
   types type;
@@ -69,9 +83,7 @@ typedef struct beorn_state {
 } beorn_state;
 
 typedef struct beorn_env {
-  int length;
-  char** symbol;
-  beorn_state** bval;
+  bvar_hashs* bval;
   beorn_env* native;
   beorn_env* global;
 } beorn_env;
@@ -115,5 +127,7 @@ void bput_env(beorn_env* e, beorn_state* key, beorn_state* value);
 void bset_env(beorn_env* e, beorn_state* key, beorn_state* value);
 
 void blet_env(beorn_env* e, beorn_state* key, beorn_state* value);
+
+beorn_state* bget_env_value(beorn_env* e, beorn_state* key);
 
 #endif

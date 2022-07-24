@@ -54,18 +54,17 @@ int main(int argc, char** argv) {
   bimode bmode = get_bimode(argc, argv);
   beorn_env* benv = new_env();
   
-  load_buildtin_functions(&benv);
-  switch (bmode)
-  {
-  case BI_PROCESS_DEFAULT:
-    return process_file(benv, argv);
+  load_builtin_functions(&benv);
+  switch (bmode) {
+    case BI_PROCESS_DEFAULT:
+      return process_file(benv, argv);
 
-  case BI_INTERACTIVE_DEFAULT:
-    interactive_shell(benv);
-    break;
+    case BI_INTERACTIVE_DEFAULT:
+      interactive_shell(benv);
+      break;
 
-  default:
-    break;
+    default:
+      break;
   }
 
   return 0;

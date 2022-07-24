@@ -4,6 +4,8 @@
 #include "stdio.h"
 #include <stdarg.h>
 
+/* Types implementations */
+
 beorn_state* new_error(berrors_type t, const char* s, ...) {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
   v->type = BT_ERROR;
@@ -147,21 +149,6 @@ beorn_state* new_nil() {
   return v;
 }
 
-beorn_env* new_env() {
-  beorn_env* blenv = (beorn_env*) malloc(sizeof(beorn_env));
-  blenv->length = 0;
-  blenv->bval = (beorn_state**) malloc(sizeof(beorn_state *));
-  blenv->symbol = (char**) malloc(sizeof(char*));
-
-  blenv->native = (beorn_env*) malloc(sizeof(beorn_env));
-  blenv->native->length = 0;
-  blenv->native->bval = (beorn_state**) malloc(sizeof(beorn_state *));
-  blenv->native->symbol = (char**) malloc(sizeof(char*));
-  blenv->global = NULL;
-
-  return blenv;
-}
-
 void del_bstate(beorn_state* curr) {
 
   if (curr == NULL) return;
@@ -258,23 +245,64 @@ beorn_state* bpop(beorn_state* curr, int i){
   return ele;
 }
 
+/* Environments configs */
+
+static size_t gen_hash_idx(bvar_hashs* hsh, char* key) {
+    size_t idx;
+    for (idx = 0; *key != '\0'; key++) {
+        idx = *key + 31 * idx;
+    }
+    return idx % (hsh->cap);
+}
+
+static int init_environment(beorn_env* e) {
+  e->bval = (bvar_hashs*) malloc(sizeof(bvar_hashs));
+  e->bval->cap = BENV_HASH_SIZE;
+  e->bval->vars = (bvars_pair**) malloc(sizeof(bvars_pair *) * BENV_HASH_SIZE);
+  return 0;
+}
+
+beorn_env* new_env() {
+  beorn_env* blenv = (beorn_env*) malloc(sizeof(beorn_env));
+  init_environment(blenv);
+
+  /* Only main environment */
+  blenv->native = (beorn_env*) malloc(sizeof(beorn_env));
+  init_environment(blenv->native);
+  blenv->global = NULL;
+
+  return blenv;
+}
+
 void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {
-  
-  for (int i = 0; i < e->length; i++) {
-    if (strcmp(e->symbol[i], key->cval) == 0) {
-      del_bstate(e->bval[i]);
-      e->bval[i] = bcopy_state(value);
-      return;
+  size_t idx = gen_hash_idx(e->bval, key->cval);
+
+  if (e->bval->vars[idx]) {
+    for (size_t i = 0; i < e->bval->vars[idx]->length; i++) {
+      if (strcmp(e->bval->vars[idx]->key[i], key->cval) == 0) {
+        del_bstate(e->bval->vars[idx]->val[i]);
+        e->bval->vars[idx]->val[i] = bcopy_state(value);
+      }
     }
   }
 
-  e->length++;
-  e->bval = (beorn_state**) realloc(e->bval, sizeof(beorn_state*) * e->length);
-  e->symbol = (char**) realloc(e->symbol, sizeof(char*) * e->length);
+  if (NULL == e->bval->vars[idx]) {
+    e->bval->vars[idx] = (bvars_pair*) malloc(sizeof(bvars_pair));
+    e->bval->vars[idx]->length = 0;
+  }
 
-  e->bval[e->length -1] = bcopy_state(value);
-  e->symbol[e->length -1] = (char*) malloc((strlen(key->cval) + 1) * sizeof(char));
-  strcpy(e->symbol[e->length -1], key->cval);
+  e->bval->vars[idx]->length++;
+  if (e->bval->vars[idx]->length <= 1) {
+    e->bval->vars[idx]->key = (char**) malloc(sizeof(char*));
+    e->bval->vars[idx]->val = (beorn_state**) malloc(sizeof(beorn_state*));
+  } else {
+    e->bval->vars[idx]->key = (char**) realloc(e->bval->vars[idx]->key, sizeof(char*) * e->bval->vars[idx]->length);
+    e->bval->vars[idx]->val = (beorn_state**) realloc(e->bval->vars[idx]->val, sizeof(beorn_state*) * e->bval->vars[idx]->length);
+  }
+
+  e->bval->vars[idx]->val[e->bval->vars[idx]->length - 1] = bcopy_state(value);
+  e->bval->vars[idx]->key[e->bval->vars[idx]->length - 1] = (char*) malloc((strlen(key->cval) + 1) * sizeof(char));
+  strcpy(e->bval->vars[idx]->key[e->bval->vars[idx]->length - 1], key->cval);
   free(key->cval);
 }
 
@@ -284,4 +312,20 @@ void bset_env(beorn_env* e, beorn_state* key, beorn_state* value) {
 
 void blet_env(beorn_env* e, beorn_state* key, beorn_state* value) {
   bput_env(e, key, value);
+}
+
+beorn_state* bget_env_value(beorn_env* e, beorn_state* key) {
+  size_t idx = gen_hash_idx(e->bval, key->cval);
+  
+  if (NULL == e->bval->vars[idx]) {
+    return NULL;
+  }
+
+  for (size_t i = 0; i < e->bval->vars[idx]->length; i++) {
+    if (strcmp(e->bval->vars[idx]->key[i], key->cval) == 0) {
+      return bcopy_state(e->bval->vars[idx]->val[i]);
+    }
+  }
+
+  return NULL;
 }

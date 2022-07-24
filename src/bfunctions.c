@@ -609,7 +609,7 @@ beorn_state* bb_tl(beorn_env* benv, beorn_state* exp) {
   return exp->child[1];
 }
 
-void load_buildtin_functions(beorn_env** benv) {
+void load_builtin_functions(beorn_env** benv) {
   beorn_env* native = (*benv)->native;
 
   put_function_env(&native, "set",     bb_set);
@@ -690,10 +690,11 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
     }    
 
     beorn_env* cenv = get_main_env(benv);
-    for (int i = 0; i < cenv->native->length; i++) {
-      if (strcmp(cenv->native->symbol[i], bs->cval) == 0) {
-        return call_func_native(benv, cenv->native->bval[i], exp);
-      }
+
+    beorn_state* bres_func = bget_env_value(cenv->native, bs);
+
+    if (NULL != bres_func) {
+        return call_func_native(benv, bres_func, exp);
     }
   }
 
