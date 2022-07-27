@@ -56,6 +56,7 @@ typedef struct beorn_state beorn_state;
 
 typedef beorn_state*(*beorn_func)(beorn_env* e, struct beorn_state* s);
 
+/* Vars allocation */
 typedef struct bvars_pair {
     size_t length;
     char** key;
@@ -66,6 +67,19 @@ typedef struct bvar_hashs {
     size_t cap;
     bvars_pair** vars;
 } bvar_hashs;
+
+/* Functions allocation */
+typedef struct bfunc_pair {
+    size_t length;
+    char** fname;
+    int* arity;
+    beorn_state** val;
+} bfunc_pair;
+
+typedef struct bfunc_hashs {
+    size_t cap;
+    bfunc_pair** funs;
+} bfunc_hashs;
 
 typedef struct beorn_state {
   types type;
@@ -84,6 +98,7 @@ typedef struct beorn_state {
 
 typedef struct beorn_env {
   bvar_hashs* bval;
+  bfunc_hashs* bfuncs;
   beorn_env* native;
   beorn_env* global;
 } beorn_env;
@@ -124,10 +139,14 @@ beorn_state* bpop(beorn_state* v, int idx);
 
 void bput_env(beorn_env* e, beorn_state* key, beorn_state* value);
 
+void bregister_env_function(beorn_env* e, beorn_state* bfun);
+
 void bset_env(beorn_env* e, beorn_state* key, beorn_state* value);
 
 void blet_env(beorn_env* e, beorn_state* key, beorn_state* value);
 
 beorn_state* bget_env_value(beorn_env* e, beorn_state* key);
+
+beorn_state* bget_env_function(beorn_env* e, beorn_state* key);
 
 #endif

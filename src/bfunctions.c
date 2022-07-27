@@ -152,6 +152,16 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
   return new_nil();
 }
 
+beorn_state* bb_register_function(beorn_env* benv, beorn_state* exp) {
+  del_bstate(bpop(exp, 0));
+  BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
+  BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
+
+  bregister_env_function(benv, exp);
+  del_bstate(exp);
+  return new_nil();
+}
+
 beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
   BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
@@ -170,36 +180,18 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->length <= 3, BTYPE_ERROR, "'set' missing two arguments.");
-  BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two arguments.");
-  BASSERT(exp->child[1]->type != BT_SYMBOL, BTYPE_ERROR, "exprected a symbol to define function name.");
-  BASSERT(exp->child[2]->type != BT_LIST, BTYPE_ERROR, "exprected a list of args to function.");
+  BASSERT(exp->length > 4,  BRUNTIME_ERROR, "bad definitions, unpected format.");
+  BASSERT(exp->child[1]->type != BT_SYMBOL, BTYPE_ERROR, "expected a symbol to define function name.");
+  BASSERT(exp->child[2]->type != BT_LIST, BTYPE_ERROR, "bad format to args of function.");
   BASSERT(exp->child[3]->type != BT_PACK, BTYPE_ERROR, "exprected a pack to make body to function.");
 
-  beorn_state* lbd = new_lambda(benv);
-  
-  lbd->length = 2;
-  lbd->child[0] = exp->child[2];
-  lbd->child[1] = exp->child[3];
-
-  beorn_state* expfun = new_expression();
-  expfun->child = (beorn_state**) malloc(sizeof(beorn_state) * 2);
-  expfun->length = 3;
-  expfun->child[0] = new_symbol("set");
-  expfun->child[1] = exp->child[1];
-  expfun->child[2] = lbd;
-
-  beorn_state* def = bb_set(benv, expfun);
-
-  free(exp);
-
-  return def;
+  return bb_register_function(benv, exp);
 }
 
 beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_state* exp) {
   UNUSED(benv);
-  beorn_state* lfunc = bpop(exp, 0);
-  del_bstate(lfunc);
+  del_bstate(bpop(exp, 0));
+  del_bstate(bpop(func, 0));
 
   BASSERT(
     func->child[0]->length != exp->length, BTYPE_ERROR, 
@@ -688,28 +680,29 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
       if (!block_process(bs->cval))
         exp->child[i] = process(benv, exp->child[i]);
     }    
-
-    beorn_env* cenv = get_main_env(benv);
-
-    beorn_state* bres_func = bget_env_value(cenv->native, bs);
-
-    if (NULL != bres_func) {
-        return call_func_native(benv, bres_func, exp);
-    }
   }
 
-  // lambda
-  beorn_state* resolved = process(benv, bs);
+  /* Call builtn function */
+  beorn_env* cenv = get_main_env(benv);
 
-  if (resolved->type == BT_LAMBDA) {
-    return call_function_lambda(benv, resolved, exp);
+  beorn_state* bres_func = bget_env_value(cenv->native, bs);
+
+  if (NULL != bres_func) {
+      return call_func_native(benv, bres_func, exp);
+  }
+
+  /* Call dynamic function */
+  beorn_state* bfun = bget_env_function(benv, exp);
+
+  if (NULL != bfun) {
+    bfun->blenv->global = benv;
+    return call_function_lambda(benv, bfun, exp);
   }
 
   if (benv->global != NULL)
     return call_func_builtin(benv->global, exp);
   
   beorn_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", bs->cval);
-  del_bstate(resolved);
   del_bstate(exp);
 
   return err;

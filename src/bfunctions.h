@@ -16,6 +16,8 @@ beorn_state* bb_typeof(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_set(beorn_env* benv, beorn_state* exp);
 
+beorn_state* bb_register_function(beorn_env* benv, beorn_state* exp);
+
 beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_fun(beorn_env* benv, beorn_state* exp);

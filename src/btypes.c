@@ -192,6 +192,7 @@ beorn_state* bcopy_state(beorn_state* v) {
     case BT_SYMBOL:
       x->cval = (char *) malloc((strlen(v->cval) + 1) * sizeof(char));
       strcpy(x->cval, v->cval);
+      x->call_definition = v->call_definition;
     break;
 
     case BT_FUNCTION:
@@ -227,18 +228,22 @@ beorn_state* bpop(beorn_state* curr, int i){
 
 /* Environments configs */
 
-static size_t gen_hash_idx(bvar_hashs* hsh, char* key) {
+static size_t gen_hash_idx(size_t cap, char* key) {
     size_t idx;
     for (idx = 0; *key != '\0'; key++) {
         idx = *key + 31 * idx;
     }
-    return idx % (hsh->cap);
+    return idx % (cap);
 }
 
 static int init_environment(beorn_env* e) {
   e->bval = (bvar_hashs*) malloc(sizeof(bvar_hashs));
   e->bval->cap = BENV_HASH_SIZE;
   e->bval->vars = (bvars_pair**) malloc(sizeof(bvars_pair *) * BENV_HASH_SIZE);
+
+  e->bfuncs = (bfunc_hashs*) malloc(sizeof(bfunc_hashs));
+  e->bfuncs->cap = BENV_HASH_SIZE;
+  e->bfuncs->funs = (bfunc_pair**) malloc(sizeof(bfunc_pair *) * BENV_HASH_SIZE);
   return 0;
 }
 
@@ -255,7 +260,7 @@ beorn_env* new_env() {
 }
 
 void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {
-  size_t idx = gen_hash_idx(e->bval, key->cval);
+  size_t idx = gen_hash_idx(e->bval->cap, key->cval);
 
   if (e->bval->vars[idx]) {
     for (size_t i = 0; i < e->bval->vars[idx]->length; i++) {
@@ -286,6 +291,50 @@ void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {
   free(key->cval);
 }
 
+static void bput_env_function(beorn_env* e, beorn_state* value) {
+  char* fname = value->child[0]->cval;
+  int arity = value->child[1]->length;
+  size_t idx = gen_hash_idx(e->bval->cap, fname);
+
+  if (e->bfuncs->funs[idx]) {
+    for (size_t i = 0; i < e->bfuncs->funs[idx]->length; i++) {
+      if (
+        (strcmp(e->bfuncs->funs[idx]->fname[i], fname) == 0) && 
+        (e->bfuncs->funs[idx]->arity[i] == arity)
+      ) {
+        del_bstate(e->bfuncs->funs[idx]->val[i]);
+        e->bfuncs->funs[idx]->val[i] = bcopy_state(value);
+      }
+    }
+  }
+
+  if (NULL == e->bfuncs->funs[idx]) {
+    e->bfuncs->funs[idx] = (bfunc_pair*) malloc(sizeof(bfunc_pair));
+    e->bfuncs->funs[idx]->length = 0;
+  }
+
+  e->bfuncs->funs[idx]->length++;
+  if (e->bfuncs->funs[idx]->length <= 1) {
+    e->bfuncs->funs[idx]->arity = (int*) malloc(sizeof(int));
+    e->bfuncs->funs[idx]->fname = (char**) malloc(sizeof(char*));
+    e->bfuncs->funs[idx]->val = (beorn_state**) malloc(sizeof(beorn_state*));
+  } else {
+    e->bfuncs->funs[idx]->arity = (int*) realloc(e->bfuncs->funs[idx]->arity, sizeof(int) * e->bfuncs->funs[idx]->length);
+    e->bfuncs->funs[idx]->fname = (char**) realloc(e->bfuncs->funs[idx]->fname, sizeof(char*) * e->bfuncs->funs[idx]->length);
+    e->bfuncs->funs[idx]->val = (beorn_state**) realloc(e->bfuncs->funs[idx]->val, sizeof(beorn_state*) * e->bfuncs->funs[idx]->length);
+  }
+
+  e->bfuncs->funs[idx]->arity[e->bfuncs->funs[idx]->length - 1] = arity;
+  e->bfuncs->funs[idx]->val[e->bfuncs->funs[idx]->length - 1] = bcopy_state(value);
+  e->bfuncs->funs[idx]->fname[e->bfuncs->funs[idx]->length - 1] = (char*) malloc((strlen(fname) + 1) * sizeof(char));
+  strcpy(e->bfuncs->funs[idx]->fname[e->bfuncs->funs[idx]->length - 1], fname);
+  free(fname);
+}
+
+void bregister_env_function(beorn_env* e, beorn_state* bfun) {
+  bput_env_function(e, bfun);
+}
+
 void bset_env(beorn_env* e, beorn_state* key, beorn_state* value) {
   bput_env(e, key, value);
 }
@@ -295,7 +344,7 @@ void blet_env(beorn_env* e, beorn_state* key, beorn_state* value) {
 }
 
 beorn_state* bget_env_value(beorn_env* e, beorn_state* key) {
-  size_t idx = gen_hash_idx(e->bval, key->cval);
+  size_t idx = gen_hash_idx(e->bval->cap, key->cval);
   
   if (NULL == e->bval->vars[idx]) {
     return NULL;
@@ -304,6 +353,26 @@ beorn_state* bget_env_value(beorn_env* e, beorn_state* key) {
   for (size_t i = 0; i < e->bval->vars[idx]->length; i++) {
     if (strcmp(e->bval->vars[idx]->key[i], key->cval) == 0) {
       return bcopy_state(e->bval->vars[idx]->val[i]);
+    }
+  }
+
+  return NULL;
+}
+
+beorn_state* bget_env_function(beorn_env* e, beorn_state* exp) {
+  char* fname = exp->child[0]->cval;
+
+  size_t idx = gen_hash_idx(e->bfuncs->cap, fname);
+  
+  if (NULL == e->bfuncs->funs[idx]) {
+    return NULL;
+  }
+
+  for (size_t i = 0; i < e->bfuncs->funs[idx]->length; i++) {
+    if ((strcmp(e->bfuncs->funs[idx]->fname[i], fname) == 0) &&
+        (e->bfuncs->funs[idx]->arity[i] == exp->length -1)
+    ) {
+      return bcopy_state(e->bfuncs->funs[idx]->val[i]);
     }
   }
 
