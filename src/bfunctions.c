@@ -124,7 +124,7 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
   if (tval == BT_FLOAT) {
     x->fval = r;
   } else {
-    x->ival = (int) r;
+    x->ival = (long int) r;
   }
 
   return x;

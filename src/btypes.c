@@ -6,15 +6,21 @@
 
 /* Types implementations */
 
-beorn_state* new_error(berrors_type t, const char* s, ...) {
+static beorn_state* new_beorn_state() {
   beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  v->length = 0;
+  v->child = NULL;
+  v->trace = NULL;
+  v->call_definition = 0;
+
+  return v;
+}
+
+beorn_state* new_error(berrors_type t, const char* s, ...) {
+  beorn_state* v = new_beorn_state();
   v->type = BT_ERROR;
   v->cval = (char *) calloc(strlen(s) + 1, sizeof(char));
   v->et = t;
-  v->length = 0;
-  v->child = NULL;
-  v->call_definition = 0;
-  v->trace = NULL;
   va_list va;
   va_start(va, s);
 
@@ -24,24 +30,18 @@ beorn_state* new_error(berrors_type t, const char* s, ...) {
 }
 
 beorn_state* new_integer(long iv) {
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->type = BT_INTEGER;
   v->ival = iv;
-  v->child = NULL;
-  v->length = 0;
   v->closed = 1;
-  v->call_definition = 0;
   return v;
 }
 
 beorn_state* new_float(long double fv) {
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->type = BT_FLOAT;
   v->fval = fv;
-  v->child = NULL;
-  v->length = 0;
   v->closed = 1;
-  v->call_definition = 0;
   return v;
 }
 
@@ -51,13 +51,10 @@ beorn_state* new_string(const char* s) {
   if (NULL != s)
     strsize = strlen(s);
 
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->type = BT_STRING;
   v->cval = (char *) calloc(sizeof(char), strsize + 1);
-  v->child = NULL;
-  v->length = 0;
   v->closed = 1;
-  v->call_definition = 0;
 
   if (NULL != s)
     strcpy(v->cval, s);
@@ -66,7 +63,7 @@ beorn_state* new_string(const char* s) {
 }
 
 beorn_state* new_symbol(const char* s) {
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->type = BT_SYMBOL;
 
   if (NULL != s) {
@@ -74,50 +71,38 @@ beorn_state* new_symbol(const char* s) {
     strcpy(v->cval, s);
   }
 
-  v->child = NULL;
-  v->length = 0;
   v->closed = 1;
-  v->call_definition = 0;
   return v;
 }
 
 beorn_state* new_pack() {
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->type = BT_PACK;
   v->cval = NULL;
-  v->child = NULL;
-  v->length = 0;
   v->closed = 0;
-  v->call_definition = 0;
   return v;
 }
 
 beorn_state* new_expression() {
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->blenv = new_env();
   v->type = BT_EXPRESSION;
   v->cval = NULL;
-  v->child = NULL;
-  v->length = 0;
   v->closed = 0;
-  v->call_definition = 0;
   return v;
 }
 
 beorn_state* new_list() {
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->blenv = NULL;
   v->type = BT_LIST;
   v->cval = NULL;
-  v->child = NULL;
-  v->length = 0;
   v->closed = 0;
-  v->call_definition = 0;
   return v;
 }
 
 beorn_state* new_function(beorn_func fn) {
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->type = BT_FUNCTION;
   v->bfunc = fn;
   v->child = NULL;
@@ -126,26 +111,21 @@ beorn_state* new_function(beorn_func fn) {
 };
 
 beorn_state* new_lambda(beorn_env* global) {
-  beorn_state* v = (beorn_state *) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->type = BT_LAMBDA;
   v->bfunc = NULL;
   v->blenv = new_env();
   v->blenv->global = global;
   v->child = (beorn_state**) malloc(sizeof(beorn_state*) * 2);
-  v->length = 0;
-  v->call_definition = 0;
   return v;
 };
 
 beorn_state* new_nil() {
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+  beorn_state* v = new_beorn_state();
   v->type = BT_NIL;
   v->blenv = NULL;
   v->cval = NULL;
-  v->child = NULL;
-  v->length = 0;
   v->closed = 0;
-  v->call_definition = 0;
   return v;
 }
 
