@@ -196,6 +196,7 @@ beorn_state* bcopy_state(beorn_state* v) {
     break;
 
     case BT_FUNCTION:
+      x->blenv = v->blenv;
       x->bfunc = v->bfunc;
       break;
 
@@ -244,6 +245,11 @@ static int init_environment(beorn_env* e) {
   e->bfuncs = (bfunc_hashs*) malloc(sizeof(bfunc_hashs));
   e->bfuncs->cap = BENV_HASH_SIZE;
   e->bfuncs->funs = (bfunc_pair**) malloc(sizeof(bfunc_pair *) * BENV_HASH_SIZE);
+
+  for (size_t i = 0; i < BENV_HASH_SIZE; i++) {
+    e->bval->vars[i] = NULL;
+    e->bfuncs->funs[i] = NULL;
+  }
   return 0;
 }
 
@@ -257,6 +263,36 @@ beorn_env* new_env() {
   blenv->global = NULL;
 
   return blenv;
+}
+
+void del_benv(beorn_env* e) {
+  if ((NULL != e) && (NULL != e->global)) {
+    for (size_t i = 0; i < e->bval->cap; i++) {
+      if (e->bval->vars[i]) {
+
+        for (size_t j = 0; j < e->bval->vars[i]->length; j++) {
+          if (e->bval->vars[i]->val[j]) {
+            free(e->bval->vars[i]->val[j]);
+          }
+        }
+
+        free(e->bval->vars[i]);
+      }
+    }
+    
+    for (size_t i = 0; i < e->bfuncs->cap; i++) {
+      if (e->bfuncs->funs[i]) {
+        for (size_t j = 0; j < e->bfuncs->funs[i]->length; j++) {
+          if (e->bfuncs->funs[i]->val[j]) {
+            free(e->bfuncs->funs[i]->val[j]);
+          }
+        }
+
+        free(e->bfuncs->funs[i]);
+      }
+    }
+    free(e);
+  }
 }
 
 void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {

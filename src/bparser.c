@@ -424,7 +424,7 @@ static int beorn_arith_op() {
 
 static int beorn_import_file() {
   next_token();
-  add_child(bs, new_definition());
+  add_child(bs, new_call_definition());
   add_child(bs, new_symbol("import"));
 
   if (TK_STRING != gtoken->type) {

@@ -188,7 +188,7 @@ beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
   return bb_register_function(benv, exp);
 }
 
-beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_state* exp) {
+beorn_state* bcall_runtime_function(beorn_env* benv, beorn_state* func, beorn_state* exp) {
   UNUSED(benv);
   del_bstate(bpop(exp, 0));
   del_bstate(bpop(func, 0));
@@ -217,6 +217,7 @@ beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_stat
     return new_nil();
   }
 
+  del_benv(func->blenv);
   return res;
 }
 
@@ -639,7 +640,7 @@ void load_builtin_functions(beorn_env** benv) {
   put_function_env(&native, "tl",      bb_tl);
 }
 
-beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
+beorn_state* bcall_native_function(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
   BASSERT(fun->type != BT_FUNCTION, BTYPE_ERROR, "Fail to call function.");
 
   if (fun->bfunc) {
@@ -666,7 +667,7 @@ int block_process(char* fun_n) {
   );
 }
 
-beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
+beorn_state* bcall_function(beorn_env* benv, beorn_state* exp) {
   beorn_state* bs = exp->child[0];
 
   for (int i = 0; i < exp->length; i++) {
@@ -674,13 +675,13 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
       exp->child[i] = process(benv, exp->child[i]);
     }
   }
-
+  // to unify
   if (bs->type == BT_SYMBOL) {
     for (int i = 1; i < exp->length; i++) {
       if (!block_process(bs->cval))
         exp->child[i] = process(benv, exp->child[i]);
-    }    
-  }
+    }
+  } 
 
   /* Call builtn function */
   beorn_env* cenv = get_main_env(benv);
@@ -688,19 +689,21 @@ beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp) {
   beorn_state* bres_func = bget_env_value(cenv->native, bs);
 
   if (NULL != bres_func) {
-      return call_func_native(benv, bres_func, exp);
+      return bcall_native_function(benv, bres_func, exp);
   }
 
   /* Call dynamic function */
   beorn_state* bfun = bget_env_function(benv, exp);
 
   if (NULL != bfun) {
+    bfun->blenv = new_env();
     bfun->blenv->global = benv;
-    return call_function_lambda(benv, bfun, exp);
+    return bcall_runtime_function(benv, bfun, exp);
   }
 
-  if (benv->global != NULL)
-    return call_func_builtin(benv->global, exp);
+  if (benv->global != NULL) {
+    return bcall_function(benv->global, exp);
+  }
   
   beorn_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", bs->cval);
   del_bstate(exp);

@@ -127,6 +127,8 @@ beorn_state* new_nil();
 
 beorn_env* new_env();
 
+void del_benv(beorn_env* e);
+
 void del_bstate(beorn_state* curr);
 
 const char* berrors_to_str(berrors_type t);

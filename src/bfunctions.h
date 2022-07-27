@@ -22,7 +22,7 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_fun(beorn_env* benv, beorn_state* exp);
 
-beorn_state* call_function_lambda(beorn_env* benv, beorn_state* func, beorn_state* exp);
+beorn_state* bcall_runtime_function(beorn_env* benv, beorn_state* func, beorn_state* exp);
 
 beorn_state* bb_let(beorn_env* benv, beorn_state* exp);
 
@@ -68,10 +68,10 @@ beorn_env* get_main_env(beorn_env* benv);
 
 int block_process(char* fun_n);
 
-beorn_state* call_func_builtin(beorn_env* benv, beorn_state* exp);
+beorn_state* bcall_function(beorn_env* benv, beorn_state* exp);
 
 void load_builtin_functions(beorn_env** benv);
 
-beorn_state* call_func_native(beorn_env* benv, beorn_state* fun, beorn_state* exp);
+beorn_state* bcall_native_function(beorn_env* benv, beorn_state* fun, beorn_state* exp);
 
 #endif

@@ -37,7 +37,7 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
     "Invalid expression."
   )
 
-  beorn_state* r = call_func_builtin(benv, curr);
+  beorn_state* r = bcall_function(benv, curr);
 
   return r;
 }
