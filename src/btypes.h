@@ -89,7 +89,7 @@ typedef struct beorn_state {
   int closed;
   int call_definition;
   char* cval;
-  long int ival;
+  long long ival;
   long double fval;
   beorn_func bfunc;
   beorn_env* blenv;

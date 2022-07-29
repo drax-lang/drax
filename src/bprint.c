@@ -57,7 +57,7 @@ static int prtstr(int sstr, char* cval) {
 
 void bprint_default(beorn_state* curr, int sstr) {
   switch (curr->type) {
-    case BT_INTEGER:      printf("%ld", curr->ival);    break;
+    case BT_INTEGER:      printf("%lld", curr->ival);    break;
     case BT_FLOAT:        printf("%.20Lg", curr->fval); break;
     case BT_STRING:       prtstr(sstr,  curr->cval);    break;
     case BT_SYMBOL:       printf("%s",  curr->cval);    break;

@@ -29,6 +29,8 @@
       } breturn_and_realease_expr(exp, result);      \
     default: breturn_and_realease_expr(exp, 0); }    \
 
+#define bdo_op(op, left, rigth) left op rigth
+
 long double get_number(beorn_state* v) {
   switch (v->type)
   {
@@ -98,9 +100,9 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
     if (y->type == BT_FLOAT) { tval = BT_FLOAT; }
     long double tvl = get_number(y);
 
-    if (op == '+') { r += tvl; }
-    if (op == '-') { r -= tvl; }
-    if (op == '*') { r *= tvl; }
+    if (op == '+') { bdo_op(+=, r, tvl); }
+    if (op == '-') { bdo_op(-=, r, tvl); }
+    if (op == '*') { bdo_op(*=, r, tvl); }
     if (op == '/') {
       if (tvl == 0) {
         del_bstate(x);
@@ -110,7 +112,7 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
       }
 
       tval = BT_FLOAT;
-      r /= tvl;
+      bdo_op(/=, r, tvl);
     }
 
     del_bstate(y);
@@ -124,15 +126,14 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
   if (tval == BT_FLOAT) {
     x->fval = r;
   } else {
-    x->ival = (long int) r;
+    x->ival = (long long) r;
   }
 
   return x;
 }
 
 beorn_state* bb_typeof(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->length == 1, BTYPE_ERROR, "missing one argument.");
-  BASSERT(exp->length > 2,  BTYPE_ERROR, "expected only one argument.");
+  BASSERT(exp->length != 2,  BTYPE_ERROR, "expected one argument.");
 
   beorn_state* r = process(benv, exp->child[1]);
   const char* t = btype_to_str(r->type);
@@ -143,10 +144,6 @@ beorn_state* bb_typeof(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
-  BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
-  BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
-
   bset_env(benv, exp->child[1], exp->child[2]);
   del_bstate(exp);
   return new_nil();
@@ -154,20 +151,12 @@ beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_register_function(beorn_env* benv, beorn_state* exp) {
   del_bstate(bpop(exp, 0));
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
-  BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
-
   bregister_env_function(benv, exp);
   del_bstate(exp);
   return new_nil();
 }
 
 beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
-  BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
-  BASSERT(exp->child[1]->type != BT_LIST, BTYPE_ERROR, "exprected a list of args to lambda function.");
-  BASSERT(exp->child[2]->type != BT_PACK, BTYPE_ERROR, "exprected a pack to make body to lambda function.");
-
   beorn_state* lbd = new_lambda(benv);
   
   lbd->length = 2;
@@ -181,9 +170,6 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
   BASSERT(exp->length > 4,  BRUNTIME_ERROR, "bad definitions, unpected format.");
-  BASSERT(exp->child[1]->type != BT_SYMBOL, BTYPE_ERROR, "expected a symbol to define function name.");
-  BASSERT(exp->child[2]->type != BT_LIST, BTYPE_ERROR, "bad format to args of function.");
-  BASSERT(exp->child[3]->type != BT_PACK, BTYPE_ERROR, "exprected a pack to make body to function.");
 
   return bb_register_function(benv, exp);
 }
@@ -223,10 +209,6 @@ beorn_state* bcall_runtime_function(beorn_env* benv, beorn_state* func, beorn_st
 
 beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'set' missing two arguments.");
-  BASSERT(exp->length > 3,  BTYPE_ERROR, "expected only two arguments.");
-  BASSERT(exp->child[1]->type != BT_SYMBOL,  BTYPE_ERROR, "invalid argment after 'set'");
-
   bset_env(exp->blenv, exp->child[1], exp->child[2]);
   del_bstate(exp);
   return new_nil();
@@ -234,8 +216,7 @@ beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_cat(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'cat' missing two arguments.");
-  BASSERT(exp->length > 3,  BTYPE_ERROR, "'cat' expected only two arguments.");
+  BASSERT(exp->length != 3,  BTYPE_ERROR, "'cat' expected only two arguments.");
   BASSERT(exp->child[1]->type != BT_STRING,  BTYPE_ERROR, "'cat' expects string only");
 
   del_bstate(bpop(exp, 0));
@@ -257,11 +238,7 @@ beorn_state* bb_cat(beorn_env* benv, beorn_state* exp) {
   return new_string(result);
 }
 
-beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->length <= 3, BTYPE_ERROR, "'if' missing two arguments.");
-  BASSERT(exp->length > 4,  BTYPE_ERROR, "expected only two or three arguments.");
-  BASSERT(exp->child[1]->type != BT_INTEGER, BTYPE_ERROR, "'if' with invalid argument");
-  
+beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {  
   beorn_state* result = new_nil();
   beorn_state* r_exp = NULL;
   if (exp->child[1]->ival) {
@@ -329,7 +306,6 @@ beorn_state* bb_double_equal(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->length <= 1, BTYPE_ERROR, "'!==' missing at least one argument.");
   
   del_bstate(bpop(exp, 0));
 
@@ -369,10 +345,7 @@ beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
-  UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'=' missing at least two argument.");
-  BASSERT(exp->length > 3, BTYPE_ERROR, "'=' waits only two arguments.");
-  
+  UNUSED(benv);  
   del_bstate(bpop(exp, 0));
 
   beorn_state* first = exp->child[0];
@@ -408,8 +381,6 @@ beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_less(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'<' missing at least two argument.");
-  BASSERT(exp->length > 3, BTYPE_ERROR, "'<' waits only two arguments.");
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'<' not supported to type.");
   
   del_bstate(bpop(exp, 0));
@@ -419,8 +390,6 @@ beorn_state* bb_less(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_less_equal(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'<=' missing at least two argument.");
-  BASSERT(exp->length > 3, BTYPE_ERROR, "'<=' waits only two arguments.");
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'<' not supported to type.");
   
   del_bstate(bpop(exp, 0));
@@ -430,8 +399,6 @@ beorn_state* bb_less_equal(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_bigger(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'>' missing at least two argument.");
-  BASSERT(exp->length > 3, BTYPE_ERROR, "'>' waits only two arguments.");
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'>' not supported to type.");
   
   del_bstate(bpop(exp, 0));
@@ -441,8 +408,6 @@ beorn_state* bb_bigger(beorn_env* benv, beorn_state* exp) {
 
 beorn_state* bb_bigger_equal(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'>=' missing at least two argument.");
-  BASSERT(exp->length > 3, BTYPE_ERROR, "'>=' waits only two arguments.");
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'>' not supported to type.");
   
   del_bstate(bpop(exp, 0));
@@ -451,10 +416,7 @@ beorn_state* bb_bigger_equal(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
-  UNUSED(benv);
-  BASSERT(exp->length <= 2, BTYPE_ERROR, "'!=' missing at least one argument.");
-  BASSERT(exp->length > 3, BTYPE_ERROR, "'!=' waits only two arguments.");
-  
+  UNUSED(benv);  
   del_bstate(bpop(exp, 0));
 
   beorn_state* first = exp->child[0];
@@ -489,9 +451,7 @@ beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_and(beorn_env* benv, beorn_state* exp) {
-  UNUSED(benv);
-  BASSERT(exp->length <= 1, BTYPE_ERROR, "'and' missing arguments.");
-  
+  UNUSED(benv);  
   del_bstate(bpop(exp, 0));
 
   beorn_state* left = exp->child[0];
@@ -503,9 +463,7 @@ beorn_state* bb_and(beorn_env* benv, beorn_state* exp) {
 }
 
 beorn_state* bb_or(beorn_env* benv, beorn_state* exp) {
-  UNUSED(benv);
-  BASSERT(exp->length <= 1, BTYPE_ERROR, "'and' missing arguments.");
-  
+  UNUSED(benv);  
   del_bstate(bpop(exp, 0));
 
   beorn_state* left = exp->child[0];
@@ -536,9 +494,6 @@ void put_function_env(beorn_env** benv, const char* name, beorn_func fn) {
 }
 
 beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
-  BASSERT(exp->length == 1, BTYPE_ERROR, "missing path.");
-  BASSERT(exp->child[1]->type != BT_STRING,  BTYPE_ERROR, "import with invalid path.");
-
   char * content = 0;
   if(get_file_content(exp->child[1]->cval, &content)) {
     char pm[25];
@@ -675,7 +630,7 @@ beorn_state* bcall_function(beorn_env* benv, beorn_state* exp) {
       exp->child[i] = process(benv, exp->child[i]);
     }
   }
-  // to unify
+
   if (bs->type == BT_SYMBOL) {
     for (int i = 1; i < exp->length; i++) {
       if (!block_process(bs->cval))

@@ -32,29 +32,25 @@ char* normalize_path(char* path) {
   return full_path;
 }
 
-int get_file_content(char* name, char** content)
-{
+int get_file_content(char* name, char** content) {
   char* filename = normalize_path(name);
 
   char * buffer = NULL;
   long length;
   FILE * f = fopen (filename, "rb");
 
-  if (f)
-  {
+  if (f) {
     fseek (f, 0, SEEK_END);
     length = ftell (f);
     fseek (f, 0, SEEK_SET);
-    buffer = (char *) calloc (length + 1, sizeof(char));
-    if (buffer)
-    {
+    buffer = (char *) calloc(length + 1, sizeof(char));
+    if (buffer) {
       fread (buffer, 1, length, f);
     }
     fclose (f);
   }
 
-  if (buffer)
-  {
+  if (buffer) {
     buffer[length] = 0;
     *content = buffer;
     return 0;

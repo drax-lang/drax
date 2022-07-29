@@ -37,7 +37,7 @@ typedef enum blex_types {
 
 typedef struct b_token {
   blex_types type;
-  int ival;
+  long long ival;
   long double fval;
   char* cval;
 } b_token;
@@ -60,7 +60,7 @@ int is_symbol(const char c);
 
 b_token* bmake_string(char* val);
 
-b_token* bmake_int(blex_types type, int val);
+b_token* bmake_int(blex_types type, long long val);
 
 b_token* bmake_float(blex_types type, long double val);
 

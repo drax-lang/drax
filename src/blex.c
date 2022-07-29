@@ -104,7 +104,7 @@ b_token* bmake_return(char* keyword) {
 };
 
 
-b_token* bmake_int(blex_types type, int val) {
+b_token* bmake_int(blex_types type, long long val) {
   b_token* v =(b_token*) malloc(sizeof(b_token));
   v->type = type;
   v->ival = val;
@@ -189,7 +189,7 @@ b_token* lexan() {
         }
 
         if (!isf) {
-          int vi = strtol(num, NULL, 10);
+          long long vi = strtoll(num, NULL, 10);
           return bmake_int(TK_INTEGER, vi);
         } else {
           long double vf = strtold(num, NULL);
