@@ -11,8 +11,8 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
 
   if (
       (curr->child[0]->type != BT_SYMBOL) ||
-      ((!curr->call_definition) && (curr->length == 1) && (curr->child[0]->type == BT_SYMBOL))
-      )
+      (is_call_fn(curr) && (curr->length == 1) && (curr->child[0]->type == BT_SYMBOL))
+    )
   {
     curr->child[0] = process(benv, curr->child[0]);
   }
@@ -23,7 +23,7 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
     }
   }
 
-  if ((curr->length == 1) && (!curr->call_definition)) {
+  if ((curr->length == 1) && (is_call_fn(curr))) {
     beorn_state* res = bpop(curr, 0);
     del_bstate(curr);
     return res;

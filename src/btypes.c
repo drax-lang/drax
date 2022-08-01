@@ -11,7 +11,7 @@ static beorn_state* new_beorn_state() {
   v->length = 0;
   v->child = NULL;
   v->trace = NULL;
-  v->call_definition = 0;
+  v->act = BACT_NONE;
 
   return v;
 }
@@ -106,7 +106,7 @@ beorn_state* new_function(beorn_func fn) {
   v->type = BT_FUNCTION;
   v->bfunc = fn;
   v->child = NULL;
-  v->call_definition = 0;
+  v->act = BACT_NONE;
   return v;
 };
 
@@ -192,7 +192,7 @@ beorn_state* bcopy_state(beorn_state* v) {
     case BT_SYMBOL:
       x->cval = (char *) malloc((strlen(v->cval) + 1) * sizeof(char));
       strcpy(x->cval, v->cval);
-      x->call_definition = v->call_definition;
+      x->act = v->act;
     break;
 
     case BT_FUNCTION:

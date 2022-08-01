@@ -214,7 +214,7 @@ beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
   return new_nil();
 }
 
-beorn_state* bb_cat(beorn_env* benv, beorn_state* exp) {
+beorn_state* bb_concat(beorn_env* benv, beorn_state* exp) {
   UNUSED(benv);
   BASSERT(exp->length != 3,  BTYPE_ERROR, "'cat' expected only two arguments.");
   BASSERT(exp->child[1]->type != BT_STRING,  BTYPE_ERROR, "'cat' expects string only");
@@ -560,35 +560,31 @@ beorn_state* bb_tl(beorn_env* benv, beorn_state* exp) {
 void load_builtin_functions(beorn_env** benv) {
   beorn_env* native = (*benv)->native;
 
-  put_function_env(&native, "set",     bb_set);
-  put_function_env(&native, "let",     bb_let);
-  put_function_env(&native, "fun",     bb_fun);
-  put_function_env(&native, "cat",     bb_cat);
-
   put_function_env(&native, "+",       do_op);
   put_function_env(&native, "-",       do_op);
   put_function_env(&native, "*",       do_op);
   put_function_env(&native, "/",       do_op);
-
+  put_function_env(&native, "set",     bb_set);
+  put_function_env(&native, "let",     bb_let);
+  put_function_env(&native, "fun",     bb_fun);
   put_function_env(&native, "==",      bb_double_equal);
   put_function_env(&native, "!==",     bb_double_diff);
-  
   put_function_env(&native, "=",       bb_equal);
   put_function_env(&native, "!=",      bb_diff);
   put_function_env(&native, "<",       bb_less);
   put_function_env(&native, ">",       bb_bigger);
   put_function_env(&native, "<=",      bb_less_equal);
   put_function_env(&native, ">=",      bb_bigger_equal);
-
   put_function_env(&native, "and",     bb_and);
   put_function_env(&native, "or",      bb_or);
-
-  put_function_env(&native, "typeof",  bb_typeof);
-  put_function_env(&native, "lambda",  bb_lambda);
-  put_function_env(&native, "if",      bb_if);
-  put_function_env(&native, "print",   bb_print);
   put_function_env(&native, "import",  bb_import);
-
+  put_function_env(&native, "if",      bb_if);
+  put_function_env(&native, "lambda",  bb_lambda);
+  
+  // builtin functions
+  put_function_env(&native, "concat",  bb_concat);
+  put_function_env(&native, "typeof",  bb_typeof);
+  put_function_env(&native, "print",   bb_print);
   put_function_env(&native, "get",     bb_get);
   put_function_env(&native, "put",     bb_put);
   put_function_env(&native, "hd",      bb_hd);

@@ -5,8 +5,6 @@
 #ifndef __BLEX
 #define __BLEX
 
-// #include "btypes.h"
-
 typedef enum blex_types {
   TK_BRACE_CLOSE = 0, TK_BRACE_OPEN, TK_BRACKET_CLOSE, 
   TK_BRACKET_OPEN, TK_COMMA, TK_DO, TK_END, TK_FLOAT,
@@ -50,7 +48,6 @@ typedef struct blex_tokens {
 } blex_tokens;
 
 /* global */
-// b_token* lxv;
 
 char* append_char(const char *str, const char c);
 

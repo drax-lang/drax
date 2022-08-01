@@ -26,7 +26,7 @@ beorn_state* bcall_runtime_function(beorn_env* benv, beorn_state* func, beorn_st
 
 beorn_state* bb_let(beorn_env* benv, beorn_state* exp);
 
-beorn_state* bb_cat(beorn_env* benv, beorn_state* exp);
+beorn_state* bb_concat(beorn_env* benv, beorn_state* exp);
 
 beorn_state* bb_if(beorn_env* benv, beorn_state* exp);
 

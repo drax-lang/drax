@@ -7,6 +7,8 @@
 
 #include "btypes.h"
 
+#define is_call_fn(v) ((v->act != BACT_CALL_OP) && (v->act != BACT_CORE_OP))
+
 beorn_state* process_expression(beorn_env* benv, beorn_state* curr);
 
 beorn_state* process_symbol(beorn_env* benv, beorn_state* curr);

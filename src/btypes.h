@@ -27,6 +27,12 @@ typedef enum types {
   BT_NIL
 } types;
 
+typedef enum bact_type{
+  BACT_NONE,
+  BACT_CALL_OP,
+  BACT_CORE_OP,
+} bact_type;
+
 typedef enum bimode {
   BI_NONE,
   BI_PROCESS_DEFAULT,
@@ -83,11 +89,11 @@ typedef struct bfunc_hashs {
 
 typedef struct beorn_state {
   types type;
+  bact_type act;
   berrors_type et;
   bstack_trace* trace;
   int length;
   int closed;
-  int call_definition;
   char* cval;
   long long ival;
   long double fval;

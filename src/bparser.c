@@ -20,7 +20,7 @@ beorn_state* new_definition() {
 
 beorn_state* new_call_definition() {
   beorn_state* bdef = new_expression();
-  bdef->call_definition = 1;
+  bdef->act = BACT_CALL_OP;
   return bdef;
 }
 
