@@ -2,8 +2,8 @@
  * Jean Carlos (jeantux)
  */
 
-#ifndef __BVM
-#define __BVM
+#ifndef __DVM
+#define __DVM
 
 #include "dtypes.h"
 

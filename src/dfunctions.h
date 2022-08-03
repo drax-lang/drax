@@ -2,8 +2,8 @@
  * Jean Carlos (jeantux)
  */
 
-#ifndef __BFUN
-#define __BFUN
+#ifndef __DFUN
+#define __DFUN
 
 #include <string.h>
 #include "dtypes.h"

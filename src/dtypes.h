@@ -2,8 +2,8 @@
  * Jean Carlos (jeantux)
  */
  
-#ifndef __BTYPES
-#define __BTYPES
+#ifndef __DTYPES
+#define __DTYPES
 
 #define BASSERT(cond, t, msg, ...) if (cond) { return new_error(t, msg, ##__VA_ARGS__); }
 

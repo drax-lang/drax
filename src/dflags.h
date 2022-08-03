@@ -2,8 +2,8 @@
  * Jean Carlos (jeantux)
  */
 
-#ifndef __BFLAGS
-#define __BFLAGS
+#ifndef __DFLAGS
+#define __DFLAGS
 
 #include <stdlib.h>
 #include <string.h>

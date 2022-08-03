@@ -2,10 +2,10 @@
  * Jean Carlos (jeantux)
  */
 
-#ifndef __BLEX
-#define __BLEX
+#ifndef __DLEX
+#define __DLEX
 
-typedef enum blex_types {
+typedef enum dlex_types {
   TK_BRACE_CLOSE = 0, TK_BRACE_OPEN, TK_BRACKET_CLOSE, 
   TK_BRACKET_OPEN, TK_COMMA, TK_DO, TK_END, TK_FLOAT,
   TK_FUN, TK_IF, TK_ELSE, TK_IMPORT, TK_INTEGER, TK_LAMBDA,
@@ -31,17 +31,17 @@ typedef enum blex_types {
   /* last element */
   TK_EOF,
 
-} blex_types;
+} dlex_types;
 
-typedef struct b_token {
-  blex_types type;
+typedef struct d_token {
+  dlex_types type;
   long long ival;
   long double fval;
   char* cval;
-} b_token;
+} d_token;
 
 typedef struct blex_tokens {
-  b_token** child;
+  d_token** child;
   int line;
   int pos;
   int length;
@@ -55,22 +55,22 @@ int is_number(const char c);
 
 int is_symbol(const char c);
 
-b_token* bmake_string(char* val);
+d_token* bmake_string(char* val);
 
-b_token* bmake_int(blex_types type, long long val);
+d_token* bmake_int(dlex_types type, long long val);
 
-b_token* bmake_float(blex_types type, long double val);
+d_token* bmake_float(dlex_types type, long double val);
 
-b_token* bmake_symbol(blex_types type);
+d_token* bmake_symbol(dlex_types type);
 
-b_token* bmake_return(char* keyword);
+d_token* bmake_return(char* keyword);
 
 int init_lexan(char* b);
 
-b_token* b_check_next(int* nump);
+d_token* b_check_next(int* nump);
 
-b_token* b_check_prev();
+d_token* b_check_prev();
 
-b_token* lexan();
+d_token* lexan();
 
 #endif

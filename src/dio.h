@@ -2,8 +2,8 @@
  * Jean Carlos (jeantux)
  */
 
-#ifndef __BIO
-#define __BIO
+#ifndef __DIO
+#define __DIO
 
 char* b_pwd();
 

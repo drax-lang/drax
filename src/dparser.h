@@ -2,8 +2,8 @@
  * Jean Carlos (jeantux)
  */
 
-#ifndef __BPARSER
-#define __BPARSER
+#ifndef __DPARSER
+#define __DPARSER
 
 #include "dtypes.h"
 #include "dlex.h"
@@ -24,7 +24,7 @@ typedef union drax_values {
 } drax_value;
 
 typedef struct expr_tree {
-    blex_types type;
+    dlex_types type;
     b_operator op;
     struct expr_tree *left;
     struct expr_tree *right;
@@ -77,11 +77,11 @@ void set_gberror(const char *msg);
 
 drax_state* get_curr_bvalue();
 
-blex_types get_crr_type();
+dlex_types get_crr_type();
 
 b_operator get_operator();
 
-expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left, 
+expr_tree *new_node(dlex_types type, b_operator operation, expr_tree *left, 
   expr_tree *right, drax_state *value
 );
 

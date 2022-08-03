@@ -2,8 +2,8 @@
  * Jean Carlos (jeantux)
  */
 
-#ifndef __BPRINT
-#define __BPRINT
+#ifndef __DPRINT
+#define __DPRINT
 
 #include "dtypes.h"
 

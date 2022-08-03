@@ -5,7 +5,7 @@
 #include "dlex.h"
 
 drax_state* bs;
-b_token* gtoken;
+d_token* gtoken;
 bg_error* gberr;
 
 int gcurr_line_number = 1;
@@ -147,7 +147,7 @@ drax_state* get_curr_bvalue() {
   return NULL;
 }
 
-blex_types get_crr_type() {
+dlex_types get_crr_type() {
   if (NULL == gtoken) return 0;
   return gtoken->type;
 }
@@ -163,7 +163,7 @@ b_operator get_operator() {
   }
 }
 
-expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left, 
+expr_tree *new_node(dlex_types type, b_operator operation, expr_tree *left, 
   expr_tree *right, drax_state *value
 ) {
     expr_tree *n = (expr_tree*) malloc(sizeof(expr_tree));
@@ -310,7 +310,7 @@ static void drax_arith_expression() {
 }
 
 static int drax_call_function() {
-  b_token* nxt = b_check_next(NULL);
+  d_token* nxt = b_check_next(NULL);
   if (TK_PAR_OPEN != nxt->type) {
     free(nxt);
     return 0;
@@ -342,7 +342,7 @@ static int drax_call_function() {
 }
 
 static int drax_define_var() {
-  b_token* nxt = b_check_next(NULL);
+  d_token* nxt = b_check_next(NULL);
   if (TK_EQ != nxt->type) {
     free(nxt);
     return 0;
@@ -365,7 +365,7 @@ static int drax_define_var() {
   return 1;
 }
 
-static int is_arith_op(blex_types type) {
+static int is_arith_op(dlex_types type) {
   return (TK_ADD == type) || (TK_DIV == type) || 
          (TK_MUL == type) || (TK_SUB == type);
 }
@@ -381,7 +381,7 @@ static int check_is_conclusion_token() {
     (TK_BRACKET_CLOSE == gtoken->type);
 }
 
-static int arithm_simple_terminator(blex_types tt){//add comma
+static int arithm_simple_terminator(dlex_types tt){//add comma
   return ((TK_BREAK_LINE == tt) || (TK_EOF == tt) || (TK_END == tt));
 }
 
@@ -389,7 +389,7 @@ static int curr_exp_is_arithm_op() {
   int zero = 0;
   int* jump_count = &zero;
   int cnte_proc = 1;
-  b_token* nxt = b_check_next(jump_count);
+  d_token* nxt = b_check_next(jump_count);
   size_t stack_counter = 0;
 
   if (is_arith_op(nxt->type))  { return 1; }
@@ -527,14 +527,14 @@ static int drax_function_definition() {
 
 /* if definition */
 
-static int is_bool_op(blex_types type) {
+static int is_bool_op(dlex_types type) {
   return (TK_DEQ == type)    || (TK_TEQ == type)     || 
          (TK_LE == type)     || (TK_LS == type)      ||
          (TK_NOT_EQ == type) || (TK_NOT_DEQ == type) ||
          (TK_BE == type)     || (TK_BG == type);
 }
 
-static const char* bbool_to_str(blex_types type) {
+static const char* bbool_to_str(dlex_types type) {
   switch (type) {
     case TK_NOT_EQ: return "!=";
     case TK_NOT_DEQ: return "!==";
@@ -635,7 +635,7 @@ static int drax_if_definition() {
   return 1;
 }
 
-static const char* blogic_to_str(blex_types type) {
+static const char* blogic_to_str(dlex_types type) {
   switch (type) {
     case TK_AND: return "and";
     case TK_OR: return "or";
@@ -646,7 +646,7 @@ static const char* blogic_to_str(blex_types type) {
   }
 }
 
-static int is_logic_op(blex_types type) {
+static int is_logic_op(dlex_types type) {
   return (TK_AND == type) || (TK_OR == type);
 }
 

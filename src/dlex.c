@@ -66,24 +66,24 @@ int is_number(const char c) {
   return 0;
 }
 
-b_token* bmake_string(char* val) {
-  b_token* v =(b_token*) malloc(sizeof(b_token));
+d_token* bmake_string(char* val) {
+  d_token* v =(d_token*) malloc(sizeof(d_token));
   v->type = TK_STRING;
   v->cval = val;
   b_index++;
   return v;
 }
 
-b_token* bmake_symbol(blex_types type) {
-  b_token* v =(b_token*) malloc(sizeof(b_token));
+d_token* bmake_symbol(dlex_types type) {
+  d_token* v =(d_token*) malloc(sizeof(d_token));
   v->type = type;
   v->cval = NULL;
   b_index++;
   return v;
 };
 
-b_token* bmake_return(char* keyword) {
-  blex_types t = TK_SYMBOL;
+d_token* bmake_return(char* keyword) {
+  dlex_types t = TK_SYMBOL;
 
   for (int i = 0; i < TK_EOF; i++)
   {
@@ -93,7 +93,7 @@ b_token* bmake_return(char* keyword) {
     }
   }
 
-  b_token* v =(b_token*) malloc(sizeof(b_token));
+  d_token* v =(d_token*) malloc(sizeof(d_token));
   v->type = t;
 
   if (TK_SYMBOL == t)
@@ -104,16 +104,16 @@ b_token* bmake_return(char* keyword) {
 };
 
 
-b_token* bmake_int(blex_types type, long long val) {
-  b_token* v =(b_token*) malloc(sizeof(b_token));
+d_token* bmake_int(dlex_types type, long long val) {
+  d_token* v =(d_token*) malloc(sizeof(d_token));
   v->type = type;
   v->ival = val;
   b_index++;
   return v;
 }
 
-b_token* bmake_float(blex_types type, long double val) {
-  b_token* v =(b_token*) malloc(sizeof(b_token));
+d_token* bmake_float(dlex_types type, long double val) {
+  d_token* v =(d_token*) malloc(sizeof(d_token));
   v->type = type;
   v->fval = val;
   b_index++;
@@ -126,13 +126,13 @@ int init_lexan(char* b) {
   return b_index;
 }
 
-b_token* b_check_next(int* jump) {
+d_token* b_check_next(int* jump) {
   size_t i_bk = b_index;
   if ((NULL != jump) && (*jump > 0)) {
     b_index = *jump;
   }
 
-  b_token* r = lexan();
+  d_token* r = lexan();
 
   if (NULL != jump) { *jump = b_index; }
 
@@ -140,15 +140,15 @@ b_token* b_check_next(int* jump) {
   return r;
 }
 
-b_token* b_check_prev() {
+d_token* b_check_prev() {
   size_t i_bk = b_index;
   b_index = b_prev_index;
-  b_token* r = lexan();
+  d_token* r = lexan();
   b_index = i_bk;
   return r;
 }
 
-b_token* lexan() {
+d_token* lexan() {
   b_prev_index = b_index;
   char* bword = 0;
   while (b_index < strlen(buffer)) {

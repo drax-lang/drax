@@ -2,8 +2,8 @@
  * Jean Carlos (jeantux)
  */
 
-#ifndef __BSHELL
-#define __BSHELL
+#ifndef __DSHELL
+#define __DSHELL
 
 void breg_history(char* content);
 
