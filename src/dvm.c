@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "bvm.h"
-#include "bprint.h"
-#include "btypes.h"
-#include "bfunctions.h"
+#include "dvm.h"
+#include "dprint.h"
+#include "dtypes.h"
+#include "dfunctions.h"
 
 beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
   if(curr->length == 0)

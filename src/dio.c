@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include "bio.h"
+#include "dio.h"
 
 char* b_pwd() {
   long size;

@@ -1,20 +1,20 @@
 CC=gcc
-APP=beorn
+APP=drax
 
 LIBS= 
 
 ASM_LINKS=
 
-FILES= ./src/bvm.c \
-       ./src/btypes.c \
-       ./src/bparser.c \
-       ./src/bfunctions.c \
-       ./src/bprint.c \
-       ./src/bshell.c \
-	   ./src/bflags.c \
-	   ./src/bio.c \
-	   ./src/blex.c \
-       ./src/beorn.c
+FILES= ./src/dvm.c \
+       ./src/dtypes.c \
+       ./src/dparser.c \
+       ./src/dfunctions.c \
+       ./src/dprint.c \
+       ./src/dshell.c \
+	   ./src/dflags.c \
+	   ./src/dio.c \
+	   ./src/dlex.c \
+       ./src/drax.c
 
 DEBUGF= -ggdb \
 		-g
@@ -46,7 +46,6 @@ BEORN_BUILD_FULL= \
 		-D_B_BUILF_FULL \
 		-ledit
 
-
 DEFAULT_BUILD = \
 		$(CC) \
 		$(FLAGS) \
@@ -67,4 +66,4 @@ config:
 	mkdir bin
 
 clean:
-	rm -rf ./bin/beorn
+	rm -rf ./bin/$(APP)

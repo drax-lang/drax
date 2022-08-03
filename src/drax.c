@@ -1,18 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "bparser.h"
-#include "bvm.h"
-#include "bprint.h"
-#include "bfunctions.h"
-#include "bflags.h"
-#include "bio.h"
-#include "beorn.h"
+#include "dparser.h"
+#include "dvm.h"
+#include "dprint.h"
+#include "dfunctions.h"
+#include "dflags.h"
+#include "dio.h"
+#include "drax.h"
 
 #ifdef _B_BUILF_FULL
   #include <editline/readline.h>
 #else
-  #include "bshell.h"
+  #include "dshell.h"
 #endif
 
 int interactive_shell(beorn_env* benv) {

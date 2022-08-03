@@ -1,10 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
-#include "bfunctions.h"
-#include "bvm.h"
-#include "bparser.h"
-#include "bprint.h"
-#include "bio.h"
+#include "dfunctions.h"
+#include "dvm.h"
+#include "dparser.h"
+#include "dprint.h"
+#include "dio.h"
 
 #define breturn_and_realease_expr(exp, bool_op) { \
   del_bstate(exp);                                \

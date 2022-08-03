@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "btypes.h"
-#include "bprint.h"
+#include "dtypes.h"
+#include "dprint.h"
 
 void bshow_error(beorn_state* curr) {
   const char * et = berrors_to_str(curr->et);

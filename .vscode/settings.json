@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.ejs": "html",
+        "dtypes.h": "c",
+        "dlex.h": "c",
+        "dshell.h": "c"
+    }
+}

@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "blex.h"
+#include "dlex.h"
 
 size_t b_index = 0;
 size_t b_prev_index = 0;

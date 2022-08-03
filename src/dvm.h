@@ -5,7 +5,7 @@
 #ifndef __BVM
 #define __BVM
 
-#include "btypes.h"
+#include "dtypes.h"
 
 #define is_call_fn(v) ((v->act != BACT_CALL_OP) && (v->act != BACT_CORE_OP))
 

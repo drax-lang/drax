@@ -1,8 +1,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "bparser.h"
-#include "blex.h"
+#include "dparser.h"
+#include "dlex.h"
 
 beorn_state* bs;
 b_token* gtoken;

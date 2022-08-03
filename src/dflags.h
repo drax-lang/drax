@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "btypes.h"
+#include "dtypes.h"
 
 #define BEORN_VM_VERSION  "v0.0.1-dev"
 #define BEORN_LIB_VERSION "LC-0.0.0-dev"

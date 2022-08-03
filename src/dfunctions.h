@@ -6,7 +6,7 @@
 #define __BFUN
 
 #include <string.h>
-#include "btypes.h"
+#include "dtypes.h"
 
 long double get_number(beorn_state* v);
 

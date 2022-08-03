@@ -5,8 +5,8 @@
 #ifndef __BPARSER
 #define __BPARSER
 
-#include "btypes.h"
-#include "blex.h"
+#include "dtypes.h"
+#include "dlex.h"
 
 typedef enum b_operator {
     BINVALID,

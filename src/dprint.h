@@ -5,7 +5,7 @@
 #ifndef __BPRINT
 #define __BPRINT
 
-#include "btypes.h"
+#include "dtypes.h"
 
 #define BDEF  "\x1B[0m"
 #define BBLU  "\x1B[34m"

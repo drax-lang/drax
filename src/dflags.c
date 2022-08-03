@@ -2,7 +2,7 @@
  * Jean Carlos (jeantux)
  */
 
-#include "bflags.h"
+#include "dflags.h"
 
 void initial_info() {
   printf("Beorn (%s) (%s)\n", BEORN_VM_VERSION, BEORN_LIB_VERSION);
