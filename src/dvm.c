@@ -5,7 +5,7 @@
 #include "dtypes.h"
 #include "dfunctions.h"
 
-beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
+drax_state* process_expression(drax_env* benv, drax_state* curr) {
   if(curr->length == 0)
     return curr;
 
@@ -24,7 +24,7 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
   }
 
   if ((curr->length == 1) && (is_call_fn(curr))) {
-    beorn_state* res = bpop(curr, 0);
+    drax_state* res = bpop(curr, 0);
     del_bstate(curr);
     return res;
   }
@@ -37,13 +37,13 @@ beorn_state* process_expression(beorn_env* benv, beorn_state* curr) {
     "Invalid expression."
   )
 
-  beorn_state* r = bcall_function(benv, curr);
+  drax_state* r = bcall_function(benv, curr);
 
   return r;
 }
 
-beorn_state* process_symbol(beorn_env* benv, beorn_state* curr) {
-  beorn_state* bres = bget_env_value(benv, curr);
+drax_state* process_symbol(drax_env* benv, drax_state* curr) {
+  drax_state* bres = bget_env_value(benv, curr);
 
   if(NULL != bres) {
     return bres;
@@ -56,7 +56,7 @@ beorn_state* process_symbol(beorn_env* benv, beorn_state* curr) {
   return new_error(BREFERENCE_ERROR, "symbol '%s' not found.", curr->cval);
 }
 
-beorn_state* process_list(beorn_env* benv, beorn_state* curr) {
+drax_state* process_list(drax_env* benv, drax_state* curr) {
   for (int i = 0; i < curr->length; i++)
   {
     curr->child[i] = process(benv, curr->child[i]);
@@ -65,7 +65,7 @@ beorn_state* process_list(beorn_env* benv, beorn_state* curr) {
   return curr;
 }
 
-beorn_state* process(beorn_env* benv, beorn_state* curr) {
+drax_state* process(drax_env* benv, drax_state* curr) {
   switch (curr->type) {
     case BT_PROGRAM:
     case BT_INTEGER:
@@ -85,15 +85,15 @@ beorn_state* process(beorn_env* benv, beorn_state* curr) {
 }
 
 /**
- * run all childs of beorn state.
+ * run all childs of drax state.
  */
-void __run_bs__(beorn_env* benv, beorn_state* curr, int inter_mode) {
+void __run_bs__(drax_env* benv, drax_state* curr, int inter_mode) {
   if (curr->type == BT_ERROR) {
     bprint(curr);
     bbreak_line();
   } else {
     for (int i = 0; i < curr->length; i++) {
-      beorn_state* evaluated = process(benv, curr->child[i]);
+      drax_state* evaluated = process(benv, curr->child[i]);
       if (evaluated->type == BT_ERROR) {
         bprint(evaluated);
         bbreak_line();
@@ -106,6 +106,6 @@ void __run_bs__(beorn_env* benv, beorn_state* curr, int inter_mode) {
   }
 }
 
-void __run__(beorn_env* benv, beorn_state* curr, int inter_mode) {
+void __run__(drax_env* benv, drax_state* curr, int inter_mode) {
   __run_bs__(benv, curr, inter_mode);
 }

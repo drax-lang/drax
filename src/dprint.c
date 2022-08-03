@@ -3,7 +3,7 @@
 #include "dtypes.h"
 #include "dprint.h"
 
-void bshow_error(beorn_state* curr) {
+void bshow_error(drax_state* curr) {
   const char * et = berrors_to_str(curr->et);
   if (NULL != curr->trace) {
     printf("%sline: %ld, %s: %s%s", BRED, curr->trace->line, et, curr->cval, BDEF);    
@@ -12,7 +12,7 @@ void bshow_error(beorn_state* curr) {
   printf("%s%s: %s%s", BRED, et, curr->cval, BDEF);
 }
 
-void bprint_pack(beorn_state* curr) {
+void bprint_pack(drax_state* curr) {
   putchar('{');
   for (int i = 0; i < curr->length; i++) {
     bprint(curr->child[i]);
@@ -21,7 +21,7 @@ void bprint_pack(beorn_state* curr) {
   putchar('}');
 }
 
-void bprint_list(beorn_state* curr) {
+void bprint_list(drax_state* curr) {
   putchar('[');
   for (int i = 0; i < curr->length; i++) {
     bprint(curr->child[i]);
@@ -33,7 +33,7 @@ void bprint_list(beorn_state* curr) {
   putchar(']');
 }
 
-void bprint_expression(beorn_state* curr) {
+void bprint_expression(drax_state* curr) {
     putchar('(');
     for (int i = 0; i < curr->length; i++) {
       bprint(curr->child[i]);
@@ -42,7 +42,7 @@ void bprint_expression(beorn_state* curr) {
     putchar(')');
 }
 
-void bprint(beorn_state* curr) {
+void bprint(drax_state* curr) {
   bprint_default(curr, 1);
 }
 
@@ -55,7 +55,7 @@ static int prtstr(int sstr, char* cval) {
   return 1;
 }
 
-void bprint_default(beorn_state* curr, int sstr) {
+void bprint_default(drax_state* curr, int sstr) {
   switch (curr->type) {
     case BT_INTEGER:      printf("%lld", curr->ival);    break;
     case BT_FLOAT:        printf("%.20Lg", curr->fval); break;

@@ -1,4 +1,4 @@
-/* Beorn Lang - 2022
+/* drax Lang - 2022
  * Jean Carlos (jeantux)
  */
 
@@ -9,16 +9,16 @@
 
 #define is_call_fn(v) ((v->act != BACT_CALL_OP) && (v->act != BACT_CORE_OP))
 
-beorn_state* process_expression(beorn_env* benv, beorn_state* curr);
+drax_state* process_expression(drax_env* benv, drax_state* curr);
 
-beorn_state* process_symbol(beorn_env* benv, beorn_state* curr);
+drax_state* process_symbol(drax_env* benv, drax_state* curr);
 
-beorn_state* process_list(beorn_env* benv, beorn_state* curr);
+drax_state* process_list(drax_env* benv, drax_state* curr);
 
-beorn_state* process(beorn_env* benv, beorn_state* curr);
+drax_state* process(drax_env* benv, drax_state* curr);
 
-void __run_bs__(beorn_env* benv, beorn_state* curr, int inter_mode);
+void __run_bs__(drax_env* benv, drax_state* curr, int inter_mode);
 
-void __run__(beorn_env* benv, beorn_state* curr, int inter_mode);
+void __run__(drax_env* benv, drax_state* curr, int inter_mode);
 
 #endif

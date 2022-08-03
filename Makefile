@@ -42,7 +42,7 @@ FLAGS=  -std=c99 \
 		$(LIBS) \
 		$(OUTBIN)
 
-BEORN_BUILD_FULL= \
+DRAX_BUILD_FULL= \
 		-D_B_BUILF_FULL \
 		-ledit
 
@@ -51,7 +51,7 @@ DEFAULT_BUILD = \
 		$(FLAGS) \
 		$(FILES) \
 		$(ASM_LINKS) \
-		$(BEORN_BUILD_FULL)
+		$(DRAX_BUILD_FULL)
 
 all:
 	$(DEFAULT_BUILD)

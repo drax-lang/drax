@@ -1,4 +1,4 @@
-/* Beorn Lang - 2022
+/* drax Lang - 2022
  * Jean Carlos (jeantux)
  */
 
@@ -17,24 +17,24 @@ typedef enum b_operator {
     BDIV
 } b_operator;
 
-typedef union beorn_values {
+typedef union drax_values {
     char *cval;
     int ival;
     long double fval;
-} beorn_value;
+} drax_value;
 
 typedef struct expr_tree {
     blex_types type;
     b_operator op;
     struct expr_tree *left;
     struct expr_tree *right;
-    beorn_state* value;
+    drax_state* value;
 } expr_tree;
 
 typedef struct bg_error {
   int has_error;
   size_t line;
-  beorn_state* state_error;
+  drax_state* state_error;
 } bg_error;
 
 /* Handler active state */
@@ -59,30 +59,30 @@ int add_elem_stack_bpsm();
 
 /* helpers */
 
-beorn_state* new_definition();
+drax_state* new_definition();
 
-beorn_state* new_call_definition();
+drax_state* new_call_definition();
 
-beorn_state* new_parser_error(const char* msg);
+drax_state* new_parser_error(const char* msg);
 
-beorn_state* get_last_state();
+drax_state* get_last_state();
 
-int add_child(beorn_state* root, beorn_state* child);
+int add_child(drax_state* root, drax_state* child);
 
-int close_pending_structs(beorn_state* root, types ct);
+int close_pending_structs(drax_state* root, types ct);
 
 void next_token();
 
 void set_gberror(const char *msg);
 
-beorn_state* get_curr_bvalue();
+drax_state* get_curr_bvalue();
 
 blex_types get_crr_type();
 
 b_operator get_operator();
 
 expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left, 
-  expr_tree *right, beorn_state *value
+  expr_tree *right, drax_state *value
 );
 
 expr_tree *value_expr();
@@ -95,12 +95,12 @@ expr_tree *add_expr();
 
 expr_tree *build_expr_tree();
 
-void infix_to_bexpression(beorn_state* bs, expr_tree *expr);
+void infix_to_bexpression(drax_state* bs, expr_tree *expr);
 
 int get_args_by_comma();
 
 void process_token();
 
-beorn_state* beorn_parser(char *input);
+drax_state* drax_parser(char *input);
 
 #endif

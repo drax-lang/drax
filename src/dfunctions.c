@@ -31,7 +31,7 @@
 
 #define bdo_op(op, left, rigth) left op rigth
 
-long double get_number(beorn_state* v) {
+long double get_number(drax_state* v) {
   switch (v->type)
   {
   case BT_FLOAT:
@@ -45,9 +45,9 @@ long double get_number(beorn_state* v) {
   }
 }
 
-beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
+drax_state* do_op(drax_env* benv, drax_state* curr) {
 
-  beorn_state* opr = bpop(curr, 0);
+  drax_state* opr = bpop(curr, 0);
   char op = opr->cval[0];
   del_bstate(opr);
 
@@ -69,7 +69,7 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
     }
   }
 
-  beorn_state* x = bpop(curr, 0);
+  drax_state* x = bpop(curr, 0);
   x = process(benv, x);
 
   if ((op == '-') && curr->length == 0) {
@@ -86,7 +86,7 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
   types tval = x->type;
 
   while (curr->length > 0) {
-    beorn_state* y = bpop(curr, 0);
+    drax_state* y = bpop(curr, 0);
 
     if (y->type == BT_EXPRESSION) { y = do_op(benv, y); }
     y = process(benv, y);
@@ -132,10 +132,10 @@ beorn_state* do_op(beorn_env* benv, beorn_state* curr) {
   return x;
 }
 
-beorn_state* bb_typeof(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_typeof(drax_env* benv, drax_state* exp) {
   BASSERT(exp->length != 2,  BTYPE_ERROR, "expected one argument.");
 
-  beorn_state* r = process(benv, exp->child[1]);
+  drax_state* r = process(benv, exp->child[1]);
   const char* t = btype_to_str(r->type);
   free(r);
   free(exp);
@@ -143,21 +143,21 @@ beorn_state* bb_typeof(beorn_env* benv, beorn_state* exp) {
   return new_string(t);
 }
 
-beorn_state* bb_set(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_set(drax_env* benv, drax_state* exp) {
   bset_env(benv, exp->child[1], exp->child[2]);
   del_bstate(exp);
   return new_nil();
 }
 
-beorn_state* bb_register_function(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_register_function(drax_env* benv, drax_state* exp) {
   del_bstate(bpop(exp, 0));
   bregister_env_function(benv, exp);
   del_bstate(exp);
   return new_nil();
 }
 
-beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
-  beorn_state* lbd = new_lambda(benv);
+drax_state* bb_lambda(drax_env* benv, drax_state* exp) {
+  drax_state* lbd = new_lambda(benv);
   
   lbd->length = 2;
   lbd->child[0] = exp->child[1];
@@ -168,13 +168,13 @@ beorn_state* bb_lambda(beorn_env* benv, beorn_state* exp) {
   return lbd;
 }
 
-beorn_state* bb_fun(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_fun(drax_env* benv, drax_state* exp) {
   BASSERT(exp->length > 4,  BRUNTIME_ERROR, "bad definitions, unpected format.");
 
   return bb_register_function(benv, exp);
 }
 
-beorn_state* bcall_runtime_function(beorn_env* benv, beorn_state* func, beorn_state* exp) {
+drax_state* bcall_runtime_function(drax_env* benv, drax_state* func, drax_state* exp) {
   UNUSED(benv);
   del_bstate(bpop(exp, 0));
   del_bstate(bpop(func, 0));
@@ -189,7 +189,7 @@ beorn_state* bcall_runtime_function(beorn_env* benv, beorn_state* func, beorn_st
     bset_env(func->blenv, func->child[0]->child[i], exp->child[i]);
   }
 
-  beorn_state* res = NULL;
+  drax_state* res = NULL;
   int size = func->child[1]->length;
   for (int i = 0; i < size; i++) {
     if (res != NULL) {
@@ -207,14 +207,14 @@ beorn_state* bcall_runtime_function(beorn_env* benv, beorn_state* func, beorn_st
   return res;
 }
 
-beorn_state* bb_let(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_let(drax_env* benv, drax_state* exp) {
   UNUSED(benv);
   bset_env(exp->blenv, exp->child[1], exp->child[2]);
   del_bstate(exp);
   return new_nil();
 }
 
-beorn_state* bb_concat(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_concat(drax_env* benv, drax_state* exp) {
   UNUSED(benv);
   BASSERT(exp->length != 3,  BTYPE_ERROR, "'cat' expected only two arguments.");
   BASSERT(exp->child[1]->type != BT_STRING,  BTYPE_ERROR, "'cat' expects string only");
@@ -238,9 +238,9 @@ beorn_state* bb_concat(beorn_env* benv, beorn_state* exp) {
   return new_string(result);
 }
 
-beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {  
-  beorn_state* result = new_nil();
-  beorn_state* r_exp = NULL;
+drax_state* bb_if(drax_env* benv, drax_state* exp) {  
+  drax_state* result = new_nil();
+  drax_state* r_exp = NULL;
   if (exp->child[1]->ival) {
     r_exp = bpop(exp, 2);
   } else if (exp->length >= 4) {
@@ -263,13 +263,13 @@ beorn_state* bb_if(beorn_env* benv, beorn_state* exp) {
   return result;
 }
 
-beorn_state* bb_double_equal(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_double_equal(drax_env* benv, drax_state* exp) {
   UNUSED(benv);
   BASSERT(exp->length <= 1, BTYPE_ERROR, "'==' missing at least one argument.");
   
   del_bstate(bpop(exp, 0));
 
-  beorn_state* first = exp->child[0];
+  drax_state* first = exp->child[0];
 
   for (int i = 1; i < exp->length; i++)
   {
@@ -304,12 +304,12 @@ beorn_state* bb_double_equal(beorn_env* benv, beorn_state* exp) {
   return new_integer(1);
 }
 
-beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_double_diff(drax_env* benv, drax_state* exp) {
   UNUSED(benv);
   
   del_bstate(bpop(exp, 0));
 
-  beorn_state* first = exp->child[0];
+  drax_state* first = exp->child[0];
 
   for (int i = 1; i < exp->length; i++)
   {
@@ -344,11 +344,11 @@ beorn_state* bb_double_diff(beorn_env* benv, beorn_state* exp) {
   return new_integer(0);
 }
 
-beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_equal(drax_env* benv, drax_state* exp) {
   UNUSED(benv);  
   del_bstate(bpop(exp, 0));
 
-  beorn_state* first = exp->child[0];
+  drax_state* first = exp->child[0];
 
   if (exp->child[1]->type != first->type) {
     del_bstate(exp);
@@ -379,47 +379,47 @@ beorn_state* bb_equal(beorn_env* benv, beorn_state* exp) {
   return new_integer(1);
 }
 
-beorn_state* bb_less(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_less(drax_env* benv, drax_state* exp) {
   UNUSED(benv);
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'<' not supported to type.");
   
   del_bstate(bpop(exp, 0));
-  beorn_state* first = exp->child[0];
+  drax_state* first = exp->child[0];
   bcond_op_default(first, exp, <);
 }
 
-beorn_state* bb_less_equal(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_less_equal(drax_env* benv, drax_state* exp) {
   UNUSED(benv);
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'<' not supported to type.");
   
   del_bstate(bpop(exp, 0));
-  beorn_state* first = exp->child[0];
+  drax_state* first = exp->child[0];
   bcond_op_default(first, exp, <=);
 }
 
-beorn_state* bb_bigger(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_bigger(drax_env* benv, drax_state* exp) {
   UNUSED(benv);
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'>' not supported to type.");
   
   del_bstate(bpop(exp, 0));
-  beorn_state* first = exp->child[0];
+  drax_state* first = exp->child[0];
   bcond_op_default(first, exp, >);
 }
 
-beorn_state* bb_bigger_equal(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_bigger_equal(drax_env* benv, drax_state* exp) {
   UNUSED(benv);
   BASSERT((exp->child[1]->type != BT_INTEGER) && (exp->child[1]->type != BT_FLOAT), BTYPE_ERROR, "'>' not supported to type.");
   
   del_bstate(bpop(exp, 0));
-  beorn_state* first = exp->child[0];
+  drax_state* first = exp->child[0];
   bcond_op_default(first, exp, >=);
 }
 
-beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_diff(drax_env* benv, drax_state* exp) {
   UNUSED(benv);  
   del_bstate(bpop(exp, 0));
 
-  beorn_state* first = exp->child[0];
+  drax_state* first = exp->child[0];
 
   if (exp->child[1]->type != first->type) {
     del_bstate(exp);
@@ -450,31 +450,31 @@ beorn_state* bb_diff(beorn_env* benv, beorn_state* exp) {
   return new_integer(0);
 }
 
-beorn_state* bb_and(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_and(drax_env* benv, drax_state* exp) {
   UNUSED(benv);  
   del_bstate(bpop(exp, 0));
 
-  beorn_state* left = exp->child[0];
-  beorn_state* rigth = exp->child[1];
+  drax_state* left = exp->child[0];
+  drax_state* rigth = exp->child[1];
 
   int result = (left->ival && rigth->ival);
   del_bstate(exp);
   return new_integer(result);
 }
 
-beorn_state* bb_or(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_or(drax_env* benv, drax_state* exp) {
   UNUSED(benv);  
   del_bstate(bpop(exp, 0));
 
-  beorn_state* left = exp->child[0];
-  beorn_state* rigth = exp->child[1];
+  drax_state* left = exp->child[0];
+  drax_state* rigth = exp->child[1];
 
   int result = (left->ival || rigth->ival);
   del_bstate(exp);
   return new_integer(result);
 }
 
-beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_print(drax_env* benv, drax_state* exp) {
   UNUSED(benv);
   bpop(exp, 0);
 
@@ -488,12 +488,12 @@ beorn_state* bb_print(beorn_env* benv, beorn_state* exp) {
   return new_nil();
 }
 
-void put_function_env(beorn_env** benv, const char* name, beorn_func fn) {
-  beorn_state* fun = new_function(fn);
+void put_function_env(drax_env** benv, const char* name, drax_func fn) {
+  drax_state* fun = new_function(fn);
   bset_env((*benv), new_string(name), fun);
 }
 
-beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_import(drax_env* benv, drax_state* exp) {
   char * content = 0;
   if(get_file_content(exp->child[1]->cval, &content)) {
     char pm[25];
@@ -504,14 +504,14 @@ beorn_state* bb_import(beorn_env* benv, beorn_state* exp) {
   
     return new_error(BFILE_NOT_FOUND, "Cannot find file: '%s'", pm);
   }
-  beorn_state* out = beorn_parser(content);
+  drax_state* out = drax_parser(content);
   
   __run__(benv, out, 0);
 
   return new_nil();
 }
 
-beorn_state* bb_get(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_get(drax_env* benv, drax_state* exp) {
   BASSERT(exp->length != 3, BUNSPECTED_TYPE, "Expected two arguments");
   BASSERT(exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list as argument.");
 
@@ -528,37 +528,37 @@ beorn_state* bb_get(beorn_env* benv, beorn_state* exp) {
   return exp->child[1]->child[idx];
 }
 
-beorn_state* bb_put(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_put(drax_env* benv, drax_state* exp) {
   BASSERT(exp->length != 3, BUNSPECTED_TYPE, "Expected two arguments");
   BASSERT(exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list as first argument.");
   UNUSED(benv);
   exp->child[1]->length++;
-  exp->child[1]->child = (beorn_state**) realloc(exp->child[1]->child, (sizeof(beorn_state*)) * exp->child[1]->length);
+  exp->child[1]->child = (drax_state**) realloc(exp->child[1]->child, (sizeof(drax_state*)) * exp->child[1]->length);
   exp->child[1]->child[exp->child[1]->length -1] = exp->child[2];
 
   return exp->child[1];
 }
 
-beorn_state* bb_hd(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_hd(drax_env* benv, drax_state* exp) {
   BASSERT(exp->length != 2, BUNSPECTED_TYPE, "Expected only one argument");
   BASSERT(exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list as first argument.");
   UNUSED(benv);
-  beorn_state* first = bpop(exp->child[1], 0);
+  drax_state* first = bpop(exp->child[1], 0);
   del_bstate(exp->child[1]);
   return first;
 }
 
-beorn_state* bb_tl(beorn_env* benv, beorn_state* exp) {
+drax_state* bb_tl(drax_env* benv, drax_state* exp) {
   BASSERT(exp->length != 2, BUNSPECTED_TYPE, "Expected only one argument");
   BASSERT(exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list as argument.");
   UNUSED(benv);
-  beorn_state* first = bpop(exp->child[1], 0);
+  drax_state* first = bpop(exp->child[1], 0);
   del_bstate(first);
   return exp->child[1];
 }
 
-void load_builtin_functions(beorn_env** benv) {
-  beorn_env* native = (*benv)->native;
+void load_builtin_functions(drax_env** benv) {
+  drax_env* native = (*benv)->native;
 
   put_function_env(&native, "+",       do_op);
   put_function_env(&native, "-",       do_op);
@@ -591,7 +591,7 @@ void load_builtin_functions(beorn_env** benv) {
   put_function_env(&native, "tl",      bb_tl);
 }
 
-beorn_state* bcall_native_function(beorn_env* benv, beorn_state* fun, beorn_state* exp) {
+drax_state* bcall_native_function(drax_env* benv, drax_state* fun, drax_state* exp) {
   BASSERT(fun->type != BT_FUNCTION, BTYPE_ERROR, "Fail to call function.");
 
   if (fun->bfunc) {
@@ -601,8 +601,8 @@ beorn_state* bcall_native_function(beorn_env* benv, beorn_state* fun, beorn_stat
   return new_error(BRUNTIME_ERROR, "fail to call function '%s'.", fun->cval);
 }
 
-beorn_env* get_main_env(beorn_env* benv) {
-  beorn_env* cenv = benv;
+drax_env* get_main_env(drax_env* benv) {
+  drax_env* cenv = benv;
   while (cenv->global != NULL) {
     cenv = benv->global;
   }
@@ -618,8 +618,8 @@ int block_process(char* fun_n) {
   );
 }
 
-beorn_state* bcall_function(beorn_env* benv, beorn_state* exp) {
-  beorn_state* bs = exp->child[0];
+drax_state* bcall_function(drax_env* benv, drax_state* exp) {
+  drax_state* bs = exp->child[0];
 
   for (int i = 0; i < exp->length; i++) {
     if (exp->child[i]->type == BT_EXPRESSION) {
@@ -635,16 +635,16 @@ beorn_state* bcall_function(beorn_env* benv, beorn_state* exp) {
   } 
 
   /* Call builtn function */
-  beorn_env* cenv = get_main_env(benv);
+  drax_env* cenv = get_main_env(benv);
 
-  beorn_state* bres_func = bget_env_value(cenv->native, bs);
+  drax_state* bres_func = bget_env_value(cenv->native, bs);
 
   if (NULL != bres_func) {
       return bcall_native_function(benv, bres_func, exp);
   }
 
   /* Call dynamic function */
-  beorn_state* bfun = bget_env_function(benv, exp);
+  drax_state* bfun = bget_env_function(benv, exp);
 
   if (NULL != bfun) {
     bfun->blenv = new_env();
@@ -656,7 +656,7 @@ beorn_state* bcall_function(beorn_env* benv, beorn_state* exp) {
     return bcall_function(benv->global, exp);
   }
   
-  beorn_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", bs->cval);
+  drax_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", bs->cval);
   del_bstate(exp);
 
   return err;

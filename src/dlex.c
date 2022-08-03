@@ -7,7 +7,7 @@ size_t b_index = 0;
 size_t b_prev_index = 0;
 char* buffer;
 
-static const char *const beorn_tokens [] = {
+static const char *const drax_tokens [] = {
   "}", "{", "]", "[", ",", "do", 
   "end", "float", "fun", "if", "else", "import", 
   "integer", "lambda", ")", "(", "string", "<symbol>", 
@@ -87,7 +87,7 @@ b_token* bmake_return(char* keyword) {
 
   for (int i = 0; i < TK_EOF; i++)
   {
-    if (strcmp(keyword, beorn_tokens[i]) == 0) {
+    if (strcmp(keyword, drax_tokens[i]) == 0) {
       t = i;
       break;
     }

@@ -1,5 +1,5 @@
-# What is Beorn ? 
-Beorn is an ongoing research and development project. <br />
+# What is Drax ? 
+Drax is an ongoing research and development project. <br />
 The proposal is to build a functional, dynamic and extremely light language. <br/>
 
 ### Features

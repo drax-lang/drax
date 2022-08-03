@@ -1,4 +1,4 @@
-/* Beorn Lang - 2022
+/* drax Lang - 2022
  * Jean Carlos (jeantux)
  */
  
@@ -56,17 +56,17 @@ typedef struct bstack_trace {
   char* file;
 } bstack_trace;
 
-typedef struct beorn_env beorn_env;
+typedef struct drax_env drax_env;
 
-typedef struct beorn_state beorn_state;
+typedef struct drax_state drax_state;
 
-typedef beorn_state*(*beorn_func)(beorn_env* e, struct beorn_state* s);
+typedef drax_state*(*drax_func)(drax_env* e, struct drax_state* s);
 
 /* Vars allocation */
 typedef struct bvars_pair {
     size_t length;
     char** key;
-    beorn_state** val;
+    drax_state** val;
 } bvars_pair;
 
 typedef struct bvar_hashs {
@@ -79,7 +79,7 @@ typedef struct bfunc_pair {
     size_t length;
     char** fname;
     int* arity;
-    beorn_state** val;
+    drax_state** val;
 } bfunc_pair;
 
 typedef struct bfunc_hashs {
@@ -87,7 +87,7 @@ typedef struct bfunc_hashs {
     bfunc_pair** funs;
 } bfunc_hashs;
 
-typedef struct beorn_state {
+typedef struct drax_state {
   types type;
   bact_type act;
   berrors_type et;
@@ -97,64 +97,64 @@ typedef struct beorn_state {
   char* cval;
   long long ival;
   long double fval;
-  beorn_func bfunc;
-  beorn_env* blenv;
-  beorn_state** child;
-} beorn_state;
+  drax_func bfunc;
+  drax_env* blenv;
+  drax_state** child;
+} drax_state;
 
-typedef struct beorn_env {
+typedef struct drax_env {
   bvar_hashs* bval;
   bfunc_hashs* bfuncs;
-  beorn_env* native;
-  beorn_env* global;
-} beorn_env;
+  drax_env* native;
+  drax_env* global;
+} drax_env;
 
-beorn_state* new_error(berrors_type t, const char* s, ...);
+drax_state* new_error(berrors_type t, const char* s, ...);
 
-beorn_state* new_integer(long iv);
+drax_state* new_integer(long iv);
 
-beorn_state* new_float(long double fv);
+drax_state* new_float(long double fv);
 
-beorn_state* new_string(const char* s);
+drax_state* new_string(const char* s);
 
-beorn_state* new_symbol(const char* s);
+drax_state* new_symbol(const char* s);
 
-beorn_state* new_pack();
+drax_state* new_pack();
 
-beorn_state* new_expression();
+drax_state* new_expression();
 
-beorn_state* new_list();
+drax_state* new_list();
 
-beorn_state* new_function(beorn_func fn);
+drax_state* new_function(drax_func fn);
 
-beorn_state* new_lambda(beorn_env* global);
+drax_state* new_lambda(drax_env* global);
 
-beorn_state* new_nil();
+drax_state* new_nil();
 
-beorn_env* new_env();
+drax_env* new_env();
 
-void del_benv(beorn_env* e);
+void del_benv(drax_env* e);
 
-void del_bstate(beorn_state* curr);
+void del_bstate(drax_state* curr);
 
 const char* berrors_to_str(berrors_type t);
 
 const char* btype_to_str(types t);
 
-beorn_state* bcopy_state(beorn_state* v);
+drax_state* bcopy_state(drax_state* v);
 
-beorn_state* bpop(beorn_state* v, int idx);
+drax_state* bpop(drax_state* v, int idx);
 
-void bput_env(beorn_env* e, beorn_state* key, beorn_state* value);
+void bput_env(drax_env* e, drax_state* key, drax_state* value);
 
-void bregister_env_function(beorn_env* e, beorn_state* bfun);
+void bregister_env_function(drax_env* e, drax_state* bfun);
 
-void bset_env(beorn_env* e, beorn_state* key, beorn_state* value);
+void bset_env(drax_env* e, drax_state* key, drax_state* value);
 
-void blet_env(beorn_env* e, beorn_state* key, beorn_state* value);
+void blet_env(drax_env* e, drax_state* key, drax_state* value);
 
-beorn_state* bget_env_value(beorn_env* e, beorn_state* key);
+drax_state* bget_env_value(drax_env* e, drax_state* key);
 
-beorn_state* bget_env_function(beorn_env* e, beorn_state* key);
+drax_state* bget_env_function(drax_env* e, drax_state* key);
 
 #endif

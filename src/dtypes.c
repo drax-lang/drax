@@ -1,13 +1,13 @@
 #include <string.h>
 #include <stdlib.h>
-#include "dtypes.h"
 #include "stdio.h"
 #include <stdarg.h>
+#include "dtypes.h"
 
 /* Types implementations */
 
-static beorn_state* new_beorn_state() {
-  beorn_state* v = (beorn_state*) malloc(sizeof(beorn_state));
+static drax_state* new_drax_state() {
+  drax_state* v = (drax_state*) malloc(sizeof(drax_state));
   v->length = 0;
   v->child = NULL;
   v->trace = NULL;
@@ -16,8 +16,8 @@ static beorn_state* new_beorn_state() {
   return v;
 }
 
-beorn_state* new_error(berrors_type t, const char* s, ...) {
-  beorn_state* v = new_beorn_state();
+drax_state* new_error(berrors_type t, const char* s, ...) {
+  drax_state* v = new_drax_state();
   v->type = BT_ERROR;
   v->cval = (char *) calloc(strlen(s) + 1, sizeof(char));
   v->et = t;
@@ -29,29 +29,29 @@ beorn_state* new_error(berrors_type t, const char* s, ...) {
   return v;
 }
 
-beorn_state* new_integer(long iv) {
-  beorn_state* v = new_beorn_state();
+drax_state* new_integer(long iv) {
+  drax_state* v = new_drax_state();
   v->type = BT_INTEGER;
   v->ival = iv;
   v->closed = 1;
   return v;
 }
 
-beorn_state* new_float(long double fv) {
-  beorn_state* v = new_beorn_state();
+drax_state* new_float(long double fv) {
+  drax_state* v = new_drax_state();
   v->type = BT_FLOAT;
   v->fval = fv;
   v->closed = 1;
   return v;
 }
 
-beorn_state* new_string(const char* s) {
+drax_state* new_string(const char* s) {
   int strsize = 0;
   
   if (NULL != s)
     strsize = strlen(s);
 
-  beorn_state* v = new_beorn_state();
+  drax_state* v = new_drax_state();
   v->type = BT_STRING;
   v->cval = (char *) calloc(sizeof(char), strsize + 1);
   v->closed = 1;
@@ -62,8 +62,8 @@ beorn_state* new_string(const char* s) {
   return v;
 }
 
-beorn_state* new_symbol(const char* s) {
-  beorn_state* v = new_beorn_state();
+drax_state* new_symbol(const char* s) {
+  drax_state* v = new_drax_state();
   v->type = BT_SYMBOL;
 
   if (NULL != s) {
@@ -75,16 +75,16 @@ beorn_state* new_symbol(const char* s) {
   return v;
 }
 
-beorn_state* new_pack() {
-  beorn_state* v = new_beorn_state();
+drax_state* new_pack() {
+  drax_state* v = new_drax_state();
   v->type = BT_PACK;
   v->cval = NULL;
   v->closed = 0;
   return v;
 }
 
-beorn_state* new_expression() {
-  beorn_state* v = new_beorn_state();
+drax_state* new_expression() {
+  drax_state* v = new_drax_state();
   v->blenv = new_env();
   v->type = BT_EXPRESSION;
   v->cval = NULL;
@@ -92,8 +92,8 @@ beorn_state* new_expression() {
   return v;
 }
 
-beorn_state* new_list() {
-  beorn_state* v = new_beorn_state();
+drax_state* new_list() {
+  drax_state* v = new_drax_state();
   v->blenv = NULL;
   v->type = BT_LIST;
   v->cval = NULL;
@@ -101,8 +101,8 @@ beorn_state* new_list() {
   return v;
 }
 
-beorn_state* new_function(beorn_func fn) {
-  beorn_state* v = new_beorn_state();
+drax_state* new_function(drax_func fn) {
+  drax_state* v = new_drax_state();
   v->type = BT_FUNCTION;
   v->bfunc = fn;
   v->child = NULL;
@@ -110,18 +110,18 @@ beorn_state* new_function(beorn_func fn) {
   return v;
 };
 
-beorn_state* new_lambda(beorn_env* global) {
-  beorn_state* v = new_beorn_state();
+drax_state* new_lambda(drax_env* global) {
+  drax_state* v = new_drax_state();
   v->type = BT_LAMBDA;
   v->bfunc = NULL;
   v->blenv = new_env();
   v->blenv->global = global;
-  v->child = (beorn_state**) malloc(sizeof(beorn_state*) * 2);
+  v->child = (drax_state**) malloc(sizeof(drax_state*) * 2);
   return v;
 };
 
-beorn_state* new_nil() {
-  beorn_state* v = new_beorn_state();
+drax_state* new_nil() {
+  drax_state* v = new_drax_state();
   v->type = BT_NIL;
   v->blenv = NULL;
   v->cval = NULL;
@@ -129,7 +129,7 @@ beorn_state* new_nil() {
   return v;
 }
 
-void del_bstate(beorn_state* curr) {
+void del_bstate(drax_state* curr) {
 
   if (curr == NULL) return;
 
@@ -176,8 +176,8 @@ const char* btype_to_str(types t) {
   }
 }
 
-beorn_state* bcopy_state(beorn_state* v) {
-  beorn_state* x = (beorn_state*) malloc(sizeof(beorn_state));
+drax_state* bcopy_state(drax_state* v) {
+  drax_state* x = (drax_state*) malloc(sizeof(drax_state));
   x->type = v->type;
   switch (v->type) {
     break;
@@ -206,7 +206,7 @@ beorn_state* bcopy_state(beorn_state* v) {
     case BT_EXPRESSION:
       x->length = v->length;
       x->blenv = v->blenv;
-      x->child = (beorn_state**) malloc(sizeof(beorn_state*) * x->length);
+      x->child = (drax_state**) malloc(sizeof(drax_state*) * x->length);
       for (int i = 0; i < x->length; i++) {
         x->child[i] = bcopy_state(v->child[i]);
       }
@@ -216,14 +216,14 @@ beorn_state* bcopy_state(beorn_state* v) {
   return x;
 }
 
-beorn_state* bpop(beorn_state* curr, int i){
-  beorn_state* ele = curr->child[i];
+drax_state* bpop(drax_state* curr, int i){
+  drax_state* ele = curr->child[i];
 
   memmove(&curr->child[i], &curr->child[i+1],
-    sizeof(beorn_state*) * (curr->length -i -1));
+    sizeof(drax_state*) * (curr->length -i -1));
 
   curr->length--;
-  curr->child = (beorn_state**) realloc(curr->child, sizeof(beorn_state*) * curr->length);
+  curr->child = (drax_state**) realloc(curr->child, sizeof(drax_state*) * curr->length);
   return ele;
 }
 
@@ -237,7 +237,7 @@ static size_t gen_hash_idx(size_t cap, char* key) {
     return idx % (cap);
 }
 
-static int init_environment(beorn_env* e) {
+static int init_environment(drax_env* e) {
   e->bval = (bvar_hashs*) malloc(sizeof(bvar_hashs));
   e->bval->cap = BENV_HASH_SIZE;
   e->bval->vars = (bvars_pair**) malloc(sizeof(bvars_pair *) * BENV_HASH_SIZE);
@@ -253,19 +253,19 @@ static int init_environment(beorn_env* e) {
   return 0;
 }
 
-beorn_env* new_env() {
-  beorn_env* blenv = (beorn_env*) malloc(sizeof(beorn_env));
+drax_env* new_env() {
+  drax_env* blenv = (drax_env*) malloc(sizeof(drax_env));
   init_environment(blenv);
 
   /* Only main environment */
-  blenv->native = (beorn_env*) malloc(sizeof(beorn_env));
+  blenv->native = (drax_env*) malloc(sizeof(drax_env));
   init_environment(blenv->native);
   blenv->global = NULL;
 
   return blenv;
 }
 
-void del_benv(beorn_env* e) {
+void del_benv(drax_env* e) {
   if ((NULL != e) && (NULL != e->global)) {
     for (size_t i = 0; i < e->bval->cap; i++) {
       if (e->bval->vars[i]) {
@@ -295,7 +295,7 @@ void del_benv(beorn_env* e) {
   }
 }
 
-void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {
+void bput_env(drax_env* e, drax_state* key, drax_state* value) {
   size_t idx = gen_hash_idx(e->bval->cap, key->cval);
 
   if (e->bval->vars[idx]) {
@@ -315,10 +315,10 @@ void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {
   e->bval->vars[idx]->length++;
   if (e->bval->vars[idx]->length <= 1) {
     e->bval->vars[idx]->key = (char**) malloc(sizeof(char*));
-    e->bval->vars[idx]->val = (beorn_state**) malloc(sizeof(beorn_state*));
+    e->bval->vars[idx]->val = (drax_state**) malloc(sizeof(drax_state*));
   } else {
     e->bval->vars[idx]->key = (char**) realloc(e->bval->vars[idx]->key, sizeof(char*) * e->bval->vars[idx]->length);
-    e->bval->vars[idx]->val = (beorn_state**) realloc(e->bval->vars[idx]->val, sizeof(beorn_state*) * e->bval->vars[idx]->length);
+    e->bval->vars[idx]->val = (drax_state**) realloc(e->bval->vars[idx]->val, sizeof(drax_state*) * e->bval->vars[idx]->length);
   }
 
   e->bval->vars[idx]->val[e->bval->vars[idx]->length - 1] = bcopy_state(value);
@@ -327,7 +327,7 @@ void bput_env(beorn_env* e, beorn_state* key, beorn_state* value) {
   free(key->cval);
 }
 
-static void bput_env_function(beorn_env* e, beorn_state* value) {
+static void bput_env_function(drax_env* e, drax_state* value) {
   char* fname = value->child[0]->cval;
   int arity = value->child[1]->length;
   size_t idx = gen_hash_idx(e->bval->cap, fname);
@@ -353,11 +353,11 @@ static void bput_env_function(beorn_env* e, beorn_state* value) {
   if (e->bfuncs->funs[idx]->length <= 1) {
     e->bfuncs->funs[idx]->arity = (int*) malloc(sizeof(int));
     e->bfuncs->funs[idx]->fname = (char**) malloc(sizeof(char*));
-    e->bfuncs->funs[idx]->val = (beorn_state**) malloc(sizeof(beorn_state*));
+    e->bfuncs->funs[idx]->val = (drax_state**) malloc(sizeof(drax_state*));
   } else {
     e->bfuncs->funs[idx]->arity = (int*) realloc(e->bfuncs->funs[idx]->arity, sizeof(int) * e->bfuncs->funs[idx]->length);
     e->bfuncs->funs[idx]->fname = (char**) realloc(e->bfuncs->funs[idx]->fname, sizeof(char*) * e->bfuncs->funs[idx]->length);
-    e->bfuncs->funs[idx]->val = (beorn_state**) realloc(e->bfuncs->funs[idx]->val, sizeof(beorn_state*) * e->bfuncs->funs[idx]->length);
+    e->bfuncs->funs[idx]->val = (drax_state**) realloc(e->bfuncs->funs[idx]->val, sizeof(drax_state*) * e->bfuncs->funs[idx]->length);
   }
 
   e->bfuncs->funs[idx]->arity[e->bfuncs->funs[idx]->length - 1] = arity;
@@ -367,19 +367,19 @@ static void bput_env_function(beorn_env* e, beorn_state* value) {
   free(fname);
 }
 
-void bregister_env_function(beorn_env* e, beorn_state* bfun) {
+void bregister_env_function(drax_env* e, drax_state* bfun) {
   bput_env_function(e, bfun);
 }
 
-void bset_env(beorn_env* e, beorn_state* key, beorn_state* value) {
+void bset_env(drax_env* e, drax_state* key, drax_state* value) {
   bput_env(e, key, value);
 }
 
-void blet_env(beorn_env* e, beorn_state* key, beorn_state* value) {
+void blet_env(drax_env* e, drax_state* key, drax_state* value) {
   bput_env(e, key, value);
 }
 
-beorn_state* bget_env_value(beorn_env* e, beorn_state* key) {
+drax_state* bget_env_value(drax_env* e, drax_state* key) {
   size_t idx = gen_hash_idx(e->bval->cap, key->cval);
   
   if (NULL == e->bval->vars[idx]) {
@@ -395,7 +395,7 @@ beorn_state* bget_env_value(beorn_env* e, beorn_state* key) {
   return NULL;
 }
 
-beorn_state* bget_env_function(beorn_env* e, beorn_state* exp) {
+drax_state* bget_env_function(drax_env* e, drax_state* exp) {
   char* fname = exp->child[0]->cval;
 
   size_t idx = gen_hash_idx(e->bfuncs->cap, fname);

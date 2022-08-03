@@ -1,15 +1,15 @@
-/* Beorn Lang - 2022
+/* drax Lang - 2022
  * Jean Carlos (jeantux)
  */
 
 #include "dflags.h"
 
 void initial_info() {
-  printf("Beorn (%s) (%s)\n", BEORN_VM_VERSION, BEORN_LIB_VERSION);
+  printf("Drax (%s) (%s)\n", drax_VM_VERSION, drax_LIB_VERSION);
 }
 
 void version_app() {
-  printf("Beorn Land (%s) (%s)\n", BEORN_VM_VERSION, BEORN_LIB_VERSION);
+  printf("Drax Language (%s) (%s)\n", drax_VM_VERSION, drax_LIB_VERSION);
 }
 
 int non_flag(char * name) {

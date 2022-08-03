@@ -4,7 +4,7 @@
 #include "dparser.h"
 #include "dlex.h"
 
-beorn_state* bs;
+drax_state* bs;
 b_token* gtoken;
 bg_error* gberr;
 
@@ -13,25 +13,25 @@ int gcurr_line_number = 1;
 g_act_state* global_act_state;
 
 /* helpers */
-beorn_state* new_definition() {
-  beorn_state* bdef = new_expression();
+drax_state* new_definition() {
+  drax_state* bdef = new_expression();
   return bdef;
 }
 
-beorn_state* new_call_definition() {
-  beorn_state* bdef = new_expression();
+drax_state* new_call_definition() {
+  drax_state* bdef = new_expression();
   bdef->act = BACT_CALL_OP;
   return bdef;
 }
 
-beorn_state* new_parser_error(const char* msg) {
-  beorn_state* err = new_error(BPARSER_ERROR, msg);
+drax_state* new_parser_error(const char* msg) {
+  drax_state* err = new_error(BPARSER_ERROR, msg);
   return err;
 }
 
-beorn_state* get_last_state(beorn_state* root) {
+drax_state* get_last_state(drax_state* root) {
   if (root->length <= 0) { return NULL; }
-  beorn_state* curr;
+  drax_state* curr;
 
   if (((root->child[root->length - 1]->type == BT_PACK) || 
        (root->child[root->length - 1]->type == BT_LIST) || 
@@ -44,7 +44,7 @@ beorn_state* get_last_state(beorn_state* root) {
   
   curr = root->child[root->length - 1];
   root->length--;
-  root->child = (beorn_state**) realloc(root->child, sizeof(beorn_state*) * root->length);
+  root->child = (drax_state**) realloc(root->child, sizeof(drax_state*) * root->length);
   return curr;
 }
 
@@ -52,15 +52,15 @@ beorn_state* get_last_state(beorn_state* root) {
  * Add new nodes to AST.
  * Always the last open expression.
  */
-int add_child(beorn_state* root, beorn_state* child) {
+int add_child(drax_state* root, drax_state* child) {
   if (root->length <= 0) {
     root->length++;
-    root->child = (beorn_state**) malloc(sizeof(beorn_state*));
+    root->child = (drax_state**) malloc(sizeof(drax_state*));
     root->child[0] = child;
 
     return 1;
   } else {
-    beorn_state* crr;
+    drax_state* crr;
     if (((root->child[root->length - 1]->type == BT_PACK) || 
          (root->child[root->length - 1]->type == BT_LIST) || 
          (root->child[root->length - 1]->type == BT_EXPRESSION)) &&
@@ -75,9 +75,9 @@ int add_child(beorn_state* root, beorn_state* child) {
     crr->length++;
 
     if (crr->length <= 1) {
-      crr->child = (beorn_state**) malloc(sizeof(beorn_state*));
+      crr->child = (drax_state**) malloc(sizeof(drax_state*));
     } else {
-      crr->child = (beorn_state**) realloc(crr->child, sizeof(beorn_state*) * crr->length);
+      crr->child = (drax_state**) realloc(crr->child, sizeof(drax_state*) * crr->length);
     }
     crr->child[crr->length - 1] = child;
     return 1;
@@ -87,7 +87,7 @@ int add_child(beorn_state* root, beorn_state* child) {
 /**
  * Close the last open expression/sub expression in AST.
  */
-int close_pending_structs(beorn_state* root, types ct) {
+int close_pending_structs(drax_state* root, types ct) {
   if (root->length == 0) return 0;
 
   if (((root->child[root->length - 1]->type == BT_PACK) || 
@@ -132,7 +132,7 @@ void set_gberror(const char *msg) {
  * Helpers to arith. expression tree.
  */
 
-beorn_state* get_curr_bvalue() {  
+drax_state* get_curr_bvalue() {  
   switch (gtoken->type)
   {
     case TK_INTEGER: return new_integer(gtoken->ival);
@@ -164,7 +164,7 @@ b_operator get_operator() {
 }
 
 expr_tree *new_node(blex_types type, b_operator operation, expr_tree *left, 
-  expr_tree *right, beorn_state *value
+  expr_tree *right, drax_state *value
 ) {
     expr_tree *n = (expr_tree*) malloc(sizeof(expr_tree));
     if (NULL == n) { set_gberror("Memory error, fail to process expression"); }
@@ -189,7 +189,7 @@ expr_tree *value_expr() {
       if(!close_pending_structs(bs, BT_EXPRESSION)) 
         set_gberror("expression error, pair not found.");
 
-      beorn_state* crr_bs = get_last_state(bs);
+      drax_state* crr_bs = get_last_state(bs);
       expr_tree *result = new_node(TK_SYMBOL, BNONE, NULL, NULL, crr_bs);
       next_token();
       return result;
@@ -248,10 +248,10 @@ expr_tree *build_expr_tree() {
 }
 
 /**
- * Convert expression to beorn expression
+ * Convert expression to drax expression
  */
 
-void infix_to_bexpression(beorn_state* sbs, expr_tree *expr) {
+void infix_to_bexpression(drax_state* sbs, expr_tree *expr) {
   if (NULL == expr) return;
 
   if ((BNONE == expr->op) &&
@@ -304,12 +304,12 @@ int get_args_by_comma() {
 
 /* Main language definition */
 
-static void beorn_arith_expression() {
+static void drax_arith_expression() {
   expr_tree* trr = build_expr_tree();
   infix_to_bexpression(bs, trr);
 }
 
-static int beorn_call_function() {
+static int drax_call_function() {
   b_token* nxt = b_check_next(NULL);
   if (TK_PAR_OPEN != nxt->type) {
     free(nxt);
@@ -341,7 +341,7 @@ static int beorn_call_function() {
   return 1;
 }
 
-static int beorn_define_var() {
+static int drax_define_var() {
   b_token* nxt = b_check_next(NULL);
   if (TK_EQ != nxt->type) {
     free(nxt);
@@ -411,18 +411,18 @@ static int curr_exp_is_arithm_op() {
   return 0;
 }
 
-static int beorn_arith_op() {
+static int drax_arith_op() {
   
   if (!curr_exp_is_arithm_op()) { return 0; }
 
-  beorn_arith_expression();
+  drax_arith_expression();
   if (!check_is_conclusion_token()) {
     set_gberror("Unspected token");
   }
   return 1;
 }
 
-static int beorn_import_file() {
+static int drax_import_file() {
   next_token();
   add_child(bs, new_call_definition());
   add_child(bs, new_symbol("import"));
@@ -442,7 +442,7 @@ static int beorn_import_file() {
   return 1;
 }
 
-static int beorn_end_definition() {
+static int drax_end_definition() {
   if(!close_pending_structs(bs, BT_PACK)) {
     set_gberror("pack freeze pair not found.");
     return 1;
@@ -456,7 +456,7 @@ static int beorn_end_definition() {
   return 0;
 }
 
-static int beorn_function_definition() {
+static int drax_function_definition() {
   add_child(bs, new_definition());
   add_child(bs, new_symbol("fun"));
   next_token();
@@ -510,13 +510,13 @@ static int beorn_function_definition() {
   process = 1;
   while (process) {
     if (TK_END == gtoken->type) {
-      beorn_end_definition();
+      drax_end_definition();
       return 1;
     }
     process_token();
 
     if (TK_END == gtoken->type) {
-      beorn_end_definition();
+      drax_end_definition();
       return 1;
     }
     process = ((TK_EOF != gtoken->type) && (TK_END != gtoken->type));
@@ -554,7 +554,7 @@ static const char* bbool_to_str(blex_types type) {
 static int process_bool_expr() {
   if (is_bool_op(gtoken->type)) {
     global_act_state->state = AS_BOOL;
-    beorn_state* left = get_last_state(bs);
+    drax_state* left = get_last_state(bs);
     add_child(bs, new_expression());
     add_child(bs, new_symbol(bbool_to_str(gtoken->type)));
     add_child(bs, left);
@@ -571,7 +571,7 @@ static int process_bool_expr() {
   return 0;
 }
 
-static int beorn_if_definition() {
+static int drax_if_definition() {
   add_child(bs, new_definition());
   add_child(bs, new_symbol("if"));
 
@@ -628,7 +628,7 @@ static int beorn_if_definition() {
     return 1;
   }
 
-  beorn_end_definition();
+  drax_end_definition();
 
   next_token();
   
@@ -652,7 +652,7 @@ static int is_logic_op(blex_types type) {
 
 static int process_logic_gates() {
   if (is_logic_op(gtoken->type)) {
-    beorn_state* left = get_last_state(bs);
+    drax_state* left = get_last_state(bs);
     add_child(bs, new_expression());
     add_child(bs, new_symbol(blogic_to_str(gtoken->type)));
     add_child(bs, left);
@@ -675,19 +675,19 @@ void process_token() {
       break;
 
     case TK_FLOAT:
-      if (beorn_arith_op()) { break; }
+      if (drax_arith_op()) { break; }
       add_child(bs, new_float(gtoken->fval));
       next_token();
       break;
 
     case TK_INTEGER:
-      if (beorn_arith_op()) { break; }
+      if (drax_arith_op()) { break; }
       add_child(bs, new_integer(gtoken->ival));
       next_token();
       break;
 
     case TK_PAR_OPEN:
-      if (beorn_arith_op()) { break; };
+      if (drax_arith_op()) { break; };
       next_token();
       process_token();
 
@@ -696,9 +696,9 @@ void process_token() {
       break;
 
     case TK_SYMBOL: {
-      if (beorn_define_var()) { break; };
-      if (beorn_arith_op()) { break; };
-      if (beorn_call_function()) { break; };
+      if (drax_define_var()) { break; };
+      if (drax_arith_op()) { break; };
+      if (drax_call_function()) { break; };
 
       add_child(bs, new_symbol(gtoken->cval));
       next_token();
@@ -706,15 +706,15 @@ void process_token() {
     }
 
     case TK_IF:
-      beorn_if_definition();
+      drax_if_definition();
       break;
 
     case TK_IMPORT:
-      beorn_import_file();
+      drax_import_file();
       break;
 
     case TK_FUN:
-      beorn_function_definition();
+      drax_function_definition();
       next_token();
       break;
 
@@ -749,7 +749,7 @@ void process_token() {
     }
 
     case TK_END: {
-      beorn_end_definition();
+      drax_end_definition();
       next_token();
       break;
     }
@@ -774,7 +774,7 @@ void process_token() {
   };
 }
 
-beorn_state* beorn_parser(char *input) {
+drax_state* drax_parser(char *input) {
   gcurr_line_number = 1;
 
   global_act_state = (g_act_state*) malloc(sizeof(g_act_state));
@@ -785,9 +785,9 @@ beorn_state* beorn_parser(char *input) {
   gberr->has_error = 0;
   gberr->state_error = NULL;
 
-  bs = (beorn_state*) malloc(sizeof(beorn_state));
+  bs = (drax_state*) malloc(sizeof(drax_state));
   bs->type = BT_PROGRAM;
-  bs->child = (beorn_state**) malloc(sizeof(beorn_state*));
+  bs->child = (drax_state**) malloc(sizeof(drax_state*));
   bs->length = 0;
   bs->closed = 0;
 

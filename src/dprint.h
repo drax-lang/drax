@@ -1,4 +1,4 @@
-/* Beorn Lang - 2022
+/* drax Lang - 2022
  * Jean Carlos (jeantux)
  */
 
@@ -13,17 +13,17 @@
 #define BRED  "\x1B[31m"
 #define BMAG  "\x1b[35m"
 
-void bshow_error(beorn_state* curr);
+void bshow_error(drax_state* curr);
 
-void bprint_pack(beorn_state* curr);
+void bprint_pack(drax_state* curr);
 
-void bprint_list(beorn_state* curr);
+void bprint_list(drax_state* curr);
 
-void bprint_expression(beorn_state* curr);
+void bprint_expression(drax_state* curr);
 
-void bprint(beorn_state* curr);
+void bprint(drax_state* curr);
 
-void bprint_default(beorn_state* curr, int sstr);
+void bprint_default(drax_state* curr, int sstr);
 
 void bbreak_line();
 

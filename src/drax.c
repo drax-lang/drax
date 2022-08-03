@@ -15,7 +15,7 @@
   #include "dshell.h"
 #endif
 
-int interactive_shell(beorn_env* benv) {
+int interactive_shell(drax_env* benv) {
   initial_info();
   
   while (1) {
@@ -26,7 +26,7 @@ int interactive_shell(beorn_env* benv) {
       char* input = b_read_content();
     #endif
 
-    beorn_state* out = beorn_parser(input);
+    drax_state* out = drax_parser(input);
 
     __run__(benv, out, 1);
     free(input);
@@ -34,7 +34,7 @@ int interactive_shell(beorn_env* benv) {
   return 0;
 }
 
-int process_file(beorn_env* benv, char** argv) {
+int process_file(drax_env* benv, char** argv) {
   char * content = 0;
   char * path = argv[1];
   if(get_file_content(path, &content)) {
@@ -43,7 +43,7 @@ int process_file(beorn_env* benv, char** argv) {
     return 1;
   }
 
-  beorn_state* out = beorn_parser(content);
+  drax_state* out = drax_parser(content);
   __run__(benv, out, 0);
 
   return 0;
@@ -52,7 +52,7 @@ int process_file(beorn_env* benv, char** argv) {
 int main(int argc, char** argv) {
 
   bimode bmode = get_bimode(argc, argv);
-  beorn_env* benv = new_env();
+  drax_env* benv = new_env();
   
   load_builtin_functions(&benv);
   switch (bmode) {

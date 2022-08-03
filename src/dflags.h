@@ -1,4 +1,4 @@
-/* Beorn Lang - 2022
+/* drax Lang - 2022
  * Jean Carlos (jeantux)
  */
 
@@ -10,8 +10,8 @@
 #include <stdio.h>
 #include "dtypes.h"
 
-#define BEORN_VM_VERSION  "v0.0.1-dev"
-#define BEORN_LIB_VERSION "LC-0.0.0-dev"
+#define drax_VM_VERSION  "v0.0.1-dev"
+#define drax_LIB_VERSION "LC-0.0.0-dev"
 
 void initial_info();
 
