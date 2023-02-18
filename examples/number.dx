@@ -1,0 +1,7 @@
+fun sum(a, b) do
+    a + b
+end
+
+result = sum(21, 21)
+
+print(result)

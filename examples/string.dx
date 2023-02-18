@@ -1,0 +1,9 @@
+fun say(name) do
+    name
+end
+
+fun say(name, last) do
+    concat(name, concat(" ", last))
+end
+
+print(say("Hello", "World"))
