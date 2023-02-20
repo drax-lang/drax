@@ -603,6 +603,7 @@ void load_builtin_functions(drax_env** benv) {
   put_function_env(&native, "get",     bb_get);
   put_function_env(&native, "put",     bb_put);
   put_function_env(&native, "hd",      bb_hd);
+  put_function_env(&native, "tl",      bb_tl);
   put_function_env(&native, "len",      bb_len);
 }
 
