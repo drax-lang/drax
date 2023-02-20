@@ -557,6 +557,21 @@ drax_state* bb_tl(drax_env* benv, drax_state* exp) {
   return exp->child[1];
 }
 
+drax_state* bb_len(drax_env* benv, drax_state* exp) {
+  BASSERT(exp->length != 2, BUNSPECTED_TYPE, "Expected only one argument");
+  BASSERT(exp->child[1]->type != BT_STRING && exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list or string as argument.");
+
+  UNUSED(benv);
+  if(exp->child[1]->type == BT_LIST) {
+    drax_state* first = bpop(exp->child[1], 0);
+    del_bstate(first);
+    return new_integer(exp->child[1]->length + 1);
+  }
+
+  return new_integer(strlen(exp->child[1]->cval));
+}
+
+
 void load_builtin_functions(drax_env** benv) {
   drax_env* native = (*benv)->native;
 
@@ -588,7 +603,7 @@ void load_builtin_functions(drax_env** benv) {
   put_function_env(&native, "get",     bb_get);
   put_function_env(&native, "put",     bb_put);
   put_function_env(&native, "hd",      bb_hd);
-  put_function_env(&native, "tl",      bb_tl);
+  put_function_env(&native, "len",      bb_len);
 }
 
 drax_state* bcall_native_function(drax_env* benv, drax_state* fun, drax_state* exp) {
