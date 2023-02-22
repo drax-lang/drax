@@ -32,6 +32,8 @@ drax_state* bb_if(drax_env* benv, drax_state* exp);
 
 drax_state* bb_equal(drax_env* benv, drax_state* exp);
 
+drax_state* bb_system(drax_env* benv, drax_state* exp);
+
 drax_state* bb_double_equal(drax_env* benv, drax_state* exp);
 
 drax_state* bb_diff(drax_env* benv, drax_state* exp);
