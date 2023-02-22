@@ -53,7 +53,7 @@ drax_state* process_symbol(drax_env* benv, drax_state* curr) {
     return process_symbol(benv->global, curr);
   }
 
-  return new_error(BREFERENCE_ERROR, "symbol '%s' not found.", curr->cval);
+  return new_error(BREFERENCE_ERROR, "symbol '%s' not found.", (char*) curr->val);
 }
 
 drax_state* process_list(drax_env* benv, drax_state* curr) {
