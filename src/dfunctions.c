@@ -144,7 +144,13 @@ drax_state* bb_typeof(drax_env* benv, drax_state* exp) {
 }
 
 drax_state* bb_set(drax_env* benv, drax_state* exp) {
-  bset_env(benv, exp->child[1], exp->child[2]);
+  bset_env(benv, exp->child[1], process(benv, exp->child[2]));
+  del_bstate(exp);
+  return new_nil();
+}
+
+drax_state* bb_let(drax_env* benv, drax_state* exp) {
+  bset_env(exp->blenv, exp->child[1], process(benv, exp->child[2]));
   del_bstate(exp);
   return new_nil();
 }
@@ -205,13 +211,6 @@ drax_state* bcall_runtime_function(drax_env* benv, drax_state* func, drax_state*
 
   del_benv(func->blenv);
   return res;
-}
-
-drax_state* bb_let(drax_env* benv, drax_state* exp) {
-  UNUSED(benv);
-  bset_env(exp->blenv, exp->child[1], exp->child[2]);
-  del_bstate(exp);
-  return new_nil();
 }
 
 drax_state* bb_concat(drax_env* benv, drax_state* exp) {
@@ -377,6 +376,21 @@ drax_state* bb_equal(drax_env* benv, drax_state* exp) {
 
   del_bstate(exp);
   return new_integer(1);
+}
+
+drax_state* bb_system(drax_env* benv, drax_state* exp) {
+  UNUSED(benv);
+  BASSERT(exp->length != 2,  BTYPE_ERROR, "'system' expected only one arguments.");
+  BASSERT(exp->child[1]->type != BT_STRING,  BTYPE_ERROR, "'system' expects string only");
+
+  del_bstate(bpop(exp, 0));
+  
+  char* lstr = exp->child[0]->cval;
+
+  int out = system(lstr);
+  del_bstate(exp);
+
+  return new_integer(out);
 }
 
 drax_state* bb_less(drax_env* benv, drax_state* exp) {
@@ -589,6 +603,8 @@ void load_builtin_functions(drax_env** benv) {
   put_function_env(&native, "put",     bb_put);
   put_function_env(&native, "hd",      bb_hd);
   put_function_env(&native, "tl",      bb_tl);
+
+  put_function_env(&native, "system",  bb_system);
 }
 
 drax_state* bcall_native_function(drax_env* benv, drax_state* fun, drax_state* exp) {
