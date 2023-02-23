@@ -51,6 +51,7 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
   }
 
   double r = draxvalue_to_num(x->val);
+  types tval = x->type;
 
   while (curr->length > 0) {
     drax_state* y = bpop(curr, 0);
@@ -64,6 +65,7 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
       return new_error(BUNSPECTED_TYPE, "Invalid Expression.");
     }
 
+    if (y->type == BT_FLOAT) { tval = BT_FLOAT; }
     double tvl = draxvalue_to_num(y->val);
 
     if (op == '+') { bdo_op(+=, r, tvl); }
@@ -77,6 +79,7 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
         break;
       }
 
+      tval = BT_FLOAT;
       bdo_op(/=, r, tvl);
     }
 
@@ -87,6 +90,7 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
 
   if (x->type == BT_ERROR) return x;
 
+  x->type = tval;
   x->val = num_to_draxvalue(r);
 
   return x;
