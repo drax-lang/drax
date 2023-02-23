@@ -17,12 +17,6 @@ typedef enum b_operator {
     BDIV
 } b_operator;
 
-typedef union drax_values {
-    char *cval;
-    int ival;
-    long double fval;
-} drax_value;
-
 typedef struct expr_tree {
     dlex_types type;
     b_operator op;

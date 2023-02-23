@@ -6,10 +6,10 @@
 void bshow_error(drax_state* curr) {
   const char * et = berrors_to_str(curr->et);
   if (NULL != curr->trace) {
-    printf("%sline: %ld, %s: %s%s", BRED, curr->trace->line, et, curr->cval, BDEF);    
+    printf("%sline: %ld, %s: %s%s", BRED, curr->trace->line, et, (char*) curr->val, BDEF);    
     return;
   }
-  printf("%s%s: %s%s", BRED, et, curr->cval, BDEF);
+  printf("%s%s: %s%s", BRED, et, (char*) curr->val, BDEF);
 }
 
 void bprint_pack(drax_state* curr) {
@@ -57,17 +57,18 @@ static int prtstr(int sstr, char* cval) {
 
 void bprint_default(drax_state* curr, int sstr) {
   switch (curr->type) {
-    case BT_INTEGER:      printf("%lld", curr->ival);    break;
-    case BT_FLOAT:        printf("%.20Lg", curr->fval); break;
-    case BT_STRING:       prtstr(sstr,  curr->cval);    break;
-    case BT_SYMBOL:       printf("%s",  curr->cval);    break;
-    case BT_FUNCTION:     printf("#function<>");        break;
-    case BT_LAMBDA:       printf("#lambda<>");          break;
-    case BT_PACK:         bprint_pack(curr);            break;
-    case BT_LIST:         bprint_list(curr);            break;
-    case BT_EXPRESSION:   bprint_expression(curr);      break;
-    case BT_NIL:          printf("nil");                break;
-    case BT_ERROR:        bshow_error(curr);            break;
+    case BT_INTEGER:      printf("%ld", curr->val);         break;
+    case BT_FLOAT:        printf("%g", draxvalue_to_num(curr->val));     
+                          break;
+    case BT_STRING:       prtstr(sstr,  (char*) curr->val); break;
+    case BT_SYMBOL:       printf("%s",  (char*) curr->val); break;
+    case BT_FUNCTION:     printf("#function<>");            break;
+    case BT_LAMBDA:       printf("#lambda<>");              break;
+    case BT_PACK:         bprint_pack(curr);                break;
+    case BT_LIST:         bprint_list(curr);                break;
+    case BT_EXPRESSION:   bprint_expression(curr);          break;
+    case BT_NIL:          printf("nil");                    break;
+    case BT_ERROR:        bshow_error(curr);                break;
     
     default:
       bshow_error(new_error(BRUNTIME_ERROR, "unspected token."));

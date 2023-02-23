@@ -11,6 +11,12 @@
 
 #define BENV_HASH_SIZE 8
 
+/**
+ * Drax Value definitions
+*/
+
+typedef unsigned long drax_value;
+
 typedef enum types {
   BT_UNKNOWN,
   BT_ERROR,
@@ -27,7 +33,7 @@ typedef enum types {
   BT_NIL
 } types;
 
-typedef enum bact_type{
+typedef enum bact_type {
   BACT_NONE,
   BACT_CALL_OP,
   BACT_CORE_OP,
@@ -94,9 +100,7 @@ typedef struct drax_state {
   bstack_trace* trace;
   int length;
   int closed;
-  char* cval;
-  long long ival;
-  long double fval;
+  drax_value val;
   drax_func bfunc;
   drax_env* blenv;
   drax_state** child;
@@ -113,7 +117,7 @@ drax_state* new_error(berrors_type t, const char* s, ...);
 
 drax_state* new_integer(long iv);
 
-drax_state* new_float(long double fv);
+drax_state* new_float(double fv);
 
 drax_state* new_string(const char* s);
 
@@ -156,5 +160,9 @@ void blet_env(drax_env* e, drax_state* key, drax_state* value);
 drax_state* bget_env_value(drax_env* e, drax_state* key);
 
 drax_state* bget_env_function(drax_env* e, drax_state* key);
+
+double draxvalue_to_num(drax_value value);
+
+drax_value num_to_draxvalue(double num);
 
 #endif

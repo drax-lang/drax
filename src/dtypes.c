@@ -19,12 +19,12 @@ static drax_state* new_drax_state() {
 drax_state* new_error(berrors_type t, const char* s, ...) {
   drax_state* v = new_drax_state();
   v->type = BT_ERROR;
-  v->cval = (char *) calloc(strlen(s) + 1, sizeof(char));
+  v->val = (drax_value) calloc(strlen(s) + 1, sizeof(char));
   v->et = t;
   va_list va;
   va_start(va, s);
 
-  vsnprintf(v->cval, 511, s, va);
+  vsnprintf((char*) v->val, 511, s, va);
   va_end(va);
   return v;
 }
@@ -32,15 +32,15 @@ drax_state* new_error(berrors_type t, const char* s, ...) {
 drax_state* new_integer(long iv) {
   drax_state* v = new_drax_state();
   v->type = BT_INTEGER;
-  v->ival = iv;
+  v->val = iv;
   v->closed = 1;
   return v;
 }
 
-drax_state* new_float(long double fv) {
+drax_state* new_float(double fv) {
   drax_state* v = new_drax_state();
   v->type = BT_FLOAT;
-  v->fval = fv;
+  v->val = num_to_draxvalue(fv);
   v->closed = 1;
   return v;
 }
@@ -53,11 +53,11 @@ drax_state* new_string(const char* s) {
 
   drax_state* v = new_drax_state();
   v->type = BT_STRING;
-  v->cval = (char *) calloc(sizeof(char), strsize + 1);
+  v->val = (drax_value) calloc(sizeof(char), strsize + 1);
   v->closed = 1;
 
   if (NULL != s)
-    strcpy(v->cval, s);
+    strcpy((char*) v->val, s);
     
   return v;
 }
@@ -67,8 +67,8 @@ drax_state* new_symbol(const char* s) {
   v->type = BT_SYMBOL;
 
   if (NULL != s) {
-    v->cval = (char *) calloc(sizeof(char), strlen(s) + 1);
-    strcpy(v->cval, s);
+    v->val = (drax_value) calloc(sizeof(char), strlen(s) + 1);
+    strcpy((char *) v->val, s);
   }
 
   v->closed = 1;
@@ -78,7 +78,7 @@ drax_state* new_symbol(const char* s) {
 drax_state* new_pack() {
   drax_state* v = new_drax_state();
   v->type = BT_PACK;
-  v->cval = NULL;
+  v->val = (drax_value) NULL;
   v->closed = 0;
   return v;
 }
@@ -87,7 +87,7 @@ drax_state* new_expression() {
   drax_state* v = new_drax_state();
   v->blenv = new_env();
   v->type = BT_EXPRESSION;
-  v->cval = NULL;
+  v->val = (drax_value) NULL;
   v->closed = 0;
   return v;
 }
@@ -96,7 +96,7 @@ drax_state* new_list() {
   drax_state* v = new_drax_state();
   v->blenv = NULL;
   v->type = BT_LIST;
-  v->cval = NULL;
+  v->val = (drax_value) NULL;
   v->closed = 0;
   return v;
 }
@@ -124,7 +124,7 @@ drax_state* new_nil() {
   drax_state* v = new_drax_state();
   v->type = BT_NIL;
   v->blenv = NULL;
-  v->cval = NULL;
+  v->val = (drax_value) NULL;
   v->closed = 0;
   return v;
 }
@@ -181,17 +181,17 @@ drax_state* bcopy_state(drax_state* v) {
   x->type = v->type;
   switch (v->type) {
     break;
-    case BT_INTEGER: x->ival = v->ival; break;
-    case BT_FLOAT: x->fval = v->fval; break;
+    case BT_INTEGER: x->val = v->val; break;
+    case BT_FLOAT: x->val = v->val; break;
     case BT_ERROR:
       x->et = v->et;
-      x->cval = (char *) malloc((strlen(v->cval) + 1) * sizeof(char));
-      strcpy(x->cval, v->cval);
+      x->val = (drax_value) malloc((strlen((char*) v->val) + 1) * sizeof(char));
+      strcpy((char*) x->val, (char*) v->val);
     break;
     case BT_STRING:
     case BT_SYMBOL:
-      x->cval = (char *) malloc((strlen(v->cval) + 1) * sizeof(char));
-      strcpy(x->cval, v->cval);
+      x->val = (drax_value) malloc((strlen((char*) v->val) + 1) * sizeof(char));
+      strcpy((char*) x->val, (char*) v->val);
       x->act = v->act;
     break;
 
@@ -296,11 +296,11 @@ void del_benv(drax_env* e) {
 }
 
 void bput_env(drax_env* e, drax_state* key, drax_state* value) {
-  size_t idx = gen_hash_idx(e->bval->cap, key->cval);
+  size_t idx = gen_hash_idx(e->bval->cap, (char*) key->val);
 
   if (e->bval->vars[idx]) {
     for (size_t i = 0; i < e->bval->vars[idx]->length; i++) {
-      if (strcmp(e->bval->vars[idx]->key[i], key->cval) == 0) {
+      if (strcmp(e->bval->vars[idx]->key[i], (char*) key->val) == 0) {
         del_bstate(e->bval->vars[idx]->val[i]);
         e->bval->vars[idx]->val[i] = bcopy_state(value);
       }
@@ -322,13 +322,13 @@ void bput_env(drax_env* e, drax_state* key, drax_state* value) {
   }
 
   e->bval->vars[idx]->val[e->bval->vars[idx]->length - 1] = bcopy_state(value);
-  e->bval->vars[idx]->key[e->bval->vars[idx]->length - 1] = (char*) malloc((strlen(key->cval) + 1) * sizeof(char));
-  strcpy(e->bval->vars[idx]->key[e->bval->vars[idx]->length - 1], key->cval);
-  free(key->cval);
+  e->bval->vars[idx]->key[e->bval->vars[idx]->length - 1] = (char*) malloc((strlen((char*) key->val) + 1) * sizeof(char));
+  strcpy(e->bval->vars[idx]->key[e->bval->vars[idx]->length - 1], (char*) key->val);
+  free((char*) key->val);
 }
 
 static void bput_env_function(drax_env* e, drax_state* value) {
-  char* fname = value->child[0]->cval;
+  char* fname = (char*) value->child[0]->val;
   int arity = value->child[1]->length;
   size_t idx = gen_hash_idx(e->bval->cap, fname);
 
@@ -380,14 +380,14 @@ void blet_env(drax_env* e, drax_state* key, drax_state* value) {
 }
 
 drax_state* bget_env_value(drax_env* e, drax_state* key) {
-  size_t idx = gen_hash_idx(e->bval->cap, key->cval);
+  size_t idx = gen_hash_idx(e->bval->cap, (char*) key->val);
   
   if (NULL == e->bval->vars[idx]) {
     return NULL;
   }
 
   for (size_t i = 0; i < e->bval->vars[idx]->length; i++) {
-    if (strcmp(e->bval->vars[idx]->key[i], key->cval) == 0) {
+    if (strcmp(e->bval->vars[idx]->key[i], (char*) key->val) == 0) {
       return bcopy_state(e->bval->vars[idx]->val[i]);
     }
   }
@@ -396,7 +396,7 @@ drax_state* bget_env_value(drax_env* e, drax_state* key) {
 }
 
 drax_state* bget_env_function(drax_env* e, drax_state* exp) {
-  char* fname = exp->child[0]->cval;
+  char* fname = (char*) exp->child[0]->val;
 
   size_t idx = gen_hash_idx(e->bfuncs->cap, fname);
   
@@ -414,3 +414,16 @@ drax_state* bget_env_function(drax_env* e, drax_state* exp) {
 
   return NULL;
 }
+
+double draxvalue_to_num(drax_value value) {
+  double num;
+  memcpy(&num, &value, sizeof(drax_value));
+  return num;
+}
+
+drax_value num_to_draxvalue(double num) {
+  drax_value value;
+  memcpy(&value, &num, sizeof(double));
+  return value;
+}
+

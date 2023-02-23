@@ -12,43 +12,17 @@
   }                                               \
   break;
 
-#define bcond_op_default(first, exp, op)             \
-    int result = 0;                                  \
-    switch (first->type) {                           \
-    case BT_INTEGER:                                 \
-      if (exp->child[1]->type == BT_INTEGER) {       \
-        result = first->ival op exp->child[1]->ival; \
-      } else {                                       \
-        result = first->ival op exp->child[1]->fval; \
-      } breturn_and_realease_expr(exp, result);      \
-    case BT_FLOAT:                                   \
-      if (exp->child[1]->type == BT_FLOAT) {         \
-        result = first->fval op exp->child[1]->fval; \
-      } else {                                       \
-        result = first->fval op exp->child[1]->ival; \
-      } breturn_and_realease_expr(exp, result);      \
-    default: breturn_and_realease_expr(exp, 0); }    \
+#define bcond_op_default(first, exp, op)           \
+    int result = first->val op exp->child[1]->val; \
+    del_bstate(exp);                               \
+    return new_integer(result);  
 
 #define bdo_op(op, left, rigth) left op rigth
-
-long double get_number(drax_state* v) {
-  switch (v->type)
-  {
-  case BT_FLOAT:
-    return v->fval;
-
-  case BT_INTEGER:
-    return v->ival;
-    
-  default:
-    return 0;
-  }
-}
 
 drax_state* do_op(drax_env* benv, drax_state* curr) {
 
   drax_state* opr = bpop(curr, 0);
-  char op = opr->cval[0];
+  char op = ((char *) opr->val)[0];
   del_bstate(opr);
 
   for (int i = 0; i < curr->length; i++) {
@@ -60,7 +34,7 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
         )
     {
       if (curr->child[i]->type == BT_ERROR) {
-        char* msg = curr->child[i]->cval;
+        char* msg = (char*) curr->child[i]->val;
         del_bstate(curr);
         return new_error(BTYPE_ERROR, msg);
       } else {
@@ -73,16 +47,10 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
   x = process(benv, x);
 
   if ((op == '-') && curr->length == 0) {
-    if (x->type == BT_INTEGER) {
-      x->ival = -x->ival;
-    }
-
-    if (x->type == BT_FLOAT) {
-      x->fval = -x->fval;
-    }
+    x->val = -x->val;
   }
 
-  long double r = get_number(x);
+  double r = draxvalue_to_num(x->val);
   types tval = x->type;
 
   while (curr->length > 0) {
@@ -98,7 +66,7 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
     }
 
     if (y->type == BT_FLOAT) { tval = BT_FLOAT; }
-    long double tvl = get_number(y);
+    double tvl = draxvalue_to_num(y->val);
 
     if (op == '+') { bdo_op(+=, r, tvl); }
     if (op == '-') { bdo_op(-=, r, tvl); }
@@ -123,11 +91,7 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
   if (x->type == BT_ERROR) return x;
 
   x->type = tval;
-  if (tval == BT_FLOAT) {
-    x->fval = r;
-  } else {
-    x->ival = (long long) r;
-  }
+  x->val = num_to_draxvalue(r);
 
   return x;
 }
@@ -220,8 +184,8 @@ drax_state* bb_concat(drax_env* benv, drax_state* exp) {
 
   del_bstate(bpop(exp, 0));
   
-  char* lstr = exp->child[0]->cval;
-  char* rstr = exp->child[1]->cval;
+  char* lstr = (char*) exp->child[0]->val;
+  char* rstr = (char*) exp->child[1]->val;
 
   size_t ls = strlen(lstr);
   size_t rs = strlen(rstr);
@@ -240,7 +204,7 @@ drax_state* bb_concat(drax_env* benv, drax_state* exp) {
 drax_state* bb_if(drax_env* benv, drax_state* exp) {  
   drax_state* result = new_nil();
   drax_state* r_exp = NULL;
-  if (exp->child[1]->ival) {
+  if (exp->child[1]->val) {
     r_exp = bpop(exp, 2);
   } else if (exp->length >= 4) {
     r_exp = bpop(exp, 3);
@@ -280,15 +244,12 @@ drax_state* bb_double_equal(drax_env* benv, drax_state* exp) {
     switch (exp->child[i]->type)
     {
       case BT_INTEGER:
-        if (exp->child[i]->ival != first->ival)
-          breturn_and_realease_expr(exp, 0);
-
       case BT_FLOAT:
-        if (exp->child[i]->fval != first->fval)
+        if (exp->child[i]->val != first->val)
           breturn_and_realease_expr(exp, 0);
 
       case BT_STRING:
-        if (strcmp(exp->child[i]->cval, first->cval) != 0)
+        if (strcmp((char*) exp->child[i]->val, (char*) first->val) != 0)
           breturn_and_realease_expr(exp, 0);
 
       case BT_NIL:
@@ -319,16 +280,13 @@ drax_state* bb_double_diff(drax_env* benv, drax_state* exp) {
     
     switch (exp->child[i]->type)
     {
-      case BT_INTEGER: 
-        if (exp->child[i]->ival != first->ival)
-          breturn_and_realease_expr(exp, 1);
-
+      case BT_INTEGER:
       case BT_FLOAT: 
-        if (exp->child[i]->fval != first->fval)
+        if (exp->child[i]->val != first->val)
           breturn_and_realease_expr(exp, 1);
 
       case BT_STRING: 
-        if (strcmp(exp->child[i]->cval, first->cval) != 0)
+        if (strcmp((char*) exp->child[i]->val, (char*) first->val) != 0)
           breturn_and_realease_expr(exp, 1);
     
       case BT_NIL:
@@ -356,16 +314,13 @@ drax_state* bb_equal(drax_env* benv, drax_state* exp) {
   
   switch (first->type)
   {
-    case BT_INTEGER: 
-      if (exp->child[1]->ival != first->ival)
-        breturn_and_realease_expr(exp, 0);
-
+    case BT_INTEGER:
     case BT_FLOAT: 
-      if (exp->child[1]->fval != first->fval)
+      if (exp->child[1]->val != first->val)
         breturn_and_realease_expr(exp, 0);
 
     case BT_STRING: 
-      if (strcmp(exp->child[1]->cval, first->cval) != 0)
+      if (strcmp((char*) exp->child[1]->val, (char*) first->val) != 0)
         breturn_and_realease_expr(exp, 0);
   
     case BT_NIL:
@@ -442,16 +397,13 @@ drax_state* bb_diff(drax_env* benv, drax_state* exp) {
   
   switch (first->type)
   {
-    case BT_INTEGER: 
-      if (exp->child[1]->ival != first->ival)
-        breturn_and_realease_expr(exp, 1);
-
+    case BT_INTEGER:
     case BT_FLOAT: 
-      if (exp->child[1]->fval != first->fval)
+      if (exp->child[1]->val != first->val)
         breturn_and_realease_expr(exp, 1);
 
     case BT_STRING: 
-      if (strcmp(exp->child[1]->cval, first->cval) != 0)
+      if (strcmp((char*) exp->child[1]->val, (char*)  first->val) != 0)
         breturn_and_realease_expr(exp, 1);
   
       case BT_NIL:
@@ -471,7 +423,7 @@ drax_state* bb_and(drax_env* benv, drax_state* exp) {
   drax_state* left = exp->child[0];
   drax_state* rigth = exp->child[1];
 
-  int result = (left->ival && rigth->ival);
+  int result = (left->val && rigth->val);
   del_bstate(exp);
   return new_integer(result);
 }
@@ -483,7 +435,7 @@ drax_state* bb_or(drax_env* benv, drax_state* exp) {
   drax_state* left = exp->child[0];
   drax_state* rigth = exp->child[1];
 
-  int result = (left->ival || rigth->ival);
+  int result = (left->val || rigth->val);
   del_bstate(exp);
   return new_integer(result);
 }
@@ -509,10 +461,10 @@ void put_function_env(drax_env** benv, const char* name, drax_func fn) {
 
 drax_state* bb_import(drax_env* benv, drax_state* exp) {
   char * content = 0;
-  if(get_file_content(exp->child[1]->cval, &content)) {
+  if(get_file_content((char*) exp->child[1]->val, &content)) {
     char pm[25];
   
-    memcpy(pm, &exp->child[1]->cval[0], 21);
+    memcpy(pm, &(((char*) exp->child[1]->val)[0]), 21);
     pm[21] = '.';  pm[22] = '.'; pm[23] = '.';
     pm[24] = '\0';
   
@@ -530,7 +482,7 @@ drax_state* bb_get(drax_env* benv, drax_state* exp) {
   BASSERT(exp->child[1]->type != BT_LIST, BUNSPECTED_TYPE, "Expected list as argument.");
 
   UNUSED(benv);
-  int idx = exp->child[2]->ival;
+  int idx = exp->child[2]->val;
   if (idx < 0) {
     idx = exp->child[1]->length + idx;
   }
@@ -614,7 +566,7 @@ drax_state* bcall_native_function(drax_env* benv, drax_state* fun, drax_state* e
     return fun->bfunc(benv, exp);
   }
 
-  return new_error(BRUNTIME_ERROR, "fail to call function '%s'.", fun->cval);
+  return new_error(BRUNTIME_ERROR, "fail to call function '%s'.", (char*) fun->val);
 }
 
 drax_env* get_main_env(drax_env* benv) {
@@ -645,7 +597,7 @@ drax_state* bcall_function(drax_env* benv, drax_state* exp) {
 
   if (bs->type == BT_SYMBOL) {
     for (int i = 1; i < exp->length; i++) {
-      if (!block_process(bs->cval))
+      if (!block_process((char*) bs->val))
         exp->child[i] = process(benv, exp->child[i]);
     }
   } 
@@ -672,7 +624,7 @@ drax_state* bcall_function(drax_env* benv, drax_state* exp) {
     return bcall_function(benv->global, exp);
   }
   
-  drax_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", bs->cval);
+  drax_state* err = new_error(BREFERENCE_ERROR, "function '%s' not found.", (char*) bs->val);
   del_bstate(exp);
 
   return err;
