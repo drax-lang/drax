@@ -340,7 +340,7 @@ drax_state* bb_system(drax_env* benv, drax_state* exp) {
 
   del_bstate(bpop(exp, 0));
   
-  char* lstr = exp->child[0]->cval;
+  char* lstr = (char*) exp->child[0]->val;
 
   int out = system(lstr);
   del_bstate(exp);
@@ -530,9 +530,7 @@ void load_builtin_functions(drax_env** benv) {
   put_function_env(&native, "-",       do_op);
   put_function_env(&native, "*",       do_op);
   put_function_env(&native, "/",       do_op);
-  put_function_env(&native, "set",     bb_set);
-  put_function_env(&native, "let",     bb_let);
-  put_function_env(&native, "fun",     bb_fun);
+
   put_function_env(&native, "==",      bb_double_equal);
   put_function_env(&native, "!==",     bb_double_diff);
   put_function_env(&native, "=",       bb_equal);
@@ -541,10 +539,16 @@ void load_builtin_functions(drax_env** benv) {
   put_function_env(&native, ">",       bb_bigger);
   put_function_env(&native, "<=",      bb_less_equal);
   put_function_env(&native, ">=",      bb_bigger_equal);
+
+  put_function_env(&native, "set",     bb_set); // global
+  put_function_env(&native, "let",     bb_let);
+  put_function_env(&native, "fun",     bb_fun);
+
   put_function_env(&native, "and",     bb_and);
   put_function_env(&native, "or",      bb_or);
-  put_function_env(&native, "import",  bb_import);
   put_function_env(&native, "if",      bb_if);
+
+  put_function_env(&native, "import",  bb_import);
   put_function_env(&native, "lambda",  bb_lambda);
   
   // builtin functions
