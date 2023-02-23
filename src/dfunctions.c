@@ -12,38 +12,12 @@
   }                                               \
   break;
 
-#define bcond_op_default(first, exp, op)             \
-    int result = 0;                                  \
-    switch (first->type) {                           \
-    case BT_INTEGER:                                 \
-      if (exp->child[1]->type == BT_INTEGER) {       \
-        result = first->val op exp->child[1]->val; \
-      } else {                                       \
-        result = first->val op exp->child[1]->fval; \
-      } breturn_and_realease_expr(exp, result);      \
-    case BT_FLOAT:                                   \
-      if (exp->child[1]->type == BT_FLOAT) {         \
-        result = first->fval op exp->child[1]->fval; \
-      } else {                                       \
-        result = first->fval op exp->child[1]->val; \
-      } breturn_and_realease_expr(exp, result);      \
-    default: breturn_and_realease_expr(exp, 0); }    \
+#define bcond_op_default(first, exp, op)           \
+    int result = first->val op exp->child[1]->val; \
+    del_bstate(exp);                               \
+    return new_integer(result);  
 
 #define bdo_op(op, left, rigth) left op rigth
-
-long double get_number(drax_state* v) {
-  switch (v->type)
-  {
-  case BT_FLOAT:
-    return v->fval;
-
-  case BT_INTEGER:
-    return v->val;
-    
-  default:
-    return 0;
-  }
-}
 
 drax_state* do_op(drax_env* benv, drax_state* curr) {
 
@@ -73,17 +47,10 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
   x = process(benv, x);
 
   if ((op == '-') && curr->length == 0) {
-    if (x->type == BT_INTEGER) {
-      x->val = -x->val;
-    }
-
-    if (x->type == BT_FLOAT) {
-      x->fval = -x->fval;
-    }
+    x->val = -x->val;
   }
 
-  long double r = get_number(x);
-  types tval = x->type;
+  double r = draxvalue_to_num(x->val);
 
   while (curr->length > 0) {
     drax_state* y = bpop(curr, 0);
@@ -97,8 +64,7 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
       return new_error(BUNSPECTED_TYPE, "Invalid Expression.");
     }
 
-    if (y->type == BT_FLOAT) { tval = BT_FLOAT; }
-    long double tvl = get_number(y);
+    double tvl = draxvalue_to_num(y->val);
 
     if (op == '+') { bdo_op(+=, r, tvl); }
     if (op == '-') { bdo_op(-=, r, tvl); }
@@ -111,7 +77,6 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
         break;
       }
 
-      tval = BT_FLOAT;
       bdo_op(/=, r, tvl);
     }
 
@@ -122,12 +87,7 @@ drax_state* do_op(drax_env* benv, drax_state* curr) {
 
   if (x->type == BT_ERROR) return x;
 
-  x->type = tval;
-  if (tval == BT_FLOAT) {
-    x->fval = r;
-  } else {
-    x->val = (long long) r;
-  }
+  x->val = num_to_draxvalue(r);
 
   return x;
 }
@@ -281,11 +241,8 @@ drax_state* bb_double_equal(drax_env* benv, drax_state* exp) {
     switch (exp->child[i]->type)
     {
       case BT_INTEGER:
-        if (exp->child[i]->val != first->val)
-          breturn_and_realease_expr(exp, 0);
-
       case BT_FLOAT:
-        if (exp->child[i]->fval != first->fval)
+        if (exp->child[i]->val != first->val)
           breturn_and_realease_expr(exp, 0);
 
       case BT_STRING:
@@ -320,12 +277,9 @@ drax_state* bb_double_diff(drax_env* benv, drax_state* exp) {
     
     switch (exp->child[i]->type)
     {
-      case BT_INTEGER: 
-        if (exp->child[i]->val != first->val)
-          breturn_and_realease_expr(exp, 1);
-
+      case BT_INTEGER:
       case BT_FLOAT: 
-        if (exp->child[i]->fval != first->fval)
+        if (exp->child[i]->val != first->val)
           breturn_and_realease_expr(exp, 1);
 
       case BT_STRING: 
@@ -357,12 +311,9 @@ drax_state* bb_equal(drax_env* benv, drax_state* exp) {
   
   switch (first->type)
   {
-    case BT_INTEGER: 
-      if (exp->child[1]->val != first->val)
-        breturn_and_realease_expr(exp, 0);
-
+    case BT_INTEGER:
     case BT_FLOAT: 
-      if (exp->child[1]->fval != first->fval)
+      if (exp->child[1]->val != first->val)
         breturn_and_realease_expr(exp, 0);
 
     case BT_STRING: 
@@ -428,12 +379,9 @@ drax_state* bb_diff(drax_env* benv, drax_state* exp) {
   
   switch (first->type)
   {
-    case BT_INTEGER: 
-      if (exp->child[1]->val != first->val)
-        breturn_and_realease_expr(exp, 1);
-
+    case BT_INTEGER:
     case BT_FLOAT: 
-      if (exp->child[1]->fval != first->fval)
+      if (exp->child[1]->val != first->val)
         breturn_and_realease_expr(exp, 1);
 
     case BT_STRING: 

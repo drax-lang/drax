@@ -37,10 +37,10 @@ drax_state* new_integer(long iv) {
   return v;
 }
 
-drax_state* new_float(long double fv) {
+drax_state* new_float(double fv) {
   drax_state* v = new_drax_state();
   v->type = BT_FLOAT;
-  v->val = fv;
+  v->val = num_to_draxvalue(fv);
   v->closed = 1;
   return v;
 }
@@ -414,3 +414,16 @@ drax_state* bget_env_function(drax_env* e, drax_state* exp) {
 
   return NULL;
 }
+
+double draxvalue_to_num(drax_value value) {
+  double num;
+  memcpy(&num, &value, sizeof(drax_value));
+  return num;
+}
+
+drax_value num_to_draxvalue(double num) {
+  drax_value value;
+  memcpy(&value, &num, sizeof(double));
+  return value;
+}
+

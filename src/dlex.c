@@ -192,7 +192,7 @@ d_token* lexan() {
           long long vi = strtoll(num, NULL, 10);
           return bmake_int(TK_INTEGER, vi);
         } else {
-          long double vf = strtold(num, NULL);
+          double vf = strtod(num, NULL);
           return bmake_float(TK_FLOAT, vf);
         }
         break;

@@ -8,8 +8,6 @@
 #include <string.h>
 #include "dtypes.h"
 
-long double get_number(drax_state* v);
-
 drax_state* do_op(drax_env* benv, drax_state* curr);
 
 drax_state* bb_typeof(drax_env* benv, drax_state* exp);

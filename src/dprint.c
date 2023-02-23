@@ -58,7 +58,8 @@ static int prtstr(int sstr, char* cval) {
 void bprint_default(drax_state* curr, int sstr) {
   switch (curr->type) {
     case BT_INTEGER:      printf("%ld", curr->val);         break;
-    case BT_FLOAT:        printf("%.20g", curr->fval);     break;
+    case BT_FLOAT:        printf("%g", draxvalue_to_num(curr->val));     
+                          break;
     case BT_STRING:       prtstr(sstr,  (char*) curr->val); break;
     case BT_SYMBOL:       printf("%s",  (char*) curr->val); break;
     case BT_FUNCTION:     printf("#function<>");            break;
