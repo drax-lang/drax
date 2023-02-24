@@ -29,10 +29,10 @@ drax_state* new_error(berrors_type t, const char* s, ...) {
   return v;
 }
 
-drax_state* new_integer(long iv) {
+drax_state* new_integer(double fv) {
   drax_state* v = new_drax_state();
   v->type = BT_INTEGER;
-  v->val = iv;
+  v->val = num_to_draxvalue(fv);
   v->closed = 1;
   return v;
 }

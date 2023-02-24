@@ -4,6 +4,7 @@
 #include "dprint.h"
 #include "dtypes.h"
 #include "dfunctions.h"
+#include "dinspect.h"
 
 drax_state* process_expression(drax_env* benv, drax_state* curr) {
   if(curr->length == 0)
@@ -88,6 +89,11 @@ drax_state* process(drax_env* benv, drax_state* curr) {
  * run all childs of drax state.
  */
 void __run_bs__(drax_env* benv, drax_state* curr, int inter_mode) {
+  #ifdef _AST_INSPECT
+  __ast_inspect__(curr, 1);
+  #endif
+
+
   if (curr->type == BT_ERROR) {
     bprint(curr);
     bbreak_line();

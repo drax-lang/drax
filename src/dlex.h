@@ -57,9 +57,9 @@ int is_symbol(const char c);
 
 d_token* bmake_string(char* val);
 
-d_token* bmake_int(dlex_types type, long long val);
+d_token* bmake_int(dlex_types type, double val);
 
-d_token* bmake_float(dlex_types type, long double val);
+d_token* bmake_float(dlex_types type, double val);
 
 d_token* bmake_symbol(dlex_types type);
 

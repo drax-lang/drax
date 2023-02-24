@@ -57,7 +57,7 @@ static int prtstr(int sstr, char* cval) {
 
 void bprint_default(drax_state* curr, int sstr) {
   switch (curr->type) {
-    case BT_INTEGER:      printf("%ld", curr->val);         break;
+    case BT_INTEGER:
     case BT_FLOAT:        printf("%g", draxvalue_to_num(curr->val));     
                           break;
     case BT_STRING:       prtstr(sstr,  (char*) curr->val); break;

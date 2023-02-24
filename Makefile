@@ -14,7 +14,8 @@ FILES= ./src/dvm.c \
 	   ./src/dflags.c \
 	   ./src/dio.c \
 	   ./src/dlex.c \
-       ./src/drax.c
+       ./src/drax.c \
+       ./src/dinspect.c
 
 DEBUGF= -ggdb \
 		-g
@@ -58,6 +59,9 @@ all:
 
 debug:
 	$(DEFAULT_BUILD) $(DEBUGF)
+
+inspect:
+	$(DEFAULT_BUILD) $(DEBUGF) -D_AST_INSPECT
 
 run:
 	./bin/$(APP)

@@ -117,6 +117,14 @@ void next_token() {
   }
 }
 
+static void next_token_ignore_space() {
+  next_token();
+
+  while (TK_BREAK_LINE == gtoken->type) {
+    next_token();
+  }
+}
+
 void set_gberror(const char *msg) {
   if (gberr->has_error) return;
 
@@ -135,7 +143,7 @@ void set_gberror(const char *msg) {
 drax_state* get_curr_bvalue() {  
   switch (gtoken->type)
   {
-    case TK_INTEGER: return new_integer(gtoken->ival);
+    case TK_INTEGER: return new_integer(gtoken->fval);
     
     case TK_FLOAT: return new_float(gtoken->fval);
 
@@ -292,13 +300,15 @@ int get_args_by_comma() {
   while (processing)
   {
     process_token();
+    if (TK_BREAK_LINE == gtoken->type) { next_token_ignore_space(); }
     processing = TK_COMMA == gtoken->type; 
 
     if (processing) {
-      next_token();
+      next_token_ignore_space();
       param_qtt++;
     }
   }
+
   return param_qtt;
 }
 
@@ -682,7 +692,7 @@ void process_token() {
 
     case TK_INTEGER:
       if (drax_arith_op()) { break; }
-      add_child(bs, new_integer(gtoken->ival));
+      add_child(bs, new_integer(gtoken->fval));
       next_token();
       break;
 
@@ -730,7 +740,7 @@ void process_token() {
     case TK_BRACKET_OPEN: {
       add_child(bs, new_list());
 
-      next_token();
+      next_token_ignore_space();
 
       if (TK_BRACKET_CLOSE != gtoken->type) {
         get_args_by_comma();

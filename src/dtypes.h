@@ -5,6 +5,8 @@
 #ifndef __DTYPES
 #define __DTYPES
 
+#include <stddef.h>
+
 #define BASSERT(cond, t, msg, ...) if (cond) { return new_error(t, msg, ##__VA_ARGS__); }
 
 #define UNUSED(x) (void)(x)
@@ -115,7 +117,7 @@ typedef struct drax_env {
 
 drax_state* new_error(berrors_type t, const char* s, ...);
 
-drax_state* new_integer(long iv);
+drax_state* new_integer(double fv);
 
 drax_state* new_float(double fv);
 

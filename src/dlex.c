@@ -104,15 +104,15 @@ d_token* bmake_return(char* keyword) {
 };
 
 
-d_token* bmake_int(dlex_types type, long long val) {
+d_token* bmake_int(dlex_types type, double val) {
   d_token* v =(d_token*) malloc(sizeof(d_token));
   v->type = type;
-  v->ival = val;
+  v->fval = val;
   b_index++;
   return v;
 }
 
-d_token* bmake_float(dlex_types type, long double val) {
+d_token* bmake_float(dlex_types type, double val) {
   d_token* v =(d_token*) malloc(sizeof(d_token));
   v->type = type;
   v->fval = val;
@@ -188,11 +188,10 @@ d_token* lexan() {
           num = append_char(num, sc);
         }
 
+        double vf = strtod(num, NULL);
         if (!isf) {
-          long long vi = strtoll(num, NULL, 10);
-          return bmake_int(TK_INTEGER, vi);
+          return bmake_int(TK_INTEGER, vf);
         } else {
-          double vf = strtod(num, NULL);
           return bmake_float(TK_FLOAT, vf);
         }
         break;
