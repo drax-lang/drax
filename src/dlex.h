@@ -35,7 +35,6 @@ typedef enum dlex_types {
 
 typedef struct d_token {
   dlex_types type;
-  long long ival;
   long double fval;
   char* cval;
 } d_token;
