@@ -3,11 +3,8 @@
 #include <stdio.h>
 #include "dparser.h"
 #include "dvm.h"
-#include "dprint.h"
-#include "dfunctions.h"
 #include "dflags.h"
 #include "dio.h"
-#include "drax.h"
 
 #ifdef _B_BUILF_FULL
   #include <editline/readline.h>
@@ -15,7 +12,7 @@
   #include "dshell.h"
 #endif
 
-int interactive_shell(drax_env* benv) {
+static int interactive_shell(d_vm* v) {
   initial_info();
   
   while (1) {
@@ -25,26 +22,26 @@ int interactive_shell(drax_env* benv) {
     #else
       char* input = b_read_content();
     #endif
+    
+    __build__(v, input);
+    __run__(v, 1);
 
-    drax_state* out = drax_parser(input);
-
-    __run__(benv, out, 1);
     free(input);
   }
   return 0;
 }
 
-int process_file(drax_env* benv, char** argv) {
+static int process_file(d_vm* v, char** argv) {
   char * content = 0;
   char * path = argv[1];
   if(get_file_content(path, &content)) {
-    bprint(new_error(BFILE_NOT_FOUND, "fail to process '%s' file.", path));
-    bbreak_line();
+    // bprint(new_error(BFILE_NOT_FOUND, "fail to process '%s' file.", path));
+    // bbreak_line();
     return 1;
   }
 
-  drax_state* out = drax_parser(content);
-  __run__(benv, out, 0);
+  __build__(v, content);
+  // __run__(benv, out, 0);
 
   return 0;
 }
@@ -52,15 +49,18 @@ int process_file(drax_env* benv, char** argv) {
 int main(int argc, char** argv) {
 
   bimode bmode = get_bimode(argc, argv);
-  drax_env* benv = new_env();
+  // drax_env* benv = new_env(); // remove this env
+
+  // create init vm
+  d_vm* gdvm = createVM();
   
-  load_builtin_functions(&benv);
+  // load_builtin_functions(&benv);
   switch (bmode) {
     case BI_PROCESS_DEFAULT:
-      return process_file(benv, argv);
+      return process_file(gdvm, argv);
 
     case BI_INTERACTIVE_DEFAULT:
-      interactive_shell(benv);
+      interactive_shell(gdvm);
       break;
 
     default:

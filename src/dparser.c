@@ -1,818 +1,444 @@
-#include <string.h>
-#include <stdlib.h>
+
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "dtypes.h"
 #include "dparser.h"
 #include "dlex.h"
 
-drax_state* bs;
-d_token* gtoken;
-bg_error* gberr;
+#define LOCAL_SIZE_FACTOR 30
 
-int gcurr_line_number = 1;
+parser_state parser;
+parser_builder* current = NULL;
 
-g_act_state* global_act_state;
-
-/* helpers */
-drax_state* new_definition() {
-  drax_state* bdef = new_expression();
-  return bdef;
+static void init_parser() {
+  parser.locals = (d_local_registers*) malloc(sizeof(d_local_registers));
+  parser.locals->length = 0;
+  parser.locals->capacity = LOCAL_SIZE_FACTOR;
+  parser.locals->vars = (char**) malloc(sizeof(char*) * parser.locals->capacity);
 }
 
-drax_state* new_call_definition() {
-  drax_state* bdef = new_expression();
-  bdef->act = BACT_CALL_OP;
-  return bdef;
-}
+static operation_line op_lines[] = {
+  make_op_line(DTK_PAR_OPEN,  process_grouping,    process_call,   iCALL),
+  make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
+  make_op_line(DTK_BKT_OPEN,  process_list,        NULL,           iNONE),
+  make_op_line(DTK_BKT_CLOSE, NULL,                NULL,           iNONE),
+  make_op_line(DTK_DO,        NULL,                NULL,           iNONE),
+  make_op_line(DTK_END,       NULL,                NULL,           iNONE),
+  make_op_line(DTK_COMMA,     NULL,                NULL,           iNONE),
+  make_op_line(DTK_DOT,       NULL,                NULL,           iNONE),
+  make_op_line(DTK_SUB,       process_unary,       process_binary, iTERM),
+  make_op_line(DTK_ADD,       NULL,                process_binary, iTERM),
+  make_op_line(DTK_DIV,       NULL,                process_binary, iFACTOR),
+  make_op_line(DTK_MUL,       NULL,                process_binary, iFACTOR),
+  make_op_line(DTK_BNG,       process_unary,       NULL,           iNONE),
+  make_op_line(DTK_BNG_EQ,    NULL,                process_binary, iEQUALITY),
+  make_op_line(DTK_EQ,        NULL,                NULL,           iNONE),
+  make_op_line(DTK_DEQ,       NULL,                process_binary, iEQUALITY),
+  make_op_line(DTK_BG,        NULL,                process_binary, iDIFF),
+  make_op_line(DTK_BE,        NULL,                process_binary, iDIFF),
+  make_op_line(DTK_LS,        NULL,                process_binary, iDIFF),
+  make_op_line(DTK_LE,        NULL,                process_binary, iDIFF),
+  make_op_line(DTK_STRING,    process_string,      NULL,           iNONE),
+  make_op_line(DTK_NUMBER,    process_number,      NULL,           iNONE),
+  make_op_line(DTK_AND,       NULL,                process_and,    iAND),
+  make_op_line(DTK_ELSE,      NULL,                NULL,           iNONE),
+  make_op_line(DTK_FALSE,     literal_translation, NULL,           iNONE),
+  make_op_line(DTK_NIL,       literal_translation, NULL,           iNONE),
+  make_op_line(DTK_TRUE,      literal_translation, NULL,           iNONE),
+  make_op_line(DTK_FUN,       NULL,                NULL,           iNONE),
+  make_op_line(DTK_IF,        NULL,                NULL,           iNONE),
+  make_op_line(DTK_OR,        NULL,                process_or,     iOR),
+  make_op_line(DTK_PRINT,     NULL,                NULL,           iNONE),
+  make_op_line(DTK_ERROR,     NULL,                NULL,           iNONE),
+  make_op_line(DTK_EOF,       NULL,                NULL,           iNONE),
+  make_op_line(DTK_CONCAT,    NULL,                process_binary, iTERM),
+  make_op_line(DTK_ID,        process_variable,    NULL,           iNONE),
+};
 
-drax_state* new_parser_error(const char* msg) {
-  drax_state* err = new_error(BPARSER_ERROR, msg);
-  return err;
-}
+#define GET_PRIORITY(v) (&op_lines[v])
 
-drax_state* get_last_state(drax_state* root) {
-  if (root->length <= 0) { return NULL; }
-  drax_state* curr;
+#define GET_CURRENT_BYTE() (&current->block->function->d_byte)
 
-  if (((root->child[root->length - 1]->type == BT_PACK) || 
-       (root->child[root->length - 1]->type == BT_LIST) || 
-       (root->child[root->length - 1]->type == BT_EXPRESSION)) &&
-       (root->child[root->length - 1]->closed == 0))
-  {
-    curr = get_last_state(root->child[root->length - 1]);
-    return curr;
-  }
-  
-  curr = root->child[root->length - 1];
-  root->length--;
-  root->child = (drax_state**) realloc(root->child, sizeof(drax_state*) * root->length);
-  return curr;
-}
+#define FATAL(v) dfatal(&parser.prev, v)
+
+#define FATAL_CURR(v) dfatal(&parser.current, v)
+
 
 /**
- * Add new nodes to AST.
- * Always the last open expression.
- */
-int add_child(drax_state* root, drax_state* child) {
-  if (root->length <= 0) {
-    root->length++;
-    root->child = (drax_state**) malloc(sizeof(drax_state*));
-    root->child[0] = child;
+ * VM Helpers
+*/
 
-    return 1;
-  } else {
-    drax_state* crr;
-    if (((root->child[root->length - 1]->type == BT_PACK) || 
-         (root->child[root->length - 1]->type == BT_LIST) || 
-         (root->child[root->length - 1]->type == BT_EXPRESSION)) &&
-         (root->child[root->length - 1]->closed == 0))
-    {
-      crr  = root->child[root->length - 1];
-      if (add_child(crr, child)) return 1;
-    } else {
-      crr = root;
-    }
+static void put_instruction(d_vm* vm, drax_value o) {
+  // parser.prev.line
+  vm->instructions->instr_count++;
 
-    crr->length++;
+  if (vm->instructions->instr_count >= vm->instructions->instr_size) {
+    vm->instructions->instr_size = vm->instructions->instr_size + MAX_INSTRUCTIONS;
+    vm->instructions = (d_instructions*) realloc(vm->instructions, sizeof(d_instructions));
+  }
 
-    if (crr->length <= 1) {
-      crr->child = (drax_state**) malloc(sizeof(drax_state*));
-    } else {
-      crr->child = (drax_state**) realloc(crr->child, sizeof(drax_state*) * crr->length);
-    }
-    crr->child[crr->length - 1] = child;
-    return 1;
+  vm->instructions->values[vm->instructions->instr_count -1] = o;
+}
+
+static void put_pair(d_vm* vm, d_op_code o, drax_value v) {
+  put_instruction(vm, (drax_value) o);
+  put_instruction(vm, v);
+}
+
+/* Lexer Helpers */
+
+static void get_next_token() {
+  parser.prev = parser.current;
+
+  while(true) {
+    parser.current = next_token();
+    if (parser.current.type != DTK_ERROR) break;
+
+    FATAL_CURR(parser.current.first);
   }
 }
 
-/**
- * Close the last open expression/sub expression in AST.
- */
-int close_pending_structs(drax_state* root, types ct) {
-  if (root->length == 0) return 0;
-
-  if (((root->child[root->length - 1]->type == BT_PACK) || 
-       (root->child[root->length - 1]->type == BT_LIST) ||
-       (root->child[root->length - 1]->type == BT_EXPRESSION)) &&
-       (root->child[root->length - 1]->closed == 0))
-  {
-    if (close_pending_structs(root->child[root->length - 1], ct )) {
-      return 1;
-    } else {
-      if (root->child[root->length - 1]->type == ct) {
-        root->child[root->length - 1]->closed = 1;
-        return 1;
-      }
-    }
-  }
-
-  return 0;
-}
-
-void next_token() {
-  free(gtoken);
-  gtoken = lexan();
-
-  if (TK_BREAK_LINE == gtoken->type) {
-    gcurr_line_number++;
-  }
-}
-
-static void next_token_ignore_space() {
-  next_token();
-
-  while (TK_BREAK_LINE == gtoken->type) {
-    next_token();
-  }
-}
-
-void set_gberror(const char *msg) {
-  if (gberr->has_error) return;
-
-  gberr->has_error = 1;
-  gberr->state_error = new_error(BSYNTAX_ERROR, msg);
-  gberr->state_error->trace = (bstack_trace*) malloc(sizeof(bstack_trace));
-  gberr->state_error->trace->line = gcurr_line_number;
-  gberr->state_error->trace->file = NULL;
-  gberr->line = gcurr_line_number;
-}
-
-/**
- * Helpers to arith. expression tree.
- */
-
-drax_state* get_curr_bvalue() {  
-  switch (gtoken->type)
-  {
-    case TK_INTEGER: return new_integer(gtoken->fval);
-    
-    case TK_FLOAT: return new_float(gtoken->fval);
-
-    default:
-      set_gberror("Unspected expression type!");
-      break;
-  }
-
-  return NULL;
-}
-
-dlex_types get_crr_type() {
-  if (NULL == gtoken) return 0;
-  return gtoken->type;
-}
-
-b_operator get_operator() {
-  switch (gtoken->type)
-  {
-    case TK_ADD: return BADD;
-    case TK_SUB: return BSUB;
-    case TK_MUL: return BMUL;
-    case TK_DIV: return BDIV;
-    default: return BINVALID;
-  }
-}
-
-expr_tree *new_node(dlex_types type, b_operator operation, expr_tree *left, 
-  expr_tree *right, drax_state *value
-) {
-    expr_tree *n = (expr_tree*) malloc(sizeof(expr_tree));
-    if (NULL == n) { set_gberror("Memory error, fail to process expression"); }
-    n->type = type;
-    n->op = operation;
-    n->left = left;
-    n->right = right;
-    n->value = value;
-    return n;
-}
-
-expr_tree *value_expr() {
-  if (TK_SYMBOL == gtoken->type) {
-    char* rigth_symbol = gtoken->cval;
-    next_token();
-    if (TK_PAR_OPEN == gtoken->type)  {
-      add_child(bs, new_definition());
-      add_child(bs, new_symbol(rigth_symbol));
-      next_token();
-      get_args_by_comma();
-
-      if(!close_pending_structs(bs, BT_EXPRESSION)) 
-        set_gberror("expression error, pair not found.");
-
-      drax_state* crr_bs = get_last_state(bs);
-      expr_tree *result = new_node(TK_SYMBOL, BNONE, NULL, NULL, crr_bs);
-      next_token();
-      return result;
-    } else {
-      expr_tree *result = new_node(TK_SYMBOL, BNONE, NULL, NULL, new_symbol(rigth_symbol));
-      return result;
-    }
-  }
-
-  if ((TK_INTEGER == gtoken->type) || (TK_FLOAT == gtoken->type)) {
-      expr_tree *result = new_node(gtoken->type, BNONE, NULL, NULL, get_curr_bvalue());
-      next_token();
-      return result;
-  }
-
-  set_gberror("ArithmeticError, bad argument to expression.");
-  return NULL;
-}
-
-expr_tree *preference_expr() {
-    if (gtoken->type == TK_PAR_OPEN) {
-      next_token();
-      expr_tree *expr = add_expr();
-      next_token();
-      return expr;
-    }
-
-    return value_expr();
-}
-
-expr_tree *mult_expr() {
-    expr_tree *expr = preference_expr();
-    while (gtoken->type == TK_MUL || gtoken->type == TK_DIV) {
-        b_operator op = get_operator();
-        next_token();
-        expr_tree *expr2 = preference_expr();
-        expr = new_node(gtoken->type, op, expr, expr2, NULL);
-    }
-    return expr;
-}
-
-expr_tree *add_expr() {
-    expr_tree *expr = mult_expr();
-    while (gtoken->type == TK_ADD || gtoken->type == TK_SUB) {
-        b_operator op = get_operator();
-        next_token();
-        expr_tree *expr2 = mult_expr();
-        expr = new_node(gtoken->type, op, expr, expr2, NULL);
-    }
-    return expr;
-}
-
-expr_tree *build_expr_tree() {
-    expr_tree *expr = add_expr();
-    return expr;
-}
-
-/**
- * Convert expression to drax expression
- */
-
-void infix_to_bexpression(drax_state* sbs, expr_tree *expr) {
-  if (NULL == expr) return;
-
-  if ((BNONE == expr->op) &&
-      ((TK_INTEGER == expr->type) || (TK_FLOAT == expr->type) || (TK_SYMBOL == expr->type))
-  ) {
-    add_child(sbs, expr->value);
-    free(expr);
+static void process_token(dlex_types type, const char* message) {
+  if (parser.current.type == type) {
+    get_next_token();
     return;
   }
 
-  add_child(bs, new_expression());
-
-  switch (expr->op)
-  {
-    case BADD: add_child(bs, new_symbol("+")); break;
-    case BSUB: add_child(bs, new_symbol("-")); break;
-    case BMUL: add_child(bs, new_symbol("*")); break;
-    case BDIV: add_child(bs, new_symbol("/")); break;
-    
-    default:
-      set_gberror("invalid operation.");
-      break;
-  }
-
-  infix_to_bexpression(bs, expr->left);
-  infix_to_bexpression(bs, expr->right);
-
-  free(expr);
-
-  if(!close_pending_structs(bs, BT_EXPRESSION))
-    set_gberror("expression error, pair not found.");
+  FATAL_CURR(message);
 }
 
-int get_args_by_comma() {
-  int processing = 1;
-  int param_qtt = 0;
-
-  while (processing)
-  {
-    process_token();
-    if (TK_BREAK_LINE == gtoken->type) { next_token_ignore_space(); }
-    processing = TK_COMMA == gtoken->type; 
-
-    if (processing) {
-      next_token_ignore_space();
-      param_qtt++;
-    }
-  }
-
-  return param_qtt;
+static drax_value get_current_token() {
+  return parser.current.type;
 }
 
-/* Main language definition */
-
-static void drax_arith_expression() {
-  expr_tree* trr = build_expr_tree();
-  infix_to_bexpression(bs, trr);
-}
-
-static int drax_call_function() {
-  d_token* nxt = b_check_next(NULL);
-  if (TK_PAR_OPEN != nxt->type) {
-    free(nxt);
-    return 0;
-  }
-
-  free(nxt);
-  char* rigth_symbol = gtoken->cval;
-  next_token();
-
-  next_token();
-  add_child(bs, new_call_definition());
-  add_child(bs, new_symbol(rigth_symbol));
-
-  if (TK_PAR_CLOSE != gtoken->type) {
-    get_args_by_comma();
-  }
-
-  if (TK_PAR_CLOSE != gtoken->type) {
-    set_gberror("missing ) after argument list.");
-  }
-
-  if(!close_pending_structs(bs, BT_EXPRESSION)) {
-    set_gberror("Expression pair not found.");
-  }
-
-  next_token();
-
-  return 1;
-}
-
-static int drax_define_var() {
-  d_token* nxt = b_check_next(NULL);
-  if (TK_EQ != nxt->type) {
-    free(nxt);
-    return 0;
-  }
-
-  free(nxt);
-  char* rigth_symbol = gtoken->cval;
-  next_token();
-
-  next_token();
-  add_child(bs, new_definition());
-  add_child(bs, new_symbol("set"));
-  add_child(bs, new_symbol(rigth_symbol));
-  process_token();
-
-  if(!close_pending_structs(bs, BT_EXPRESSION)) {
-      set_gberror("function pair not found.");
-  }
-
-  return 1;
-}
-
-static int is_arith_op(dlex_types type) {
-  return (TK_ADD == type) || (TK_DIV == type) || 
-         (TK_MUL == type) || (TK_SUB == type);
-}
-
-static int check_is_conclusion_token() {
-  return 
-    (TK_BREAK_LINE == gtoken->type) ||
-    (TK_EOF == gtoken->type) ||
-    (TK_END == gtoken->type) ||
-    (TK_COMMA == gtoken->type) ||
-    (TK_PAR_CLOSE == gtoken->type) ||
-    (TK_BRACE_CLOSE == gtoken->type) ||
-    (TK_BRACKET_CLOSE == gtoken->type);
-}
-
-static int arithm_simple_terminator(dlex_types tt){//add comma
-  return ((TK_BREAK_LINE == tt) || (TK_EOF == tt) || (TK_END == tt));
-}
-
-static int curr_exp_is_arithm_op() {
-  int zero = 0;
-  int* jump_count = &zero;
-  int cnte_proc = 1;
-  d_token* nxt = b_check_next(jump_count);
-  size_t stack_counter = 0;
-
-  if (is_arith_op(nxt->type))  { return 1; }
-  
-  /* if curr. expr. is number */
-  if (arithm_simple_terminator(nxt->type)) { return 0; }
-
-  while (cnte_proc) {
-    if (TK_PAR_OPEN == nxt->type)  { stack_counter++; }
-    if (TK_PAR_CLOSE == nxt->type) { stack_counter--; }
-    nxt = b_check_next(jump_count);
-
-    if ((stack_counter == 0) && (is_arith_op(nxt->type))) return 1;
-
-    cnte_proc = (!arithm_simple_terminator(nxt->type));
-  }
-  free(nxt);
-
-  return 0;
-}
-
-static int drax_arith_op() {
-  
-  if (!curr_exp_is_arithm_op()) { return 0; }
-
-  drax_arith_expression();
-  if (!check_is_conclusion_token()) {
-    set_gberror("Unspected token");
-  }
-  return 1;
-}
-
-static int drax_import_file() {
-  next_token();
-  add_child(bs, new_call_definition());
-  add_child(bs, new_symbol("import"));
-
-  if (TK_STRING != gtoken->type) {
-    set_gberror("Cannot use import to current definition");
-    return 1;
-  }
-  add_child(bs, new_string(gtoken->cval));
-
-  if(!close_pending_structs(bs, BT_EXPRESSION)) {
-      set_gberror("function pair not found.");
-  }
-
-  next_token();
-
-  return 1;
-}
-
-static int drax_end_definition() {
-  if(!close_pending_structs(bs, BT_PACK)) {
-    set_gberror("pack freeze pair not found.");
-    return 1;
-  }
-
-  if(!close_pending_structs(bs, BT_EXPRESSION)) {
-    set_gberror("function pair not found.");
-    return 1;
-  }
-
-  return 0;
-}
-
-static int drax_function_definition() {
-  add_child(bs, new_definition());
-  add_child(bs, new_symbol("fun"));
-  next_token();
-
-  if (TK_SYMBOL != gtoken->type) { set_gberror("Invalid function name."); }
-
-  add_child(bs, new_symbol(gtoken->cval));
-  next_token();
-
-  if (TK_PAR_OPEN != gtoken->type) { set_gberror("Bad definition to function."); }
-
-  next_token();
-
-  int process = 1;
-  
-  add_child(bs, new_list());
-  if (TK_PAR_CLOSE != gtoken->type) {
-    while (process) {
-      if (TK_SYMBOL != gtoken->type) {
-        set_gberror("Invalid function param.");
-        return 1;
-      }
-
-      add_child(bs, new_symbol(gtoken->cval));
-      next_token();
-
-      process = (TK_COMMA == gtoken->type);
-      if (process) { next_token(); }
-    }
-  }
-  
-  if(!close_pending_structs(bs, BT_LIST)) {
-    set_gberror("params pair not found.");
-    return 1;
-  }
-  
-  if (TK_PAR_CLOSE!= gtoken->type) {
-    set_gberror("pair not identified to params.");
-    return 1;
-  }
-
-  next_token();
-
-  if (TK_DO != gtoken->type) { 
-    set_gberror("bad definition to function.");
-    return 1;
-  }
-  add_child(bs, new_pack());
-  next_token();
-
-  process = 1;
-  while (process) {
-    if (TK_END == gtoken->type) {
-      drax_end_definition();
-      return 1;
-    }
-    process_token();
-
-    if (TK_END == gtoken->type) {
-      drax_end_definition();
-      return 1;
-    }
-    process = ((TK_EOF != gtoken->type) && (TK_END != gtoken->type));
-  }
-
-  return 1;
-}
-
-/* if definition */
-
-static int is_bool_op(dlex_types type) {
-  return (TK_DEQ == type)    || (TK_TEQ == type)     || 
-         (TK_LE == type)     || (TK_LS == type)      ||
-         (TK_NOT_EQ == type) || (TK_NOT_DEQ == type) ||
-         (TK_BE == type)     || (TK_BG == type);
-}
-
-static const char* bbool_to_str(dlex_types type) {
-  switch (type) {
-    case TK_NOT_EQ: return "!=";
-    case TK_NOT_DEQ: return "!==";
-    case TK_DEQ: return "==";
-    case TK_TEQ: return "===";
-    case TK_LE:  return "<=";
-    case TK_LS:  return "<";
-    case TK_BE:  return ">=";
-    case TK_BG:  return ">";
-  
-    default:
-    set_gberror("bool symbol with unspected type.");
-    return "";
-  }
-}
-
-static int process_bool_expr() {
-  if (is_bool_op(gtoken->type)) {
-    global_act_state->state = AS_BOOL;
-    drax_state* left = get_last_state(bs);
-    add_child(bs, new_expression());
-    add_child(bs, new_symbol(bbool_to_str(gtoken->type)));
-    add_child(bs, left);
-    next_token();
-    process_token();
-   
-    global_act_state->state = AS_NONE;
-    if(!close_pending_structs(bs, BT_EXPRESSION)) {
-      set_gberror("bool pair not found.");
-      return 1;
-    }
-    return 1;
-  }
-  return 0;
-}
-
-static int drax_if_definition() {
-  add_child(bs, new_definition());
-  add_child(bs, new_symbol("if"));
-
-  next_token();
-  process_token();
-
-  if (TK_DO != gtoken->type) { 
-    set_gberror("Fail to define 'if', unspected token.");
-    return 1;
-  }
-
-  add_child(bs, new_pack());
-
-  next_token();
-  int process = 1;
-  while (process) {
-    
-    process = (
-      (TK_EOF != gtoken->type) &&
-      (TK_END != gtoken->type) &&
-      (TK_ELSE != gtoken->type)
-    );
-
-    if (process) { process_token(); }
-  }
-
-  if(!close_pending_structs(bs, BT_PACK)) {
-    set_gberror("pack freeze pair not found.");
-    return 1;
-  }
-
-  if (TK_ELSE == gtoken->type) {
-
-    add_child(bs, new_pack());
-
-    next_token();
-    process = 1;
-    while (process) {
-
-      process = (
-        (TK_EOF != gtoken->type) &&
-        (TK_END != gtoken->type) &&
-        (TK_ELSE != gtoken->type)
-      );
-
-      if (process) { process_token(); }
-    }
-  } else {
-    add_child(bs, new_pack());
-  }
-
-  if (TK_END != gtoken->type) { 
-    set_gberror("Fail to define 'if', unspected token.");
-    return 1;
-  }
-
-  drax_end_definition();
-
-  next_token();
-  
-  return 1;
-}
-
-static const char* blogic_to_str(dlex_types type) {
-  switch (type) {
-    case TK_AND: return "and";
-    case TK_OR: return "or";
-  
-    default:
-    set_gberror("logic symbol with unspected type.");
-    return "";
-  }
-}
-
-static int is_logic_op(dlex_types type) {
-  return (TK_AND == type) || (TK_OR == type);
-}
-
-static int process_logic_gates() {
-  if (is_logic_op(gtoken->type)) {
-    drax_state* left = get_last_state(bs);
-    add_child(bs, new_expression());
-    add_child(bs, new_symbol(blogic_to_str(gtoken->type)));
-    add_child(bs, left);
-    next_token();
-    process_token();
-   
-    if(!close_pending_structs(bs, BT_EXPRESSION)) {
-      set_gberror("logic pair not found.");
-      return 1;
-    }
-    return 1;
-  }
-  return 0;
-}
-
-void process_token() {
-  switch (gtoken->type) {
-    case TK_BREAK_LINE:
-      next_token();
-      break;
-
-    case TK_FLOAT:
-      if (drax_arith_op()) { break; }
-      add_child(bs, new_float(gtoken->fval));
-      next_token();
-      break;
-
-    case TK_INTEGER:
-      if (drax_arith_op()) { break; }
-      add_child(bs, new_integer(gtoken->fval));
-      next_token();
-      break;
-
-    case TK_PAR_OPEN:
-      if (drax_arith_op()) { break; };
-      next_token();
-      process_token();
-
-      if (TK_PAR_CLOSE != gtoken->type) { set_gberror("Expression pair not found."); }
-      next_token();
-      break;
-
-    case TK_SYMBOL: {
-      if (drax_define_var()) { break; };
-      if (drax_arith_op()) { break; };
-      if (drax_call_function()) { break; };
-
-      add_child(bs, new_symbol(gtoken->cval));
-      next_token();
-      break;
-    }
-
-    case TK_IF:
-      drax_if_definition();
-      break;
-
-    case TK_IMPORT:
-      drax_import_file();
-      break;
-
-    case TK_FUN:
-      drax_function_definition();
-      next_token();
-      break;
-
-    case TK_LAMBDA: /* pending */ next_token(); break;
-
-    case TK_STRING:
-      add_child(bs, new_string(gtoken->cval));
-      next_token();
-      break;
-
-    case TK_BRACE_OPEN: /* pending */ next_token(); break;
-    case TK_BRACE_CLOSE: /* pending */ next_token(); break;
-    case TK_BRACKET_OPEN: {
-      add_child(bs, new_list());
-
-      next_token_ignore_space();
-
-      if (TK_BRACKET_CLOSE != gtoken->type) {
-        get_args_by_comma();
-      }
-    
-      if (TK_BRACKET_CLOSE != gtoken->type) {
-        set_gberror("list pair not found.");
-        break;
-      }
-
-      if(!close_pending_structs(bs, BT_LIST))
-        set_gberror("list pair not found.");
-      
-      next_token();
-      break;
-    }
-
-    case TK_END: {
-      drax_end_definition();
-      next_token();
-      break;
-    }
-
-    case TK_NIL: {
-      add_child(bs, new_nil());
-      next_token();
-      break;
-    }
-
-    default:
-      set_gberror("Unspected token.");
-      next_token();
-      break;
-  }
-
-  process_bool_expr();
-
-  /* Only if other process is finished */
-  if (AS_NONE == global_act_state->state) {
-    process_logic_gates();
+static bool eq_and_next(dlex_types type) {
+  if (parser.current.type == type) {
+    get_next_token();
+    return true;
   };
+
+  return false;
 }
 
-drax_state* drax_parser(char *input) {
-  gcurr_line_number = 1;
+/* Compiler */
 
-  global_act_state = (g_act_state*) malloc(sizeof(g_act_state));
-  global_act_state->state = AS_NONE;
-  
-  gberr = (bg_error*) malloc(sizeof(bg_error));
-  gberr->line = 0;
-  gberr->has_error = 0;
-  gberr->state_error = NULL;
+static int put_jmp(d_vm* vm, drax_value instruction) {
+  // put_instruction(vm, instruction);
+  // put_instruction(vm, 0xff);
+  // put_instruction(vm, 0xff);
+  // return GET_CURRENT_BYTE()->count - 2;
+}
 
-  bs = (drax_state*) malloc(sizeof(drax_state));
-  bs->type = BT_PROGRAM;
-  bs->child = (drax_state**) malloc(sizeof(drax_state*));
-  bs->length = 0;
-  bs->closed = 0;
 
-  init_lexan(input);
-  gtoken = NULL;
+static void put_const(d_vm* vm, drax_value value) {
+  put_pair(vm, OP_CONST, value);
+}
 
-  next_token();
-  while (TK_EOF != get_crr_type()) {
-    process_token();
-    
-    if (gberr->has_error) {
-      del_bstate(bs);
-      return gberr->state_error;
+static void patch_jump(d_vm* vm, int offset) {
+  // int jump = GET_CURRENT_BYTE()->count - offset - 2;
+
+  // if (jump > UINT16_MAX) {
+  //   FATAL("Too much code to jump over.");
+  // }
+
+  // GET_CURRENT_BYTE()->code[offset] = (jump >> 8) & 0xff;
+  // GET_CURRENT_BYTE()->code[offset + 1] = jump & 0xff;
+}
+
+/**
+ * Create a new scope
+ * 
+ */
+
+static void expression(d_vm* vm);
+
+static void process(d_vm* vm);
+
+static void parse_priorities(d_vm* vm, priorities priorities);
+
+static drax_value identifier_constant(d_vm* vm, d_token* name) {
+  return DS_VAL(copy_dstring(vm, name->first, name->length));
+}
+
+static drax_value parse_variable(d_vm* vm, const char* e) {
+  process_token(DTK_ID, e);
+  return identifier_constant(vm, &parser.prev);
+}
+
+static drax_value process_arguments(d_vm* vm) {
+  drax_value arg_count = 0;
+  if (get_current_token() != DTK_PAR_CLOSE) {
+    do {
+      expression(vm);
+      if (arg_count == 255) {
+        FATAL("Can't have more than 255 arguments.");
+      }
+      arg_count++;
+    } while (eq_and_next(DTK_COMMA));
+  }
+  process_token(DTK_PAR_CLOSE, "Expect ')' after arguments.");
+  return arg_count;
+}
+
+void process_and(d_vm* vm, bool v) {
+  // UNUSED(v);
+  // int end = put_jmp(OP_JMF);
+
+  // put_instruction(vm, OP_POP);
+  // parse_priorities(iAND);
+
+  // patch_jump(end);
+}
+
+void process_binary(d_vm* vm, bool v) {
+  UNUSED(v);
+  dlex_types opt = parser.prev.type;
+  operation_line* rule = GET_PRIORITY(opt);
+  parse_priorities(vm, (priorities)(rule->priorities + 1));
+
+  switch (opt) {
+    case DTK_BNG_EQ: put_pair(vm, OP_EQUAL, OP_NOT); break;
+    case DTK_DEQ:    put_instruction(vm, OP_EQUAL); break;
+    case DTK_BG:     put_instruction(vm, OP_GREATER); break;
+    case DTK_BE:     put_pair(vm, OP_LESS, OP_NOT); break;
+    case DTK_LS:     put_instruction(vm, OP_LESS); break;
+    case DTK_LE:     put_pair(vm, OP_GREATER, OP_NOT); break;
+    case DTK_ADD:    put_instruction(vm, OP_ADD); break;
+    case DTK_SUB:    put_instruction(vm, OP_SUB); break;
+    case DTK_MUL:    put_instruction(vm, OP_MUL); break;
+    case DTK_DIV:    put_instruction(vm, OP_DIV); break;
+    case DTK_CONCAT: put_instruction(vm, OP_CONCAT); break;
+    default: return;
+  }
+}
+
+void process_call(d_vm* vm, bool v) {
+  // UNUSED(v);
+  // drax_value arg_count = process_arguments();
+  // PUT_PAIR_DBYTES(OP_CALL, arg_count);
+}
+
+void literal_translation(d_vm* vm, bool v) {
+  // UNUSED(v);
+  // switch (parser.prev.type) {
+  //   case DTK_NIL:   put_instruction(vm, OP_NIL);   break;
+  //   case DTK_FALSE: put_instruction(vm, OP_FALSE); break;
+  //   case DTK_TRUE:  put_instruction(vm, OP_TRUE);  break;
+  //   default: return;
+  // }
+}
+
+void process_grouping(d_vm* vm, bool v) {
+  // UNUSED(v);
+  // expression();
+  // process_token(DTK_PAR_CLOSE, "Expect ')' after expression.");
+}
+
+void process_list(d_vm* vm, bool v) {
+  // UNUSED(v);
+  // double lc = 0;
+  // do {
+  //   expression();
+  //   lc++;
+  // } while (eq_and_next(DTK_COMMA));
+
+  // process_token(DTK_BKT_CLOSE, "Expect ']' after elements.");
+  // put_const(NUMBER_VAL(lc));
+  // put_instruction(vm, OP_LIST);
+}
+
+void process_number(d_vm* vm, bool v) {
+  UNUSED(v);
+  double value = strtod(parser.prev.first, NULL);
+
+  put_pair(vm, OP_PUSH, num_to_draxvalue(value));
+}
+
+void process_or(d_vm* vm, bool v) {
+  // UNUSED(v);
+  // int elsj = put_jmp(OP_JMF);
+  // int endj = put_jmp(OP_JMP);
+
+  // patch_jump(elsj);
+  // put_instruction(vm, OP_POP);
+
+  // parse_priorities(iOR);
+  // patch_jump(endj);
+}
+
+void process_string(d_vm* vm, bool v) {
+  UNUSED(v);
+  put_const(vm, DS_VAL(copy_dstring(vm, parser.prev.first + 1, parser.prev.length - 2)));
+}
+
+static bool var_is_local(char* name, int size) {
+  for (int i = 0; i < parser.locals->length; i++) {
+    if (strncmp(parser.locals->vars[i], name, size) == 0) {
+      return true;
     }
   }
+  return false;
+}
+
+static void add_new_local(char* name) {
+  if (parser.locals->length >= parser.locals->capacity) {
+    parser.locals->capacity = parser.locals->capacity + LOCAL_SIZE_FACTOR;
+    parser.locals->vars = (char**) realloc(parser.locals->vars, sizeof(parser.locals->capacity));
+  }
+
+  parser.locals->length++;
+  parser.locals->vars[parser.locals->length -1] = name;
+}
+
+void process_variable(d_vm* vm, bool v) {
+  d_token ctk = parser.prev;
+
+  // drax_value id = identifier_constant(vm, &ctk);
+
+  if (eq_and_next(DTK_EQ)) {
+      char* name = (char*) calloc(ctk.length, sizeof(char));
+      strncpy(name, ctk.first, ctk.length);
+      expression(vm);
+      put_pair(vm, OP_VAR, (drax_value) name);
+      return;
+  }
+}
+
+void process_unary(d_vm* vm, bool v) {
+  // UNUSED(v);
+  // dlex_types operatorType = parser.prev.type;
+
+  // parse_priorities(iUNARY);
+
+  // switch (operatorType) {
+  //   case DTK_BNG: put_instruction(vm, OP_NOT); break;
+  //   case DTK_SUB: put_instruction(vm, OP_NEGATE); break;
+  //   default: return;
+  // }
+}
+
+/* end of processors functions */
+
+static void parse_priorities(d_vm* vm, priorities p) {
+  get_next_token();
   
-  return bs;
+  parser_callback p_call = GET_PRIORITY(parser.prev.type)->prefix;
+  if (p_call == NULL) {
+    FATAL("Expect expression.");
+    return;
+  }
+
+  bool v = p <= iASSIGNMENT;
+  p_call(vm, v);
+
+  while (p <= GET_PRIORITY(parser.current.type)->priorities) {
+    get_next_token();
+    parser_callback infix_rule = GET_PRIORITY(parser.prev.type)->infix;
+
+    infix_rule(vm, v);
+  }
+
+  if (v && eq_and_next(DTK_EQ)) {
+    FATAL("Invalid assignment target.");
+  }
+}
+
+static void expression(d_vm* vm) {
+  parse_priorities(vm, iASSIGNMENT);
+}
+
+static void block(d_vm* vm) {
+  while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
+    process(vm);
+  }
+
+  process_token(DTK_END, "Expect 'end' after block.");
+}
+
+static void function(d_vm* vm, scope_type type) {
+//
+}
+
+static void fun_declaration(d_vm* vm) {
+//
+}
+
+static void if_definition(d_vm* vm) {
+//
+}
+
+static void print_definition(d_vm* vm) {
+  process_token(DTK_PAR_OPEN, "Expect '(' after arguments.");
+  expression(vm);
+  put_instruction(vm, OP_PRINT);
+  process_token(DTK_PAR_CLOSE, "Expect ')' after arguments.");
+}
+
+static void process(d_vm* vm) {
+  switch (get_current_token()) {
+    case DTK_FUN: {
+      get_next_token();
+      fun_declaration(vm);
+      break;
+    }
+
+    case DTK_IF: {
+      get_next_token();
+      if_definition(vm);
+      break;
+    }
+
+    case DTK_PRINT: {
+      get_next_token();
+      print_definition(vm);
+      break;
+    }
+
+    case DTK_DO: {
+      break;
+    }
+
+    default: {
+      expression(vm);
+      // put_instruction(vm, OP_POP);
+      break;
+    }
+  }
+}
+
+void __build__(d_vm* vm, const char* input) {
+  init_lexan(input);
+  init_parser();
+
+  parser.has_error = false;
+  parser.panic_mode = false;
+
+  get_next_token();
+
+  while (get_current_token() != DTK_EOF) {
+    process(vm);
+  }
+
+  if (parser.has_error) {
+    exit(1);
+  }
+
+  put_pair(vm, OP_EXIT, 0xff);
+}
+
+void dfatal(d_token* token, const char* message) {
+  if (parser.panic_mode) return;
+  parser.panic_mode = true;
+  fprintf(stderr, "Error, line %d:\n", token->line);
+
+  if (token->type == DTK_EOF) {
+    fprintf(stderr, "  end of file");
+  }  else {
+    fprintf(stderr, " '%.*s'", token->length, token->first);
+  }
+
+  fprintf(stderr, " %s\n", message);
+  parser.has_error = true;
 }

@@ -4,97 +4,77 @@
 
 #ifndef __DPARSER
 #define __DPARSER
-
-#include "dtypes.h"
+ 
 #include "dlex.h"
+#include "dvm.h"
+#include "ddefs.h"
 
-typedef enum b_operator {
-    BINVALID,
-    BNONE,
-    BADD,
-    BSUB,
-    BMUL,
-    BDIV
-} b_operator;
+#define callback_table(n) void n(d_vm* vm, bool b);
 
-typedef struct expr_tree {
-    dlex_types type;
-    b_operator op;
-    struct expr_tree *left;
-    struct expr_tree *right;
-    drax_state* value;
-} expr_tree;
+#define make_op_line(i, l, m, r) [i] = {l, m, r}
 
-typedef struct bg_error {
-  int has_error;
-  size_t line;
-  drax_state* state_error;
-} bg_error;
+typedef struct d_local_registers {
+  char** vars;
+  int length;
+  int capacity;
+} d_local_registers;
 
-/* Handler active state */
-typedef enum type_act_state {
-  AS_NONE,
-  AS_BOOL,
-  AS_LOGIC
-} type_act_state;
+typedef struct parser_state {
+  d_token current;
+  d_token prev;
+  d_local_registers* locals;
+  bool has_error;
+  bool panic_mode;
+} parser_state;
 
-typedef struct g_act_state {
-  type_act_state state;
-} g_act_state;
+typedef enum priorities {
+  iNONE = 0,
+  iASSIGNMENT,
+  iOR, 
+  iAND,
+  iEQUALITY,
+  iDIFF,
+  iTERM,
+  iFACTOR,
+  iUNARY,
+  iCALL,
+  iPRIMARY
+} priorities;
 
-/* alias functions handler */
-int create_stack_bpsm();
+typedef void (*parser_callback) (d_vm* vm, bool v);
 
-int increment_stack_bpsm();
+typedef struct {
+  parser_callback prefix;
+  parser_callback infix;
+  priorities priorities;
+} operation_line;
 
-int del_first_stack_bpsm();
+typedef enum scope_type {
+  SCP_BLOCK,
+  SCP_FUN,
+  SCP_ROOT
+} scope_type;
 
-int add_elem_stack_bpsm();
+typedef struct parser_builder {
+  struct parser_builder* owner;
+  scope_type type;
+  int curr_level;
+} parser_builder;
 
-/* helpers */
+void __build__(d_vm* vm, const char* input);
 
-drax_state* new_definition();
+callback_table(process_grouping);
+callback_table(process_list);
+callback_table(process_call);
+callback_table(process_unary);
+callback_table(process_binary);
+callback_table(process_variable);
+callback_table(process_string);
+callback_table(process_number);
+callback_table(process_and);
+callback_table(process_or);
+callback_table(literal_translation);
 
-drax_state* new_call_definition();
-
-drax_state* new_parser_error(const char* msg);
-
-drax_state* get_last_state();
-
-int add_child(drax_state* root, drax_state* child);
-
-int close_pending_structs(drax_state* root, types ct);
-
-void next_token();
-
-void set_gberror(const char *msg);
-
-drax_state* get_curr_bvalue();
-
-dlex_types get_crr_type();
-
-b_operator get_operator();
-
-expr_tree *new_node(dlex_types type, b_operator operation, expr_tree *left, 
-  expr_tree *right, drax_state *value
-);
-
-expr_tree *value_expr();
-
-expr_tree *preference_expr();
-
-expr_tree *mult_expr();
-
-expr_tree *add_expr();
-
-expr_tree *build_expr_tree();
-
-void infix_to_bexpression(drax_state* bs, expr_tree *expr);
-
-int get_args_by_comma();
-
-void process_token();
-
-drax_state* drax_parser(char *input);
+void dfatal(d_token* token, const char* message);
 
 #endif
