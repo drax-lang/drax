@@ -16,7 +16,14 @@
 #define VMcond(f) \
      switch (*(f->ip++))
 
+#define dg16_byte(f) \
+    (f->ip += 2, (uint16_t)((f->ip[-2] << 8) | f->ip[-1]))
+
 #define VMCase(t) case t:
+
+#define MSG_NAME_IS_NOT_DEFINED    "'%s' is not defined."
+#define MSG_NUMBER_OF_INVALID_ARGS "Number of invalid arguments, expected %d arguments."
+#define MSG_BAD_AGR_ARITH_OP       "Bad argument in arithmetic expression."
 
 typedef struct const_value_array{
   int limit;
@@ -64,7 +71,6 @@ typedef struct drax_byte {
 drax_byte* new_drax_value();
 
 /* Value drax */
-void free_drax_value(d_vm* vm, drax_byte* d_byte);
 
 void append_drax_value(d_vm* vm, drax_byte* d_byte, drax_value byte, int line);
 

@@ -41,7 +41,7 @@ static int process_file(d_vm* v, char** argv) {
   }
 
   __build__(v, content);
-  // __run__(benv, out, 0);
+  __run__(v, 0);
 
   return 0;
 }

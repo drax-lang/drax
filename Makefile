@@ -8,14 +8,14 @@ ASM_LINKS=
 FILES= ./src/dvm.c \
        ./src/dtypes.c \
        ./src/dparser.c \
-       ./src/dfunctions.c \
-       ./src/dprint.c \
        ./src/dshell.c \
 	   ./src/dflags.c \
 	   ./src/dio.c \
 	   ./src/dlex.c \
        ./src/drax.c \
-       ./src/dinspect.c
+       ./src/dinspect.c \
+	   ./src/dhandler.c \
+	   ./src/dstructs.c
 
 DEBUGF= -ggdb \
 		-g

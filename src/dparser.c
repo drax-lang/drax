@@ -70,6 +70,8 @@ static operation_line op_lines[] = {
  * VM Helpers
 */
 
+#define GET_INSTRUCTION(vm) vm->instructions
+
 static void put_instruction(d_vm* vm, drax_value o) {
   // parser.prev.line
   vm->instructions->instr_count++;
@@ -125,10 +127,10 @@ static bool eq_and_next(dlex_types type) {
 /* Compiler */
 
 static int put_jmp(d_vm* vm, drax_value instruction) {
-  // put_instruction(vm, instruction);
-  // put_instruction(vm, 0xff);
-  // put_instruction(vm, 0xff);
-  // return GET_CURRENT_BYTE()->count - 2;
+  put_instruction(vm, instruction);
+  put_instruction(vm, 0xff);
+  put_instruction(vm, 0xff);
+  return GET_INSTRUCTION(vm)->instr_count - 2;
 }
 
 
@@ -137,14 +139,14 @@ static void put_const(d_vm* vm, drax_value value) {
 }
 
 static void patch_jump(d_vm* vm, int offset) {
-  // int jump = GET_CURRENT_BYTE()->count - offset - 2;
+  int jump = GET_INSTRUCTION(vm)->instr_count - offset - 2;
 
-  // if (jump > UINT16_MAX) {
-  //   FATAL("Too much code to jump over.");
-  // }
+  if (jump > UINT16_MAX) {
+    FATAL("Too much code to jump over.");
+  }
 
-  // GET_CURRENT_BYTE()->code[offset] = (jump >> 8) & 0xff;
-  // GET_CURRENT_BYTE()->code[offset + 1] = jump & 0xff;
+  GET_INSTRUCTION(vm)->values[offset] = (jump >> 8) & 0xff;
+  GET_INSTRUCTION(vm)->values[offset + 1] = jump & 0xff;
 }
 
 /**
@@ -183,13 +185,13 @@ static drax_value process_arguments(d_vm* vm) {
 }
 
 void process_and(d_vm* vm, bool v) {
-  // UNUSED(v);
-  // int end = put_jmp(OP_JMF);
+  UNUSED(v);
+  int end = put_jmp(vm, OP_JMF);
 
-  // put_instruction(vm, OP_POP);
-  // parse_priorities(iAND);
+  put_instruction(vm, OP_POP);
+  parse_priorities(vm, iAND);
 
-  // patch_jump(end);
+  patch_jump(vm, end);
 }
 
 void process_binary(d_vm* vm, bool v) {
@@ -221,32 +223,32 @@ void process_call(d_vm* vm, bool v) {
 }
 
 void literal_translation(d_vm* vm, bool v) {
-  // UNUSED(v);
-  // switch (parser.prev.type) {
-  //   case DTK_NIL:   put_instruction(vm, OP_NIL);   break;
-  //   case DTK_FALSE: put_instruction(vm, OP_FALSE); break;
-  //   case DTK_TRUE:  put_instruction(vm, OP_TRUE);  break;
-  //   default: return;
-  // }
+  UNUSED(v);
+  switch (parser.prev.type) {
+    case DTK_NIL:   put_instruction(vm, OP_NIL);   break;
+    case DTK_FALSE: put_instruction(vm, OP_FALSE); break;
+    case DTK_TRUE:  put_instruction(vm, OP_TRUE);  break;
+    default: return;
+  }
 }
 
 void process_grouping(d_vm* vm, bool v) {
-  // UNUSED(v);
-  // expression();
-  // process_token(DTK_PAR_CLOSE, "Expect ')' after expression.");
+  UNUSED(v);
+  expression(vm);
+  process_token(DTK_PAR_CLOSE, "Expect ')' after expression.");
 }
 
 void process_list(d_vm* vm, bool v) {
-  // UNUSED(v);
-  // double lc = 0;
-  // do {
-  //   expression();
-  //   lc++;
-  // } while (eq_and_next(DTK_COMMA));
+  UNUSED(v);
+  double lc = 0;
+  do {
+    expression(vm);
+    lc++;
+  } while (eq_and_next(DTK_COMMA));
 
-  // process_token(DTK_BKT_CLOSE, "Expect ']' after elements.");
-  // put_const(NUMBER_VAL(lc));
-  // put_instruction(vm, OP_LIST);
+  process_token(DTK_BKT_CLOSE, "Expect ']' after elements.");
+  put_const(vm, NUMBER_VAL(lc));
+  put_instruction(vm, OP_LIST);
 }
 
 void process_number(d_vm* vm, bool v) {
@@ -257,15 +259,28 @@ void process_number(d_vm* vm, bool v) {
 }
 
 void process_or(d_vm* vm, bool v) {
-  // UNUSED(v);
-  // int elsj = put_jmp(OP_JMF);
-  // int endj = put_jmp(OP_JMP);
+  UNUSED(v);
+  int elsj = put_jmp(vm, OP_JMF);
+  int endj = put_jmp(vm, OP_JMP);
 
-  // patch_jump(elsj);
-  // put_instruction(vm, OP_POP);
+  patch_jump(vm, elsj);
+  put_instruction(vm, OP_POP);
 
-  // parse_priorities(iOR);
-  // patch_jump(endj);
+  parse_priorities(vm, iOR);
+  patch_jump(vm, endj);
+}
+
+void process_unary(d_vm* vm, bool v) {
+  UNUSED(v);
+  dlex_types operatorType = parser.prev.type;
+
+  parse_priorities(vm, iUNARY);
+
+  switch (operatorType) {
+    case DTK_BNG: put_instruction(vm, OP_NOT); break;
+    case DTK_SUB: put_instruction(vm, OP_NEG); break;
+    default: return;
+  }
 }
 
 void process_string(d_vm* vm, bool v) {
@@ -293,30 +308,18 @@ static void add_new_local(char* name) {
 }
 
 void process_variable(d_vm* vm, bool v) {
+  UNUSED(v);
   d_token ctk = parser.prev;
-
-  // drax_value id = identifier_constant(vm, &ctk);
+  char* name = (char*) calloc(ctk.length, sizeof(char));
+  strncpy(name, ctk.first, ctk.length);
 
   if (eq_and_next(DTK_EQ)) {
-      char* name = (char*) calloc(ctk.length, sizeof(char));
-      strncpy(name, ctk.first, ctk.length);
       expression(vm);
       put_pair(vm, OP_VAR, (drax_value) name);
       return;
   }
-}
 
-void process_unary(d_vm* vm, bool v) {
-  // UNUSED(v);
-  // dlex_types operatorType = parser.prev.type;
-
-  // parse_priorities(iUNARY);
-
-  // switch (operatorType) {
-  //   case DTK_BNG: put_instruction(vm, OP_NOT); break;
-  //   case DTK_SUB: put_instruction(vm, OP_NEGATE); break;
-  //   default: return;
-  // }
+  put_pair(vm, OP_GET_ID, (drax_value) name);
 }
 
 /* end of processors functions */
@@ -357,16 +360,26 @@ static void block(d_vm* vm) {
   process_token(DTK_END, "Expect 'end' after block.");
 }
 
-static void function(d_vm* vm, scope_type type) {
-//
-}
-
 static void fun_declaration(d_vm* vm) {
-//
 }
 
 static void if_definition(d_vm* vm) {
-//
+  process_token(DTK_PAR_OPEN, "Expect '(' after 'if'.");
+  expression(vm);
+  process_token(DTK_PAR_CLOSE, "Expect ')' after condition.");
+
+  int then_jump = put_jmp(vm, OP_JMF);
+  put_instruction(vm, OP_POP);
+  process(vm);
+
+  int else_jump = put_jmp(vm, OP_JMP);
+
+  patch_jump(vm, then_jump);
+  put_instruction(vm, OP_POP);
+
+  if (eq_and_next(DTK_ELSE)) process(vm);
+
+  patch_jump(vm, else_jump);
 }
 
 static void print_definition(d_vm* vm) {
@@ -402,7 +415,6 @@ static void process(d_vm* vm) {
 
     default: {
       expression(vm);
-      // put_instruction(vm, OP_POP);
       break;
     }
   }

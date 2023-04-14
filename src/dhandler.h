@@ -22,7 +22,7 @@ typedef struct d_fun_table {
 } d_fun_table;
 
 typedef struct drax_pairs {
-  int key;
+  size_t key;
   drax_value value;
 } drax_pairs;
 
@@ -34,12 +34,13 @@ typedef struct d_var_table {
 } d_var_table;
 
 /* impl. */
-static size_t gen_hash_idx(const char* key, int len);
 
 d_var_table* new_var_table();
 
 void free_table(d_vm* vm, d_var_table* t);
 
 void put_var_table(d_var_table* t, char* key, drax_value value);
+
+drax_value get_var_table(d_var_table* t, char* key);
 
 #endif

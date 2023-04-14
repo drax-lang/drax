@@ -4,6 +4,8 @@
 #include "dtypes.h"
 #include "dinspect.h"
 
+#include <stdarg.h>
+
 /**
  * Helpers
 */
@@ -40,11 +42,15 @@ static void init_value_array(value_array* array) {
   array->count = 0;
 }
 
-static void free_value_array(d_vm* vm, value_array* array) {
-  UNUSED(vm);
-  free(array->values);
-  init_value_array(array);
-}
+/**
+ * Free value array
+ * to use with GC
+*/
+// static void free_value_array(d_vm* vm, value_array* array) {
+//   UNUSED(vm);
+//   free(array->values);
+//   init_value_array(array);
+// }
 
 /**
  * Remove value from pending bytes and put on main stack
@@ -69,14 +75,8 @@ drax_byte* new_drax_value() {
   return d_byte;
 }
 
-void free_drax_value(d_vm* vm, drax_byte* d_byte) {
-  // FREE_ARRAY(gBSM, d_byte_def, d_byte->code, d_byte->limit);
-  // FREE_ARRAY(gBSM, int, d_byte->lines, d_byte->limit);
-  // free_value_array(gBSM, &d_byte->constants);
-  d_byte = new_drax_value();
-}
-
 void append_drax_value(d_vm* vm, drax_byte* d_byte, drax_value byte, int line) {
+  UNUSED(vm);
   if (d_byte->limit < d_byte->count + 1) {
     int old_cap = d_byte->limit;
     d_byte->limit = EXPAND_CAPACITY(old_cap);
@@ -109,7 +109,6 @@ void free_const_value_array(const_value_array* a) {
 
 /* VM Impl. */
 
-
 void push(d_vm* vm, drax_value v) {
   *vm->stack = v;
   vm->stack++;
@@ -120,10 +119,37 @@ drax_value pop(d_vm* vm) {
   return *vm->stack;
 }
 
+static drax_value pop_times(d_vm* vm, int t) {
+  vm->stack = vm->stack - t ;
+  return *vm->stack;
+}
+
+static drax_value peek(d_vm* vm, int distance) {
+   return vm->stack[-1 - distance];
+}
+
+/**
+ * Print Helpers
+*/
+
+static void print_drax(drax_value value);
+
+static void dbreak_line() { putchar('\n'); }
+
+static void print_list(drax_list* l) {
+  putchar('[');
+  for (int i = 0; i < l->length; i++) {
+    print_drax(l->elems[i]);
+
+    if ((i+1) < l->length) printf(", ");
+  }
+  putchar(']');
+}
+
 static void print_d_struct(drax_value value) {
   switch (DRAX_STYPEOF(value)) {
     case DS_LIST:
-      // print_list(CAST_LIST(value));
+      print_list(CAST_LIST(value));
       break;
 
     case DS_FUNCTION:
@@ -139,10 +165,70 @@ static void print_d_struct(drax_value value) {
       printf("error");
       break;
   }
-  putchar('\n');
 }
 
+void drax_print_error(const char* format, va_list args) {
+  vfprintf(stderr, format, args);
+  fputs("\n", stderr);
+}
+
+static void print_drax(drax_value value) {
+  if (IS_BOOL(value)) {
+    printf(CAST_BOOL(value) ? "true" : "false");
+  } else if (IS_NIL(value)) {
+    printf("nil");
+  } else if (IS_NUMBER(value)) {
+    printf("%g", CAST_NUMBER(value));
+  } else if (IS_STRUCT(value)) {
+    print_d_struct(value);
+  }
+}
+
+/**
+ * Raise Helpers
+*/
+
+static void reset_stack(d_vm* vm) {
+  // reset stack
+}
+
+static void trace_error(d_vm* vm) {
+  // trace error
+}
+
+/* Delegate to drax_print_error */
+static void raise_drax_error(d_vm* vm, const char* format, ...) {
+  va_list args;
+  va_start(args, format);
+  drax_print_error(format, args);
+  va_end(args);
+
+  trace_error(vm);
+  reset_stack(vm);
+}
+
+static bool values_equal(drax_value a, drax_value b) {
+  if (IS_NUMBER(a) && IS_NUMBER(b)) {
+    return CAST_NUMBER(a) == CAST_NUMBER(b);
+  }
+  return a == b;
+}
+
+
 static void __start__(d_vm* vm, int inter_mode) {
+
+  #define dbin_op(op, v) \
+      do { \
+        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
+          raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
+          return ; \
+        } \
+        double b = CAST_NUMBER(pop(vm)); \
+        double a = CAST_NUMBER(pop(vm)); \
+        push(vm, v(a op b)); \
+      } while (false)
+
+  UNUSED(inter_mode);
   VMDispatch {
     VMcond(vm) {
       VMCase(OP_CONST) {
@@ -150,23 +236,36 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_NIL) {
+        push(vm, DRAX_NIL_VAL);
         break;
       }
       VMCase(OP_TRUE) {
+        push(vm, DRAX_TRUE_VAL);
         break;
       }
       VMCase(OP_FALSE) {
+        push(vm, DRAX_FALSE_VAL);
         break;
       }
       VMCase(OP_LIST) {
+        drax_value lc = pop(vm);
+        int limit = (int) CAST_NUMBER(lc);
+        drax_list* l = new_dlist(vm, limit);
+
+        for (int i = 0; i < limit; i++) {
+          put_value_dlist(l, peek(vm, (limit -1) - i));
+        }
+
+        pop_times(vm, limit);
+        push(vm, DS_VAL(l));
         break;
       }
       VMCase(OP_POP) {
+        pop(vm);
         break;
       }
       VMCase(OP_PUSH) {
         drax_value v = GET_VALUE(vm);
-        // printf("push[%g)\n", AS_NUMBER(v));
         push(vm, v);
         break;
       }
@@ -174,21 +273,62 @@ static void __start__(d_vm* vm, int inter_mode) {
         drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
         put_var_table(vm->envs->dynamic, k, v);
-        // printf("var\n");
-        // printf("k: %s\n", k);
-        // printf("v: %g\n", AS_NUMBER(v));
+        break;
+      }
+      VMCase(OP_GET_ID) {
+        char* k = (char*) GET_VALUE(vm);
+        drax_value val = get_var_table(vm->envs->dynamic, k);
+
+        if(val == 0) {
+          printf("error: variable '%s' is not defined\n", k);
+          exit(1); // stop vm, no exit
+        }
+        push(vm, val);
         break;
       }
       VMCase(OP_EQUAL) {
+        drax_value b = pop(vm);
+        drax_value a = pop(vm);
+        push(vm, BOOL_VAL(values_equal(a, b)));
         break;
       }
       VMCase(OP_GREATER) {
+        dbin_op(>, BOOL_VAL);
         break;
       }
       VMCase(OP_LESS) {
+        dbin_op(<, BOOL_VAL);
         break;
       }
       VMCase(OP_CONCAT) {
+        if (IS_STRING(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
+          drax_string* b = CAST_STRING(peek(vm, 0));
+          drax_string* a = CAST_STRING(peek(vm, 1));
+
+          int length = a->length + b->length;
+          char* n_str = (char*) malloc(length);
+          memcpy(n_str, a->chars, a->length);
+          memcpy(n_str + a->length, b->chars, b->length);
+          n_str[length] = '\0';
+
+          drax_string* result = new_dstring(vm, n_str, length);
+          pop_times(vm, 2);
+          push(vm, DS_VAL(result));
+        } else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
+          drax_list* b = CAST_LIST(peek(vm, 0));
+          drax_list* a = CAST_LIST(peek(vm, 1));
+          int length = a->length + b->length;
+          drax_list* result = new_dlist(vm, length);
+          memcpy(result->elems, a->elems, a->length * sizeof(drax_value));
+          memcpy(result->elems + a->length, b->elems, b->length * sizeof(drax_value));
+
+          result->length = length;
+          pop_times(vm, 2);
+          push(vm, DS_VAL(result));
+        } else{
+          raise_drax_error(vm, "Unspected type");
+          return;
+        }
         break;
       }
       VMCase(OP_ADD) {
@@ -204,30 +344,36 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_DIV) {
-        // check division by zero
         binary_op(vm, /);
         break;
       }
       VMCase(OP_NOT) {
+        push(vm, BOOL_VAL(IS_FALSE(pop(vm))));
+        break;
+      }
+      VMCase(OP_NEG) {
+        if (!IS_NUMBER(peek(vm, 0))) {
+          raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP);
+          return;
+        }
+        
+        push(vm, NUMBER_VAL(-CAST_NUMBER(pop(vm))));
         break;
       }
       VMCase(OP_PRINT) {
-        drax_value v = pop(vm);
-
-        if(IS_STRUCT(v)) {
-          print_d_struct(v);
-          // printf("%g\n", AS_(v));
-        }
-
-        if(IS_NUMBER(v)) {
-          printf("%g\n", AS_NUMBER(v));
-        }
+        print_drax(pop(vm));
+        dbreak_line();
         break;
       }
       VMCase(OP_JMP) {
+        uint16_t offset = dg16_byte(vm);
+
+        vm->ip += offset;
         break;
       }
       VMCase(OP_JMF) {
+        uint16_t offset = dg16_byte(vm);
+        if (IS_FALSE(peek(vm, 0))) vm->ip += offset;
         break;
       }
       VMCase(OP_LOOP) {

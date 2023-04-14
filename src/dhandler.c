@@ -39,7 +39,18 @@ void put_var_table(d_var_table* t, char* key, drax_value value) {
     t->pairs = realloc(t->pairs, sizeof(drax_value) * t->limit);
   }
 
-  t->pairs[t->count -1].key = gen_hash_idx(key, strlen(key));
-  t->pairs[t->count -1].value = value;
+  t->pairs[t->count].key = gen_hash_idx(key, strlen(key));
+  t->pairs[t->count].value = value;
   t->count++;
+}
+
+drax_value get_var_table(d_var_table* t, char* key) {
+  size_t hs = gen_hash_idx(key, strlen(key));
+  for (int i = 0; i < t->count; i++) {
+    if (t->pairs[i].key == hs) {
+      return t->pairs[i].value;
+    }
+  }
+
+  return 0;
 }

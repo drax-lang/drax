@@ -81,6 +81,7 @@ typedef enum d_op_code {
   OP_MUL,
   OP_DIV,
   OP_NOT,
+  OP_NEG,
   OP_PRINT,
   OP_JMP,
   OP_JMF,
@@ -88,6 +89,7 @@ typedef enum d_op_code {
   OP_CALL,
   OP_FUN,
   OP_VAR,
+  OP_GET_ID,
   OP_RETURN,
   OP_EXIT,
 } d_op_code;
