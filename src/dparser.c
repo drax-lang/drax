@@ -12,7 +12,9 @@
 parser_state parser;
 parser_builder* current = NULL;
 
-static void init_parser() {
+static void init_parser(d_vm* vm) {
+  vm->active_instr = vm->instructions;
+
   parser.locals = (d_local_registers*) malloc(sizeof(d_local_registers));
   parser.locals->length = 0;
   parser.locals->capacity = LOCAL_SIZE_FACTOR;
@@ -70,18 +72,17 @@ static operation_line op_lines[] = {
  * VM Helpers
 */
 
-#define GET_INSTRUCTION(vm) vm->instructions
+#define GET_INSTRUCTION(vm) vm->active_instr
 
 static void put_instruction(d_vm* vm, drax_value o) {
-  // parser.prev.line
-  vm->instructions->instr_count++;
+  vm->active_instr->instr_count++;
 
-  if (vm->instructions->instr_count >= vm->instructions->instr_size) {
-    vm->instructions->instr_size = vm->instructions->instr_size + MAX_INSTRUCTIONS;
-    vm->instructions = (d_instructions*) realloc(vm->instructions, sizeof(d_instructions));
+  if (vm->active_instr->instr_count >= vm->active_instr->instr_size) {
+    vm->active_instr->instr_size = vm->active_instr->instr_size + MAX_INSTRUCTIONS;
+    vm->active_instr = (d_instructions*) realloc(vm->active_instr, sizeof(d_instructions));
   }
 
-  vm->instructions->values[vm->instructions->instr_count -1] = o;
+  vm->active_instr->values[vm->active_instr->instr_count -1] = o;
 }
 
 static void put_pair(d_vm* vm, d_op_code o, drax_value v) {
@@ -111,7 +112,7 @@ static void process_token(dlex_types type, const char* message) {
   FATAL_CURR(message);
 }
 
-static drax_value get_current_token() {
+static dlex_types get_current_token() {
   return parser.current.type;
 }
 
@@ -169,21 +170,6 @@ static drax_value parse_variable(d_vm* vm, const char* e) {
   return identifier_constant(vm, &parser.prev);
 }
 
-static drax_value process_arguments(d_vm* vm) {
-  drax_value arg_count = 0;
-  if (get_current_token() != DTK_PAR_CLOSE) {
-    do {
-      expression(vm);
-      if (arg_count == 255) {
-        FATAL("Can't have more than 255 arguments.");
-      }
-      arg_count++;
-    } while (eq_and_next(DTK_COMMA));
-  }
-  process_token(DTK_PAR_CLOSE, "Expect ')' after arguments.");
-  return arg_count;
-}
-
 void process_and(d_vm* vm, bool v) {
   UNUSED(v);
   int end = put_jmp(vm, OP_JMF);
@@ -214,12 +200,6 @@ void process_binary(d_vm* vm, bool v) {
     case DTK_CONCAT: put_instruction(vm, OP_CONCAT); break;
     default: return;
   }
-}
-
-void process_call(d_vm* vm, bool v) {
-  // UNUSED(v);
-  // drax_value arg_count = process_arguments();
-  // PUT_PAIR_DBYTES(OP_CALL, arg_count);
 }
 
 void literal_translation(d_vm* vm, bool v) {
@@ -315,8 +295,13 @@ void process_variable(d_vm* vm, bool v) {
 
   if (eq_and_next(DTK_EQ)) {
       expression(vm);
-      put_pair(vm, OP_VAR, (drax_value) name);
+      put_pair(vm, OP_SET_ID, (drax_value) name);
       return;
+  }
+
+  if (get_current_token() == DTK_PAR_OPEN) {
+    put_pair(vm, OP_PUSH, (drax_value) name);
+    return;
   }
 
   put_pair(vm, OP_GET_ID, (drax_value) name);
@@ -361,6 +346,58 @@ static void block(d_vm* vm) {
 }
 
 static void fun_declaration(d_vm* vm) {
+  d_instructions* gi = vm->active_instr;
+  drax_function* f = new_function(vm);
+  vm->active_instr = f->instructions;
+
+  get_next_token();
+  d_token ctk = parser.prev;
+  char* name = (char*) calloc(ctk.length, sizeof(char));
+  strncpy(name, ctk.first, ctk.length);
+
+  f->name = name;
+
+  process_token(DTK_PAR_OPEN, "Expect '(' after function name.");
+
+  if (get_current_token() != DTK_PAR_CLOSE) {
+    do {
+      f->arity++;
+      if (f->arity > 255) {
+        FATAL_CURR("Can't have more than 255 parameters.");
+      }
+      drax_value constant = parse_variable(vm, "Expect parameter name.");
+      drax_string* s = CAST_STRING(constant);
+      put_pair(vm, OP_SET_ID, (drax_value) s->chars);
+    } while (eq_and_next(DTK_COMMA));
+  }
+
+  process_token(DTK_PAR_CLOSE, "Expect ')' after parameters.");
+  process_token(DTK_DO, "Expect 'do' before function body.");
+  block(vm);
+  put_pair(vm, OP_RETURN, 0x00);
+  vm->active_instr = gi;
+  put_pair(vm, OP_FUN, DS_VAL(f));
+}
+
+static drax_value process_arguments(d_vm* vm) {
+  drax_value arg_count = 0;
+  if (get_current_token() != DTK_PAR_CLOSE) {
+    do {
+      expression(vm);
+      if (arg_count == 255) {
+        FATAL("Can't have more than 255 arguments.");
+      }
+      arg_count++;
+    } while (eq_and_next(DTK_COMMA));
+  }
+  process_token(DTK_PAR_CLOSE, "Expect ')' after arguments.");
+  return arg_count;
+}
+
+void process_call(d_vm* vm, bool v) {
+  UNUSED(v);
+  drax_value arg_count = process_arguments(vm);
+  put_pair(vm, OP_CALL, arg_count);
 }
 
 static void if_definition(d_vm* vm) {
@@ -422,7 +459,7 @@ static void process(d_vm* vm) {
 
 void __build__(d_vm* vm, const char* input) {
   init_lexan(input);
-  init_parser();
+  init_parser(vm);
 
   parser.has_error = false;
   parser.panic_mode = false;

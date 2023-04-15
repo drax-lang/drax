@@ -32,26 +32,21 @@ typedef struct const_value_array{
 } const_value_array;
 
 typedef struct dt_envs {
-  d_var_table* globals;
+  d_fun_table* functions;
   d_var_table* strings;
   d_var_table* dynamic;
 } dt_envs;
-
-typedef struct d_instructions {
-    drax_value* values;
-    int instr_count;
-    int instr_size;
-    // stack trace
-} d_instructions;
 
 typedef struct d_vm {
   // uint8_t ip
   dt_envs* envs;
   drax_value* ip;
+  drax_value* _ip;
   drax_value* stack;
   int stack_count;
   int stack_size;
-  d_instructions* instructions;
+  d_instructions* instructions; // global instructions
+  d_instructions* active_instr; // global instructions
 } d_vm;
 
 typedef struct value_array{

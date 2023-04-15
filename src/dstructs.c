@@ -59,6 +59,16 @@ drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* function) {
   return native;
 }
 
+drax_function* new_function(d_vm* vm) {
+  drax_function* f = ALLOCATE_DSTRUCT(vm, drax_function, DS_FUNCTION);
+  f->arity = 0;
+  f->instructions = (d_instructions*) malloc(sizeof(d_instructions));
+  f->instructions->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
+  f->instructions->instr_size = MAX_INSTRUCTIONS;
+  f->instructions->instr_count = 0;
+  return f;
+}
+
 static drax_string* allocate_string(d_vm* vm, char* chars, int length, uint32_t hash) {
   drax_string* string = ALLOCATE_DSTRUCT(vm, drax_string, DS_STRING);
   string->length = length;

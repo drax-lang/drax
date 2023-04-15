@@ -88,7 +88,7 @@ typedef enum d_op_code {
   OP_LOOP,
   OP_CALL,
   OP_FUN,
-  OP_VAR,
+  OP_SET_ID,
   OP_GET_ID,
   OP_RETURN,
   OP_EXIT,
@@ -105,6 +105,17 @@ typedef enum bimode {
   BI_PROCESS_DEFAULT,
   BI_INTERACTIVE_DEFAULT
 } bimode;
+
+/**
+ * Drax VM definitions
+*/
+typedef struct d_instructions {
+    drax_value* values;
+    int instr_count;
+    int instr_size;
+    // stack trace
+} d_instructions;
+
 
 /* Vars allocation */
 

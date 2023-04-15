@@ -52,11 +52,20 @@ typedef struct drax_string {
   uint32_t hash;
 } drax_string;
 
+typedef struct drax_function {
+  d_struct d_struct;
+  int arity;
+  d_instructions* instructions;
+  char* name;
+} drax_function;
+
+void put_value_dlist(drax_list* l, drax_value v);
+
 drax_error* new_derror(d_vm* vm, char* msg);
 
 drax_list* new_dlist(d_vm* vm, int cap);
 
-void put_value_dlist(drax_list* l, drax_value v);
+drax_function* new_function(d_vm* vm);
 
 drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* function);
 

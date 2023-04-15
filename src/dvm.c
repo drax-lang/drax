@@ -1,10 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
+
 #include "dvm.h"
 #include "dtypes.h"
 #include "dinspect.h"
 
-#include <stdarg.h>
 
 /**
  * Helpers
@@ -153,10 +155,11 @@ static void print_d_struct(drax_value value) {
       break;
 
     case DS_FUNCTION:
+      printf("<function>");
       break;
 
     case DS_NATIVE:
-      printf("<function>");
+      printf("<function:native>");
       break;
     case DS_STRING:
       printf("%s", CAST_STRING(value)->chars);
@@ -167,7 +170,7 @@ static void print_d_struct(drax_value value) {
   }
 }
 
-void drax_print_error(const char* format, va_list args) {
+static void drax_print_error(const char* format, va_list args) {
   vfprintf(stderr, format, args);
   fputs("\n", stderr);
 }
@@ -269,7 +272,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         push(vm, v);
         break;
       }
-      VMCase(OP_VAR) {
+      VMCase(OP_SET_ID) {
         drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
         put_var_table(vm->envs->dynamic, k, v);
@@ -280,8 +283,8 @@ static void __start__(d_vm* vm, int inter_mode) {
         drax_value val = get_var_table(vm->envs->dynamic, k);
 
         if(val == 0) {
-          printf("error: variable '%s' is not defined\n", k);
-          exit(1); // stop vm, no exit
+          raise_drax_error(vm, "error: variable '%s' is not defined\n", k);
+          return;
         }
         push(vm, val);
         break;
@@ -380,15 +383,37 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_CALL) {
+        drax_value a = GET_VALUE(vm);
+        char* n = (char*) (peek(vm, a));
+        drax_value v = get_fun_table(vm->envs->functions, n, a);
+
+        if (v == 0) {
+          raise_drax_error(vm, "error: function '%s' is not defined\n", n);
+          return;
+        }
+
+        drax_function* f = CAST_FUNCTION(v);
+        vm->_ip = vm->ip;
+        vm->ip = f->instructions->values;
         break;
       }
       VMCase(OP_FUN) {
+        drax_value v = GET_VALUE(vm);
+        put_fun_table(vm->envs->functions, v);
+        push(vm, v); // ?
         break;
       }
       VMCase(OP_RETURN) {
+        vm->ip = vm->_ip;
         break;
       }
       VMCase(OP_EXIT) {
+        // check if is stopVM or exit
+
+        if (inter_mode) {
+          print_drax(pop(vm));
+          dbreak_line();
+        }
         return;
       }
       default: {
@@ -404,9 +429,9 @@ static void __start__(d_vm* vm, int inter_mode) {
 
 static dt_envs* new_environment() {
   dt_envs* e = (dt_envs*) malloc(sizeof(dt_envs));
-  e->globals = new_var_table();
   e->strings = new_var_table();
   e->dynamic = new_var_table();
+  e->functions = new_fun_table();
   return e;
 }
 
@@ -428,16 +453,16 @@ d_vm* createVM() {
 /* Run functions */
 
 static void __init__(d_vm* vm) {
-  vm->ip = vm->instructions->values;
+  vm->ip = vm->active_instr->values;
 }
 
 static void __free__(d_vm* vm) {
   /* TEMP */
-  free(vm->instructions->values);
-  free(vm->instructions);
+  free(vm->active_instr->values);
+  free(vm->active_instr);
   // free(vm->envs);
-  vm->instructions = (d_instructions*) malloc(sizeof(d_instructions));
-  vm->instructions->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
+  vm->active_instr = (d_instructions*) malloc(sizeof(d_instructions));
+  vm->active_instr->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
 }
 
 void __run__(d_vm* vm, int inter_mode) {
