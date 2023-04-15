@@ -61,7 +61,7 @@ typedef struct parser_builder {
   int curr_level;
 } parser_builder;
 
-void __build__(d_vm* vm, const char* input);
+int __build__(d_vm* vm, const char* input);
 
 callback_table(process_grouping);
 callback_table(process_list);

@@ -268,25 +268,6 @@ void process_string(d_vm* vm, bool v) {
   put_const(vm, DS_VAL(copy_dstring(vm, parser.prev.first + 1, parser.prev.length - 2)));
 }
 
-static bool var_is_local(char* name, int size) {
-  for (int i = 0; i < parser.locals->length; i++) {
-    if (strncmp(parser.locals->vars[i], name, size) == 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
-static void add_new_local(char* name) {
-  if (parser.locals->length >= parser.locals->capacity) {
-    parser.locals->capacity = parser.locals->capacity + LOCAL_SIZE_FACTOR;
-    parser.locals->vars = (char**) realloc(parser.locals->vars, sizeof(parser.locals->capacity));
-  }
-
-  parser.locals->length++;
-  parser.locals->vars[parser.locals->length -1] = name;
-}
-
 void process_variable(d_vm* vm, bool v) {
   UNUSED(v);
   d_token ctk = parser.prev;
@@ -457,7 +438,7 @@ static void process(d_vm* vm) {
   }
 }
 
-void __build__(d_vm* vm, const char* input) {
+int __build__(d_vm* vm, const char* input) {
   init_lexan(input);
   init_parser(vm);
 
@@ -471,10 +452,11 @@ void __build__(d_vm* vm, const char* input) {
   }
 
   if (parser.has_error) {
-    exit(1);
+    return 0;
   }
 
   put_pair(vm, OP_EXIT, 0xff);
+  return 1;
 }
 
 void dfatal(d_token* token, const char* message) {

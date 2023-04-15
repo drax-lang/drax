@@ -191,9 +191,7 @@ static void print_drax(drax_value value) {
  * Raise Helpers
 */
 
-static void reset_stack(d_vm* vm) {
-  // reset stack
-}
+static void __reset__(d_vm* vm);
 
 static void trace_error(d_vm* vm) {
   // trace error
@@ -207,7 +205,7 @@ static void raise_drax_error(d_vm* vm, const char* format, ...) {
   va_end(args);
 
   trace_error(vm);
-  reset_stack(vm);
+  __reset__(vm);
 }
 
 static bool values_equal(drax_value a, drax_value b) {
@@ -216,7 +214,6 @@ static bool values_equal(drax_value a, drax_value b) {
   }
   return a == b;
 }
-
 
 static void __start__(d_vm* vm, int inter_mode) {
 
@@ -400,7 +397,6 @@ static void __start__(d_vm* vm, int inter_mode) {
       VMCase(OP_FUN) {
         drax_value v = GET_VALUE(vm);
         put_fun_table(vm->envs->functions, v);
-        push(vm, v); // ?
         break;
       }
       VMCase(OP_RETURN) {
@@ -411,6 +407,8 @@ static void __start__(d_vm* vm, int inter_mode) {
         // check if is stopVM or exit
 
         if (inter_mode) {
+          if (peek(vm, 0) == 0) return;
+
           print_drax(pop(vm));
           dbreak_line();
         }
@@ -435,12 +433,34 @@ static dt_envs* new_environment() {
   return e;
 }
 
+/**
+ * Create a new drax vm
+*/
+
+static d_instructions* new_instructions() {
+  d_instructions* i = (d_instructions*) malloc(sizeof(d_instructions));
+  i->instr_size = MAX_INSTRUCTIONS;
+  i->instr_count = 0;
+  i->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
+  return i;
+}
+
+static void __init__(d_vm* vm) {
+  vm->ip = vm->active_instr->values;
+}
+
+static void __reset__(d_vm* vm) {
+  vm->active_instr = NULL;
+  
+  free(vm->instructions->values);
+  free(vm->instructions);
+  
+  vm->instructions = new_instructions();
+}
+
 d_vm* createVM() {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
-  vm->instructions = (d_instructions*) malloc(sizeof(d_instructions));
-  vm->instructions->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
-  vm->instructions->instr_size = MAX_INSTRUCTIONS;
-  vm->instructions->instr_count = 0;
+  vm->instructions = new_instructions();
 
   vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
   vm->stack_size = MAX_STACK_SIZE;
@@ -450,23 +470,8 @@ d_vm* createVM() {
   return vm;
 }
 
-/* Run functions */
-
-static void __init__(d_vm* vm) {
-  vm->ip = vm->active_instr->values;
-}
-
-static void __free__(d_vm* vm) {
-  /* TEMP */
-  free(vm->active_instr->values);
-  free(vm->active_instr);
-  // free(vm->envs);
-  vm->active_instr = (d_instructions*) malloc(sizeof(d_instructions));
-  vm->active_instr->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
-}
-
 void __run__(d_vm* vm, int inter_mode) {
  __init__(vm);
  __start__(vm, inter_mode);
- __free__(vm);
+ __reset__(vm);
 }
