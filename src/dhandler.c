@@ -34,12 +34,23 @@ void free_table(d_vm* vm, d_var_table* t) {
 }
 
 void put_var_table(d_var_table* t, char* key, drax_value value) {
+  size_t hs = gen_hash_idx(key, strlen(key));
+
+  for (int i = 0; i < t->count; i++) {
+    if (t->pairs[i].key == hs) {
+      t->pairs[i].key = hs;
+      t->pairs[i].value = value;
+      return ;
+    }
+  }
+
+
   if (t->count >= t->limit) {
     t->limit = t->limit == 0 ? 8 : t->limit * 2;
     t->pairs = realloc(t->pairs, sizeof(drax_value) * t->limit);
   }
 
-  t->pairs[t->count].key = gen_hash_idx(key, strlen(key));
+  t->pairs[t->count].key = hs;
   t->pairs[t->count].value = value;
   t->count++;
 }

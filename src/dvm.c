@@ -447,6 +447,7 @@ static d_instructions* new_instructions() {
 
 static void __init__(d_vm* vm) {
   vm->ip = vm->active_instr->values;
+  vm->stack--;
 }
 
 static void __reset__(d_vm* vm) {
