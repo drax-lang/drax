@@ -327,6 +327,7 @@ static void block(d_vm* vm) {
 }
 
 static void fun_declaration(d_vm* vm) {
+  const int max_arity = 255;
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
   vm->active_instr = f->instructions;
@@ -340,17 +341,30 @@ static void fun_declaration(d_vm* vm) {
 
   process_token(DTK_PAR_OPEN, "Expect '(' after function name.");
 
+  char** stack_args = (char**) malloc(sizeof(char*) * max_arity);
+
   if (get_current_token() != DTK_PAR_CLOSE) {
     do {
       f->arity++;
-      if (f->arity > 255) {
+      if (f->arity > max_arity) {
         FATAL_CURR("Can't have more than 255 parameters.");
       }
+
       drax_value constant = parse_variable(vm, "Expect parameter name.");
       drax_string* s = CAST_STRING(constant);
+
+      for(int i = 0; i < f->arity -1; i++) {
+        if(strcmp(s->chars, stack_args[i]) == 0) {
+          FATAL("duplicate argument in function definition");
+        }
+      }
+
       put_pair(vm, OP_SET_ID, (drax_value) s->chars);
+      stack_args[f->arity -1] = s->chars;
     } while (eq_and_next(DTK_COMMA));
   }
+
+  free(stack_args);
 
   process_token(DTK_PAR_CLOSE, "Expect ')' after parameters.");
   process_token(DTK_DO, "Expect 'do' before function body.");
