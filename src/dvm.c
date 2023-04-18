@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include "ddefs.h"
 #include "dvm.h"
 #include "dtypes.h"
 #include "dinspect.h"
@@ -172,7 +173,6 @@ static void print_d_struct(drax_value value) {
 
 static void drax_print_error(const char* format, va_list args) {
   vfprintf(stderr, format, args);
-  fputs("\n", stderr);
 }
 
 static void print_drax(drax_value value) {
@@ -194,7 +194,8 @@ static void print_drax(drax_value value) {
 static void __reset__(d_vm* vm);
 
 static void trace_error(d_vm* vm) {
-  // trace error
+  int idx = vm->ip - vm->active_instr->values;
+  fprintf(stderr, TRACE_DESCRIPTION_LINE, vm->instructions->lines[idx]);
 }
 
 /* Delegate to drax_print_error */
@@ -366,6 +367,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_JMP) {
+        printf("op_jmp\n");
         uint16_t offset = dg16_byte(vm);
 
         vm->ip += offset;
@@ -441,11 +443,18 @@ static d_instructions* new_instructions() {
   d_instructions* i = (d_instructions*) malloc(sizeof(d_instructions));
   i->instr_size = MAX_INSTRUCTIONS;
   i->instr_count = 0;
+  i->lines = (int*) malloc(sizeof(int) * MAX_INSTRUCTIONS);
   i->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
   return i;
 }
 
 static void __init__(d_vm* vm) {
+  /**
+   * vm->active_instr->values: Must always point to the first statement.
+   *  - Used by stack trace.
+   *  - Used to initiate a function call.
+   */
+
   vm->ip = vm->active_instr->values;
   vm->stack--;
 }

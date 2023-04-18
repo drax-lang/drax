@@ -113,7 +113,7 @@ typedef struct d_instructions {
     drax_value* values;
     int instr_count;
     int instr_size;
-    // stack trace
+    int* lines;
 } d_instructions;
 
 

@@ -82,6 +82,7 @@ static void put_instruction(d_vm* vm, drax_value o) {
     vm->active_instr = (d_instructions*) realloc(vm->active_instr, sizeof(d_instructions));
   }
 
+  vm->active_instr->lines[vm->active_instr->instr_count -1] = parser.prev.line;
   vm->active_instr->values[vm->active_instr->instr_count -1] = o;
 }
 
@@ -399,19 +400,36 @@ static void if_definition(d_vm* vm) {
   process_token(DTK_PAR_OPEN, "Expect '(' after 'if'.");
   expression(vm);
   process_token(DTK_PAR_CLOSE, "Expect ')' after condition.");
+  process_token(DTK_DO, "Expect 'do' after condition.");
 
   int then_jump = put_jmp(vm, OP_JMF);
   put_instruction(vm, OP_POP);
-  process(vm);
+
+  while (
+    (get_current_token() != DTK_EOF) &&
+    (get_current_token() != DTK_END) &&
+    (get_current_token() != DTK_ELSE)) 
+  {
+    process(vm);
+  }
 
   int else_jump = put_jmp(vm, OP_JMP);
 
   patch_jump(vm, then_jump);
   put_instruction(vm, OP_POP);
 
-  if (eq_and_next(DTK_ELSE)) process(vm);
+  if (eq_and_next(DTK_ELSE)) {
+    while (
+      (get_current_token() != DTK_EOF) &&
+      (get_current_token() != DTK_END))
+    {
+      process(vm);
+    }
+  }
 
   patch_jump(vm, else_jump);
+
+  process_token(DTK_END, "Expect 'end' after if definition.");
 }
 
 static void print_definition(d_vm* vm) {
@@ -442,6 +460,12 @@ static void process(d_vm* vm) {
     }
 
     case DTK_DO: {
+      get_next_token();
+
+      while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
+        process(vm);
+      }
+
       break;
     }
 

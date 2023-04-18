@@ -21,6 +21,10 @@
 
 #define VMCase(t) case t:
 
+/* Trace messages */
+#define TRACE_DESCRIPTION_LINE "  line: %d "
+
+/* Common messages */
 #define MSG_NAME_IS_NOT_DEFINED    "'%s' is not defined."
 #define MSG_NUMBER_OF_INVALID_ARGS "Number of invalid arguments, expected %d arguments."
 #define MSG_BAD_AGR_ARITH_OP       "Bad argument in arithmetic expression."
