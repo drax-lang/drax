@@ -18,3 +18,14 @@ drax_value num_to_draxvalue(double num) {
   return value;
 }
 
+/* Helpers */
+
+d_instructions* new_instructions() {
+  d_instructions* i = (d_instructions*) malloc(sizeof(d_instructions));
+  i->instr_size = MAX_INSTRUCTIONS;
+  i->instr_count = 0;
+  i->lines = (int*) malloc(sizeof(int) * MAX_INSTRUCTIONS);
+  i->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
+  return i;
+}
+

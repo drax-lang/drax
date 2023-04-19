@@ -272,7 +272,7 @@ void process_string(d_vm* vm, bool v) {
 void process_variable(d_vm* vm, bool v) {
   UNUSED(v);
   d_token ctk = parser.prev;
-  char* name = (char*) calloc(ctk.length, sizeof(char));
+  char* name = (char*) calloc(ctk.length + 1, sizeof(char));
   strncpy(name, ctk.first, ctk.length);
 
   if (eq_and_next(DTK_EQ)) {
@@ -335,7 +335,7 @@ static void fun_declaration(d_vm* vm) {
 
   get_next_token();
   d_token ctk = parser.prev;
-  char* name = (char*) calloc(ctk.length, sizeof(char));
+  char* name = (char*) calloc(ctk.length + 1, sizeof(char));
   strncpy(name, ctk.first, ctk.length);
 
   f->name = name;

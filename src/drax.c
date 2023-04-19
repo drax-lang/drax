@@ -41,7 +41,7 @@ static int process_file(d_vm* v, char** argv) {
   }
 
     if (__build__(v, content)) {
-      __run__(v, 1);
+      __run__(v, 0);
     }
 
     free(content);

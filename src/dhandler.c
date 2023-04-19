@@ -47,7 +47,7 @@ void put_var_table(d_var_table* t, char* key, drax_value value) {
 
   if (t->count >= t->limit) {
     t->limit = t->limit == 0 ? 8 : t->limit * 2;
-    t->pairs = realloc(t->pairs, sizeof(drax_value) * t->limit);
+    t->pairs = realloc(t->pairs, sizeof(drax_pairs) * t->limit);
   }
 
   t->pairs[t->count].key = hs;

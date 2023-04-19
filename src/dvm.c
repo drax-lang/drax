@@ -113,22 +113,23 @@ void free_const_value_array(const_value_array* a) {
 /* VM Impl. */
 
 void push(d_vm* vm, drax_value v) {
-  *vm->stack = v;
-  vm->stack++;
+  vm->stack[vm->stack_count++] = v;
 }
 
 drax_value pop(d_vm* vm) {
-  vm->stack--;
-  return *vm->stack;
+  if (vm->stack_count == 0) return 0;
+  vm->stack_count--;
+  return vm->stack[vm->stack_count];
 }
 
 static drax_value pop_times(d_vm* vm, int t) {
-  vm->stack = vm->stack - t ;
-  return *vm->stack;
+  vm->stack_count -= t;
+  return vm->stack[vm->stack_count];
 }
 
 static drax_value peek(d_vm* vm, int distance) {
-   return vm->stack[-1 - distance];
+  if (vm->stack_count == 0) return 0;
+  return vm->stack[vm->stack_count -1 - distance];
 }
 
 /**
@@ -162,9 +163,11 @@ static void print_d_struct(drax_value value) {
     case DS_NATIVE:
       printf("<function:native>");
       break;
+
     case DS_STRING:
       printf("%s", CAST_STRING(value)->chars);
       break;
+
     case DS_ERROR:
       printf("error");
       break;
@@ -349,7 +352,8 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_NOT) {
-        push(vm, BOOL_VAL(IS_FALSE(pop(vm))));
+        drax_value v = pop(vm);
+        push(vm, BOOL_VAL(IS_FALSE(v)));
         break;
       }
       VMCase(OP_NEG) {
@@ -367,7 +371,6 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_JMP) {
-        printf("op_jmp\n");
         uint16_t offset = dg16_byte(vm);
 
         vm->ip += offset;
@@ -439,15 +442,6 @@ static dt_envs* new_environment() {
  * Create a new drax vm
 */
 
-static d_instructions* new_instructions() {
-  d_instructions* i = (d_instructions*) malloc(sizeof(d_instructions));
-  i->instr_size = MAX_INSTRUCTIONS;
-  i->instr_count = 0;
-  i->lines = (int*) malloc(sizeof(int) * MAX_INSTRUCTIONS);
-  i->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
-  return i;
-}
-
 static void __init__(d_vm* vm) {
   /**
    * vm->active_instr->values: Must always point to the first statement.
@@ -456,7 +450,6 @@ static void __init__(d_vm* vm) {
    */
 
   vm->ip = vm->active_instr->values;
-  vm->stack--;
 }
 
 static void __reset__(d_vm* vm) {

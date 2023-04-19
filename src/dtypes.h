@@ -123,4 +123,8 @@ double draxvalue_to_num(drax_value value);
 
 drax_value num_to_draxvalue(double num);
 
+/* Helpers */
+
+d_instructions* new_instructions();
+
 #endif
