@@ -79,7 +79,8 @@ static void put_instruction(d_vm* vm, drax_value o) {
 
   if (vm->active_instr->instr_count >= vm->active_instr->instr_size) {
     vm->active_instr->instr_size = vm->active_instr->instr_size + MAX_INSTRUCTIONS;
-    vm->active_instr = (d_instructions*) realloc(vm->active_instr, sizeof(d_instructions));
+    vm->active_instr->values = (drax_value*) realloc(vm->active_instr->values, sizeof(drax_value) * vm->active_instr->instr_size);
+    vm->active_instr->lines = (int*) realloc(vm->active_instr->lines, sizeof(int) * vm->active_instr->instr_size);
   }
 
   vm->active_instr->lines[vm->active_instr->instr_count -1] = parser.prev.line;
@@ -272,8 +273,10 @@ void process_string(d_vm* vm, bool v) {
 void process_variable(d_vm* vm, bool v) {
   UNUSED(v);
   d_token ctk = parser.prev;
-  char* name = (char*) calloc(ctk.length + 1, sizeof(char));
+
+  char* name = (char*) malloc(sizeof(char) * (ctk.length + 1));
   strncpy(name, ctk.first, ctk.length);
+  name[ctk.length] = '\0';
 
   if (eq_and_next(DTK_EQ)) {
       expression(vm);
@@ -335,10 +338,9 @@ static void fun_declaration(d_vm* vm) {
 
   get_next_token();
   d_token ctk = parser.prev;
-  char* name = (char*) calloc(ctk.length + 1, sizeof(char));
-  strncpy(name, ctk.first, ctk.length);
-
-  f->name = name;
+  f->name = (char*) malloc(sizeof(char) * (ctk.length + 1));
+  strncpy(f->name, ctk.first, ctk.length);
+  f->name[ctk.length] = '\0';
 
   process_token(DTK_PAR_OPEN, "Expect '(' after function name.");
 

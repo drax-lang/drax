@@ -456,6 +456,7 @@ static void __reset__(d_vm* vm) {
   vm->active_instr = NULL;
   
   free(vm->instructions->values);
+  free(vm->instructions->lines);
   free(vm->instructions);
   
   vm->instructions = new_instructions();

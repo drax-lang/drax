@@ -71,7 +71,7 @@ static char next_char() {
 
 static char check_next() {
   if (IS_EOF()) return '\0';
-  return clexs.current[0];
+  return clexs.current[1];
 }
 
 static d_token dmake_symbol(dlex_types type) {
@@ -156,28 +156,28 @@ d_token next_token() {
       }
 
       case '!':
-        if(check_next() == '=') {
+        if(next_char() == '=') {
           next_char();
           return dmake_symbol(DTK_BNG_EQ);
         }
         return dmake_symbol(DTK_BNG);
 
       case '=':
-        if(check_next() == '=') {
+        if(next_char() == '=') {
           next_char();
           return dmake_symbol(DTK_DEQ);
         }
         return dmake_symbol(DTK_EQ);
 
       case '<':
-        if(check_next() == '=') {
+        if(next_char() == '=') {
           next_char();
           return dmake_symbol(DTK_LE);
         }
         return dmake_symbol(DTK_LS);
 
       case '>':
-        if(check_next() == '=') {
+        if(next_char() == '=') {
           next_char();
           return dmake_symbol(DTK_BE);
         }
