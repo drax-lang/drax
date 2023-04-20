@@ -137,7 +137,7 @@ d_token next_token() {
       }
 
       case '+': {
-        if(check_next() == '+') {
+        if(next_char() == '+') {
           next_char();
           return dmake_symbol(DTK_CONCAT);
         }
