@@ -41,16 +41,22 @@ typedef struct dt_envs {
   d_var_table* dynamic;
 } dt_envs;
 
+typedef struct  dcall_stack {
+  drax_value** values;
+  int count;
+  int size;
+} dcall_stack;
+
 typedef struct d_vm {
   // uint8_t ip
   dt_envs* envs;
   drax_value* ip;
-  drax_value* _ip;
   drax_value* stack;
+  dcall_stack* call_stack;
   int stack_count;
   int stack_size;
   d_instructions* instructions; // global instructions
-  d_instructions* active_instr; // global instructions
+  d_instructions* active_instr; // active instructions
 } d_vm;
 
 typedef struct value_array{
@@ -79,10 +85,6 @@ int add_drax_value(d_vm* vm, drax_byte* d_byte, drax_value value);
 d_vm* createVM();
 
 const_value_array* new_const_value_array();
-
-int put_const_value_array(const_value_array* a, drax_value v);
-
-void free_const_value_array(const_value_array* a);
 
 void push(d_vm* vm, drax_value v);
 

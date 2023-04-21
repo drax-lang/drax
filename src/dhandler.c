@@ -64,14 +64,15 @@ void put_var_table(d_var_table* t, char* name, drax_value value) {
     t->array[index] = node;
 }
 
-drax_value get_var_table(d_var_table* t, char* name) {
+int get_var_table(d_var_table* t, char* name, drax_value* value) {
     int index = generate_hash(name, t->size);
     size_t key = string_to_id(name, strlen(name));
 
     drax_node* current = t->array[index];
     while (current != NULL) {
         if (current->key == key) {
-            return current->value;
+            *value = current->value;
+            return 1;
         }
         current = current->next;
     }

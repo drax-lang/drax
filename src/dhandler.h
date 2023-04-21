@@ -44,7 +44,7 @@ void free_table(d_vm* vm, d_var_table* t);
 
 void put_var_table(d_var_table* t, char* name, drax_value value);
 
-drax_value get_var_table(d_var_table* t, char* name);
+int get_var_table(d_var_table* t, char* name, drax_value* value);
 
 /**
  * function definitions

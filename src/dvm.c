@@ -45,20 +45,6 @@ static void init_value_array(value_array* array) {
   array->count = 0;
 }
 
-/**
- * Free value array
- * to use with GC
-*/
-// static void free_value_array(d_vm* vm, value_array* array) {
-//   UNUSED(vm);
-//   free(array->values);
-//   init_value_array(array);
-// }
-
-/**
- * Remove value from pending bytes and put on main stack
- */
-
 int add_drax_value(d_vm* vm, drax_byte* d_byte, drax_value value) {
   push(vm, value);
   write_value_array(vm, &d_byte->constants, value);
@@ -92,25 +78,7 @@ void append_drax_value(d_vm* vm, drax_byte* d_byte, drax_value byte, int line) {
   d_byte->count++;
 }
 
-/* VM/Compilers Helpers */
-
-int put_const_value_array(const_value_array* a, drax_value v) {
-  a->count++;
-  if (a->count >= a->limit) {
-    a->limit = EXPAND_CAPACITY(a->limit);
-    a->values =  (drax_value*) realloc(a->values, sizeof(drax_value) * a->limit);
-  }
-
-  a->values[a->count -1] = v;
-  return a->count -1;
-}
-
-void free_const_value_array(const_value_array* a) {
-  free(a->values);
-  free(a);
-}
-
-/* VM Impl. */
+/* VM stack. */
 
 void push(d_vm* vm, drax_value v) {
   vm->stack[vm->stack_count++] = v;
@@ -131,6 +99,19 @@ static drax_value peek(d_vm* vm, int distance) {
   if (vm->stack_count == 0) return 0;
   return vm->stack[vm->stack_count -1 - distance];
 }
+
+/* VM Call stack */
+
+static void callstack_push(d_vm* vm, drax_value* v) {
+  vm->call_stack->values[vm->call_stack->count++] = v;
+}
+
+static drax_value* callstack_pop(d_vm* vm) {
+  if (vm->call_stack->count == 0) return 0;
+  vm->call_stack->count--;
+  return vm->call_stack->values[vm->call_stack->count];
+}
+
 
 /**
  * Print Helpers
@@ -280,12 +261,12 @@ static void __start__(d_vm* vm, int inter_mode) {
       }
       VMCase(OP_GET_ID) {
         char* k = (char*) GET_VALUE(vm);
-        drax_value val = get_var_table(vm->envs->dynamic, k);
-
-        if(val == 0) {
+        drax_value val;
+        if(get_var_table(vm->envs->dynamic, k, &val) == 0) {
           raise_drax_error(vm, "error: variable '%s' is not defined\n", k);
           return;
         }
+
         push(vm, val);
         break;
       }
@@ -394,7 +375,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         }
 
         drax_function* f = CAST_FUNCTION(v);
-        vm->_ip = vm->ip;
+        callstack_push(vm, vm->ip);
         vm->ip = f->instructions->values;
         break;
       }
@@ -404,7 +385,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_RETURN) {
-        vm->ip = vm->_ip;
+        vm->ip = callstack_pop(vm);
         break;
       }
       VMCase(OP_EXIT) {
@@ -459,6 +440,8 @@ void __reset__(d_vm* vm) {
   free(vm->instructions);
   
   vm->instructions = new_instructions();
+
+  vm->call_stack->count = 0;
   vm->ip = NULL;
 }
 
@@ -470,6 +453,11 @@ d_vm* createVM() {
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
   vm->envs = new_environment();
+
+  vm->call_stack = (dcall_stack*) malloc(sizeof(dcall_stack));
+  vm->call_stack->size = CALL_STACK_SIZE;
+  vm->call_stack->count = 0;
+  vm->call_stack->values = (drax_value**) malloc(sizeof(drax_value*) * CALL_STACK_SIZE);
 
   return vm;
 }
