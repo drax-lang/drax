@@ -112,7 +112,6 @@ static drax_value* callstack_pop(d_vm* vm) {
   return vm->call_stack->values[vm->call_stack->count];
 }
 
-
 /**
  * Print Helpers
 */
@@ -196,6 +195,11 @@ static bool values_equal(drax_value a, drax_value b) {
   if (IS_NUMBER(a) && IS_NUMBER(b)) {
     return CAST_NUMBER(a) == CAST_NUMBER(b);
   }
+
+  if (IS_STRING(a) && IS_STRING(b)) {
+    return CAST_STRING(a)->hash == CAST_STRING(b)->hash;
+  }
+
   return a == b;
 }
 

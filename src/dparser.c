@@ -362,9 +362,12 @@ static void fun_declaration(d_vm* vm) {
         }
       }
 
-      put_pair(vm, OP_SET_ID, (drax_value) s->chars);
       stack_args[f->arity -1] = s->chars;
     } while (eq_and_next(DTK_COMMA));
+  }
+
+  for (int i = f->arity; i > 0 ; i--) {
+    put_pair(vm, OP_SET_ID, (drax_value) stack_args[i - 1]);
   }
 
   free(stack_args);
