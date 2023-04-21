@@ -5,71 +5,65 @@
 #ifndef __DLEX
 #define __DLEX
 
-typedef enum dlex_types {
-  TK_BRACE_CLOSE = 0, TK_BRACE_OPEN, TK_BRACKET_CLOSE, 
-  TK_BRACKET_OPEN, TK_COMMA, TK_DO, TK_END, TK_FLOAT,
-  TK_FUN, TK_IF, TK_ELSE, TK_IMPORT, TK_INTEGER, TK_LAMBDA,
-  TK_PAR_CLOSE, TK_PAR_OPEN, TK_STRING, TK_SYMBOL, 
-  
-  /* logic */
-  TK_AND, TK_OR,
 
-  /* cmp */ 
-  TK_NOT_EQ, TK_NOT_DEQ, TK_NOT_TEQ,
-  TK_EQ, TK_DEQ, TK_TEQ,
+typedef enum dlex_types {
+  DTK_PAR_OPEN, DTK_PAR_CLOSE,
+  DTK_BKT_OPEN, DTK_BKT_CLOSE,
+
+  /* str. op. */
+  DTK_CONCAT,
 
   /* arith op */
-  TK_ADD, TK_DIV, TK_MUL, TK_SUB,
+  DTK_SUB, DTK_ADD, DTK_DIV, DTK_MUL,
 
   /* bool op */
-  TK_LS, TK_BG, TK_LE, TK_BE,
-
-  TK_NIL,
+  DTK_LS, DTK_BG, DTK_LE, DTK_BE,
+  DTK_EQ, DTK_DEQ, DTK_BNG, DTK_BNG_EQ,
   
-  TK_BREAK_LINE,
+  /* Keywords */
+  DTK_AND, DTK_DO, DTK_ELSE, DTK_END, 
+  DTK_FALSE, DTK_FUN, DTK_IF, DTK_NIL, 
+  DTK_OR, DTK_PRINT, DTK_TRUE, DTK_LET, 
+
+  DTK_ID, DTK_STRING, DTK_NUMBER, DTK_COMMA, DTK_DOT, 
+
+  DTK_ERROR,
+  
+  DTK_BREAK_LINE,
 
   /* last element */
-  TK_EOF,
-
+  DTK_EOF
 } dlex_types;
+
+typedef enum dfstap_errors_type {
+  DCE_NONE,
+  DCE_LEX,
+  DCE_PARSE,
+  DCE_RUNTIME,
+} dfstap_errors_type;
+
+
+typedef struct drax_tokens {
+  const char* str;
+  int dtk; 
+} drax_tokens;
 
 typedef struct d_token {
   dlex_types type;
-  long double fval;
-  char* cval;
+  dfstap_errors_type error_type;
+  const char* first;
+  int length;
+  int line;
 } d_token;
 
-typedef struct blex_tokens {
-  d_token** child;
+typedef struct curr_lex_state {
+  const char* first;
+  const char* current;
   int line;
-  int pos;
-  int length;
-} blex_tokens;
+} curr_lex_state;
 
-/* global */
+void init_lexan(const char* source);
 
-char* append_char(const char *str, const char c);
-
-int is_number(const char c);
-
-int is_symbol(const char c);
-
-d_token* bmake_string(char* val);
-
-d_token* bmake_int(dlex_types type, double val);
-
-d_token* bmake_float(dlex_types type, double val);
-
-d_token* bmake_symbol(dlex_types type);
-
-d_token* bmake_return(char* keyword);
-
-int init_lexan(char* b);
-
-d_token* b_check_next(int* nump);
-
-d_token* b_check_prev();
-
-d_token* lexan();
+d_token next_token();
 
 #endif

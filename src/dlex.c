@@ -1,166 +1,117 @@
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include "dlex.h"
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
 
-size_t b_index = 0;
-size_t b_prev_index = 0;
-char* buffer;
+curr_lex_state clexs;
 
-static const char *const drax_tokens [] = {
-  "}", "{", "]", "[", ",", "do", 
-  "end", "float", "fun", "if", "else", "import", 
-  "integer", "lambda", ")", "(", "string", "<symbol>", 
+#define CURR_TOKEN()  (*clexs.current)
 
-  "and", "or",
+#define IS_EOF()      (*clexs.current == '\0')
+
+#define NUM_ELEMS(x)  (sizeof(x) / sizeof((x)[0]))
+
+static const drax_tokens drax_t[] = {
+  {"and",    DTK_AND},
+  {"do",     DTK_DO},
+  {"else",   DTK_ELSE},
+  {"end",    DTK_END},
+  {"false",  DTK_FALSE},
+  {"fun",    DTK_FUN},
+  {"if",     DTK_IF},
+  {"nil",    DTK_NIL},
+  {"or",     DTK_OR},
+  {"print",  DTK_PRINT},
+  {"true",   DTK_TRUE},
+ };
+
+/* Helpers */
+static bool is_alpha(const char c) {
+  if (c == 0) return false;
+
+  char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_?";
   
-  /* cmp */ 
-  "!=", "!==", "!===",
-  "=", "==", "===",
-
-  /* arith op */
-  "+", "/", "*", "-",
-
-  /* bool op */
-  "ls", "bg", "le", "be", 
-  
-  "nil", "\n","<EOF>"
-};
-
-
-char* append_char(const char *str, const char c) {
-  size_t size = 0;
-  if (str != 0) size = strlen(str);
-
-  char *s = (char *) calloc(size + 2, sizeof(char));
-
-  for (size_t i = 0; i < size; i++) {
-    s[i] = str[i];
-  }
-
-  s[size] = c;
-  s[size + 1] = '\0';
-  return s;
-}
-
-int is_symbol(const char c) {
-  char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_0123456789?";
-  
-  for (size_t i = 0; i < 65; i++)
-  {
+  for (size_t i = 0; i < 55; i++) {
     if (c == accepted_chars[i])
-      return 1;
+      return true;
   }
   
-  return 0;
+  return false;
 }
 
-int is_number(const char c) {
-  char accepted_num[] = ".0123456789";
+static bool is_number(const char c) {
+  if (c == 0) return false;
+
+  char accepted_num[] = "0123456789";
   
   for (size_t i = 0; i < 11; i++) {
     if (c == accepted_num[i])
-      return 1;
+      return true;
   }
   
-  return 0;
+  return false;
 }
 
-d_token* bmake_string(char* val) {
-  d_token* v =(d_token*) malloc(sizeof(d_token));
-  v->type = TK_STRING;
-  v->cval = val;
-  b_index++;
-  return v;
+/* Lexer State Handlers */
+
+void init_lexan(const char* b) {
+  clexs.first = b;
+  clexs.current = clexs.first;
+  clexs.line = 1;
 }
 
-d_token* bmake_symbol(dlex_types type) {
-  d_token* v =(d_token*) malloc(sizeof(d_token));
-  v->type = type;
-  v->cval = NULL;
-  b_index++;
-  return v;
-};
-
-d_token* bmake_return(char* keyword) {
-  dlex_types t = TK_SYMBOL;
-
-  for (int i = 0; i < TK_EOF; i++)
-  {
-    if (strcmp(keyword, drax_tokens[i]) == 0) {
-      t = i;
-      break;
-    }
+static char next_char() {
+  if (*clexs.current != '\0') {
+    clexs.current++;
+    return clexs.current[-1];
   }
 
-  d_token* v =(d_token*) malloc(sizeof(d_token));
-  v->type = t;
-
-  if (TK_SYMBOL == t)
-    v->cval = keyword;
-
-  b_index++;
-  return v;
-};
-
-
-d_token* bmake_int(dlex_types type, double val) {
-  d_token* v =(d_token*) malloc(sizeof(d_token));
-  v->type = type;
-  v->fval = val;
-  b_index++;
-  return v;
+  return '\0';
 }
 
-d_token* bmake_float(dlex_types type, double val) {
-  d_token* v =(d_token*) malloc(sizeof(d_token));
-  v->type = type;
-  v->fval = val;
-  b_index++;
-  return v;
+static char check_next() {
+  if (IS_EOF()) return '\0';
+  return clexs.current[1];
 }
 
-int init_lexan(char* b) {
-  b_index = 0;
-  buffer = b;
-  return b_index;
+static d_token dmake_symbol(dlex_types type) {
+  d_token token;
+  token.type = type;
+  token.first = clexs.first;
+  token.length = (int) (clexs.current - clexs.first);
+  token.line = clexs.line;
+  return token;
 }
 
-d_token* b_check_next(int* jump) {
-  size_t i_bk = b_index;
-  if ((NULL != jump) && (*jump > 0)) {
-    b_index = *jump;
-  }
-
-  d_token* r = lexan();
-
-  if (NULL != jump) { *jump = b_index; }
-
-  b_index = i_bk;
-  return r;
+static d_token make_error(const char* reason) {
+  d_token token;
+  int size = (int) strlen(reason);
+  token.type = DTK_ERROR;
+  token.error_type = DCE_LEX;
+  token.first = reason;
+  token.length = size;
+  token.line = clexs.line;
+  return token;
 }
 
-d_token* b_check_prev() {
-  size_t i_bk = b_index;
-  b_index = b_prev_index;
-  d_token* r = lexan();
-  b_index = i_bk;
-  return r;
-}
+d_token next_token() {
+  clexs.first = clexs.current;
 
-d_token* lexan() {
-  b_prev_index = b_index;
-  char* bword = 0;
-  while (b_index < strlen(buffer)) {
-   char c = buffer[b_index];
+  while (*clexs.current != '\0') {
+    char c = next_char();
+    switch (c) {
+      case ' ':
+      case '\t':
+      case '\r':
+        clexs.first = clexs.current;
+        break;
+      
+      case '\n': {
+        clexs.line++;
+        clexs.first = clexs.current;
+        break;
+      }
 
-    switch (c)
-    {
-      case ' ': break;
-      case '\r': break;
-      case '\n': return bmake_symbol(TK_BREAK_LINE);
-
-      case '-':
       case '0':
       case '1':
       case '2':
@@ -171,128 +122,114 @@ d_token* lexan() {
       case '7':
       case '8':
       case '9': {
-        if ((c == '-') && (!is_number(buffer[b_index + 1]))) {
-          return bmake_symbol(TK_SUB);
+        while (is_number(CURR_TOKEN())) {
+          next_char();
         }
 
-        char* num = append_char("", c);
-
-        int isf = 0;
-        while (b_index < strlen(buffer)) {
-          char sc = buffer[b_index + 1];
-
-          if (!is_number(sc)) break;
-          if (sc == '.') isf = 1;
-
-          b_index++;
-          num = append_char(num, sc);
+        if (CURR_TOKEN() == '.' && is_number(check_next())) {
+          next_char();
+          while (is_number(CURR_TOKEN())) {
+            next_char();
+          }
         }
 
-        double vf = strtod(num, NULL);
-        if (!isf) {
-          return bmake_int(TK_INTEGER, vf);
-        } else {
-          return bmake_float(TK_FLOAT, vf);
-        }
-        break;
-      };
-
-      case '#': {
-        while (b_index < strlen(buffer)) {
-          char sc = buffer[b_index];
-
-          if (sc == '\n')
-            return bmake_symbol(TK_BREAK_LINE);
-            
-          b_index++;
-        }
-        break;
+        return dmake_symbol(DTK_NUMBER);
       }
-      case '+': return bmake_symbol(TK_ADD);
-      case '*': return bmake_symbol(TK_MUL);
-      case '/': return bmake_symbol(TK_DIV);
 
-      case '{': return bmake_symbol(TK_BRACE_OPEN);
-      case '}': return bmake_symbol(TK_BRACE_CLOSE);
-
-      case '(': return bmake_symbol(TK_PAR_OPEN);
-      case ')': return bmake_symbol(TK_PAR_CLOSE);
-      case '[': return bmake_symbol(TK_BRACKET_OPEN);
-      case ']': return bmake_symbol(TK_BRACKET_CLOSE);
-      case '>': 
-        if ('=' == buffer[b_index+1]) {
-          b_index++;
-          return bmake_symbol(TK_BE);
+      case '+': {
+        if(next_char() == '+') {
+          next_char();
+          return dmake_symbol(DTK_CONCAT);
         }
-        return bmake_symbol(TK_BG);
+        return dmake_symbol(DTK_ADD);
+      }
+      case '-': return dmake_symbol(DTK_SUB);
+      case '*': return dmake_symbol(DTK_MUL);
+      case '/': return dmake_symbol(DTK_DIV);
+      case '(': return dmake_symbol(DTK_PAR_OPEN);
+      case ')': return dmake_symbol(DTK_PAR_CLOSE);
+      case '[': return dmake_symbol(DTK_BKT_OPEN);
+      case ']': return dmake_symbol(DTK_BKT_CLOSE);
+      case ',': return dmake_symbol(DTK_COMMA);
+      case '.': {
+        return dmake_symbol(DTK_DOT);
+      }
 
-      case '<':
-        if ('=' == buffer[b_index+1]) {
-          b_index++;
-          return bmake_symbol(TK_LE);
-        }
-        return bmake_symbol(TK_LS);
-      
       case '!':
-        if ('=' == buffer[b_index+1] && '=' == buffer[b_index+2]) {
-          b_index+= 2;
-          return bmake_symbol(TK_NOT_DEQ);
+        if(next_char() == '=') {
+          next_char();
+          return dmake_symbol(DTK_BNG_EQ);
         }
-
-        if ('=' == buffer[b_index+1]) {
-          b_index++;
-          return bmake_symbol(TK_NOT_EQ);
-        }
-        break; /* unspected */
+        return dmake_symbol(DTK_BNG);
 
       case '=':
-        if ('=' == buffer[b_index+1] && '=' == buffer[b_index+2]) {
-          b_index += 2;
-          return bmake_symbol(TK_TEQ); 
+        if(next_char() == '=') {
+          next_char();
+          return dmake_symbol(DTK_DEQ);
         }
+        return dmake_symbol(DTK_EQ);
 
-        if ('=' == buffer[b_index+1]) {
-          b_index++;
-          return bmake_symbol(TK_DEQ);
+      case '<':
+        if(next_char() == '=') {
+          next_char();
+          return dmake_symbol(DTK_LE);
         }
-        return bmake_symbol(TK_EQ); 
+        return dmake_symbol(DTK_LS);
 
-      case ',': return bmake_symbol(TK_COMMA);
+      case '>':
+        if(next_char() == '=') {
+          next_char();
+          return dmake_symbol(DTK_BE);
+        }
+        return dmake_symbol(DTK_BG);
+
       case '"': {
-        while (b_index < strlen(buffer)) {
-          b_index++;
-          char sc = buffer[b_index];
-
-          if (sc == '"') {
-            return bmake_string(bword);
-          };
-
-          bword = append_char(bword, sc);
+        while (CURR_TOKEN() != '"' && !IS_EOF()) {
+          if (CURR_TOKEN() == '\n') clexs.line++;
+          next_char();
         }
-        break;
+        
+        if (IS_EOF()) return make_error("Unterminated string.");
+
+        next_char();
+        return dmake_symbol(DTK_STRING);
       }
+
+      case '#':
+          while (CURR_TOKEN() != '\n' && !IS_EOF()) {
+            next_char();
+          }
+        break;
 
       default: {
-        if (is_symbol(c)) {
-          bword = append_char(bword, c);
-          while (b_index < strlen(buffer)) {
-            char sc = buffer[b_index + 1];
+        if (is_alpha(c)) {
+          while (is_alpha(CURR_TOKEN()) || is_number(CURR_TOKEN())) {
+            next_char();
+          }
 
-            if(is_symbol(sc)) {
-              bword = append_char(bword, sc);
-              b_index ++;
-            } else {
-              return bmake_return(bword);
+          /* Check if is keyword */
+          int ne = NUM_ELEMS(drax_t);
+          for (int i = 0; i < ne; i++) {
+            int size = strlen(drax_t[i].str);
+            bool eql = true;
+            for (int j = 0; j < size; j++) {
+              if (drax_t[i].str[j] != clexs.first[j]) {
+                eql = false;
+                break;
+              }
+            }
+
+            if (eql) {
+              return dmake_symbol(drax_t[i].dtk);
             }
           }
-          return bmake_return(bword);
+
+          return dmake_symbol(DTK_ID);
         }
+        return make_error("Unexpected token.");
       }
     }
-
-    b_index++;
   }
-  
-  b_index = 0;
-  return bmake_symbol(TK_EOF);
+
+  return dmake_symbol(DTK_EOF);
 }
