@@ -1,6 +1,8 @@
 #ifndef __DHHANDLER
 #define __DHHANDLER
 
+#define HASH_VAR_TABLE_SIZE 80
+
 #include "dstructs.h"
 #include "dtypes.h"
 
@@ -10,10 +12,11 @@ typedef struct d_vm d_vm;
 
 /* Runtime hash function (Match definition) */
 
-typedef struct drax_pairs {
+typedef struct drax_node {
   size_t key;
   drax_value value;
-} drax_pairs;
+  struct drax_node* next;
+} drax_node;
 
 typedef struct drax_fun_store {
   size_t key;
@@ -23,9 +26,8 @@ typedef struct drax_fun_store {
 
 /* Global envinronment */
 typedef struct d_var_table {
-  int count;
-  int limit;
-  drax_pairs* pairs;
+    int size;
+    drax_node** array;
 } d_var_table;
 
 typedef struct d_fun_table {
@@ -40,9 +42,9 @@ d_var_table* new_var_table();
 
 void free_table(d_vm* vm, d_var_table* t);
 
-void put_var_table(d_var_table* t, char* key, drax_value value);
+void put_var_table(d_var_table* t, char* name, drax_value value);
 
-drax_value get_var_table(d_var_table* t, char* key);
+drax_value get_var_table(d_var_table* t, char* name);
 
 /**
  * function definitions

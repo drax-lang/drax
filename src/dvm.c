@@ -197,6 +197,7 @@ static void print_drax(drax_value value) {
 static void trace_error(d_vm* vm) {
   int idx = vm->ip - vm->active_instr->values;
   fprintf(stderr, TRACE_DESCRIPTION_LINE, vm->instructions->lines[idx]);
+  putchar('\n');
 }
 
 /* Delegate to drax_print_error */
