@@ -88,6 +88,8 @@ void push(d_vm* vm, drax_value v);
 
 drax_value pop(d_vm* vm);
 
+void __reset__(d_vm* vm);
+
 void __run__(d_vm* curr, int inter_mode);
 
 #endif

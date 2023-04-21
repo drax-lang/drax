@@ -194,8 +194,6 @@ static void print_drax(drax_value value) {
  * Raise Helpers
 */
 
-static void __reset__(d_vm* vm);
-
 static void trace_error(d_vm* vm) {
   int idx = vm->ip - vm->active_instr->values;
   fprintf(stderr, TRACE_DESCRIPTION_LINE, vm->instructions->lines[idx]);
@@ -452,7 +450,7 @@ static void __init__(d_vm* vm) {
   vm->ip = vm->active_instr->values;
 }
 
-static void __reset__(d_vm* vm) {
+void __reset__(d_vm* vm) {
   vm->active_instr = NULL;
   
   free(vm->instructions->values);
@@ -460,6 +458,7 @@ static void __reset__(d_vm* vm) {
   free(vm->instructions);
   
   vm->instructions = new_instructions();
+  vm->ip = NULL;
 }
 
 d_vm* createVM() {
@@ -477,5 +476,4 @@ d_vm* createVM() {
 void __run__(d_vm* vm, int inter_mode) {
  __init__(vm);
  __start__(vm, inter_mode);
- __reset__(vm);
 }

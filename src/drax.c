@@ -27,6 +27,7 @@ static int interactive_shell(d_vm* v) {
       __run__(v, 1);
     }
 
+    __reset__(v);
     free(input);
   }
   return 0;
@@ -35,16 +36,18 @@ static int interactive_shell(d_vm* v) {
 static int process_file(d_vm* v, char** argv) {
   char * content = 0;
   char * path = argv[1];
+
   if(get_file_content(path, &content)) {
     printf("file '%s' not found.\n", path);
     return 1;
   }
 
-    if (__build__(v, content)) {
-      __run__(v, 0);
-    }
+  if (__build__(v, content)) {
+    __run__(v, 0);
+  }
 
-    free(content);
+  __reset__(v);
+  free(content);
 
   return 0;
 }
