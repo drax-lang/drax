@@ -3,7 +3,7 @@ fun say(name) do
 end
 
 fun say(name, last) do
-    concat(name, concat(" ", last))
+    name ++ " " ++ last
 end
 
 print(say("Hello", "World"))
