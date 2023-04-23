@@ -18,12 +18,18 @@
 #define GET_VALUE(vm) *(vm->ip++)
 #define GET_NUMBER(vm) AS_NUMBER(GET_VALUE(vm))
 
+#define CURR_CALLSTACK_SIZE(vm) vm->call_stack->count
+
 // validation only number
 #define binary_op(vm, op) \
         double b = AS_NUMBER(pop(vm)); \
         double a = AS_NUMBER(pop(vm)); \
         push(vm, AS_VALUE(a op b)); 
 
+#define back_scope(vm) \
+        vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range; \
+        vm->active_instr = callstack_pop(vm); \
+        vm->ip = vm->active_instr->_ip;
 
 /* Value Handler */
 
@@ -102,11 +108,11 @@ static drax_value peek(d_vm* vm, int distance) {
 
 /* VM Call stack */
 
-static void callstack_push(d_vm* vm, drax_value* v) {
+static void callstack_push(d_vm* vm, d_instructions* v) {
   vm->call_stack->values[vm->call_stack->count++] = v;
 }
 
-static drax_value* callstack_pop(d_vm* vm) {
+static d_instructions* callstack_pop(d_vm* vm) {
   if (vm->call_stack->count == 0) return 0;
   vm->call_stack->count--;
   return vm->call_stack->values[vm->call_stack->count];
@@ -175,9 +181,18 @@ static void print_drax(drax_value value) {
 */
 
 static void trace_error(d_vm* vm) {
-  int idx = vm->ip - vm->active_instr->values;
-  fprintf(stderr, TRACE_DESCRIPTION_LINE, vm->instructions->lines[idx]);
-  putchar('\n');
+  #define DO_TRACE_ERROR_ROUTINE() \
+    d_instructions* instr = vm->active_instr; \
+    if (instr) { \
+      int idx = vm->ip - instr->values; \
+      fprintf(stderr, TRACE_DESCRIPTION_LINE, instr->lines[idx]); \
+      putchar('\n'); \
+    }
+  while (CURR_CALLSTACK_SIZE(vm) > 0) {
+    DO_TRACE_ERROR_ROUTINE();
+    back_scope(vm);
+  };
+  DO_TRACE_ERROR_ROUTINE();
 }
 
 /* Delegate to drax_print_error */
@@ -209,7 +224,7 @@ static void __start__(d_vm* vm, int inter_mode) {
       do { \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
           raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
-          return ; \
+          return; \
         } \
         double b = CAST_NUMBER(pop(vm)); \
         double a = CAST_NUMBER(pop(vm)); \
@@ -257,16 +272,33 @@ static void __start__(d_vm* vm, int inter_mode) {
         push(vm, v);
         break;
       }
-      VMCase(OP_SET_ID) {
+      VMCase(OP_SET_G_ID) {
         drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
-        put_var_table(vm->envs->dynamic, k, v);
+        put_var_table(vm->envs->global, k, v);
         break;
       }
-      VMCase(OP_GET_ID) {
+      VMCase(OP_GET_G_ID) {
         char* k = (char*) GET_VALUE(vm);
         drax_value val;
-        if(get_var_table(vm->envs->dynamic, k, &val) == 0) {
+        if(get_var_table(vm->envs->global, k, &val) == 0) {
+          raise_drax_error(vm, "error: variable '%s' is not defined\n", k);
+          return;
+        }
+
+        push(vm, val);
+        break;
+      }
+      VMCase(OP_SET_L_ID) {
+        drax_value v = pop(vm);
+        char* k = (char*) GET_VALUE(vm);
+        put_local_table(vm->envs->local, k, v);
+        break;
+      }
+      VMCase(OP_GET_L_ID) {
+        char* k = (char*) GET_VALUE(vm);
+        drax_value val;
+        if(get_local_table(vm->envs->local, vm->active_instr->local_range, k, &val) == 0) {
           raise_drax_error(vm, "error: variable '%s' is not defined\n", k);
           return;
         }
@@ -379,7 +411,10 @@ static void __start__(d_vm* vm, int inter_mode) {
         }
 
         drax_function* f = CAST_FUNCTION(v);
-        callstack_push(vm, vm->ip);
+
+        vm->active_instr->_ip = vm->ip;
+        callstack_push(vm, vm->active_instr);
+        vm->active_instr = f->instructions;
         vm->ip = f->instructions->values;
         break;
       }
@@ -389,7 +424,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_RETURN) {
-        vm->ip = callstack_pop(vm);
+        back_scope(vm);
         break;
       }
       VMCase(OP_EXIT) {
@@ -416,9 +451,9 @@ static void __start__(d_vm* vm, int inter_mode) {
 
 static dt_envs* new_environment() {
   dt_envs* e = (dt_envs*) malloc(sizeof(dt_envs));
-  e->strings = new_var_table();
-  e->dynamic = new_var_table();
+  e->global = new_var_table();
   e->functions = new_fun_table();
+  e->local = new_local_table();
   return e;
 }
 
@@ -461,7 +496,7 @@ d_vm* createVM() {
   vm->call_stack = (dcall_stack*) malloc(sizeof(dcall_stack));
   vm->call_stack->size = CALL_STACK_SIZE;
   vm->call_stack->count = 0;
-  vm->call_stack->values = (drax_value**) malloc(sizeof(drax_value*) * CALL_STACK_SIZE);
+  vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
 
   return vm;
 }

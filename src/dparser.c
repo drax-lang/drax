@@ -67,6 +67,7 @@ static operation_line op_lines[] = {
 
 #define FATAL_CURR(v) dfatal(&parser.current, v)
 
+#define IS_GLOBAL_SCOPE(v) (v->instructions == v->active_instr)
 
 /**
  * VM Helpers
@@ -273,6 +274,7 @@ void process_string(d_vm* vm, bool v) {
 void process_variable(d_vm* vm, bool v) {
   UNUSED(v);
   d_token ctk = parser.prev;
+  int is_global = IS_GLOBAL_SCOPE(vm);
 
   char* name = (char*) malloc(sizeof(char) * (ctk.length + 1));
   strncpy(name, ctk.first, ctk.length);
@@ -280,7 +282,7 @@ void process_variable(d_vm* vm, bool v) {
 
   if (eq_and_next(DTK_EQ)) {
       expression(vm);
-      put_pair(vm, OP_SET_ID, (drax_value) name);
+      put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
       return;
   }
 
@@ -289,7 +291,8 @@ void process_variable(d_vm* vm, bool v) {
     return;
   }
 
-  put_pair(vm, OP_GET_ID, (drax_value) name);
+  put_pair(vm, is_global ? OP_GET_G_ID : OP_GET_L_ID, (drax_value) name);
+  if (!is_global) vm->active_instr->local_range++;
 }
 
 /* end of processors functions */
@@ -367,7 +370,7 @@ static void fun_declaration(d_vm* vm) {
   }
 
   for (int i = f->arity; i > 0 ; i--) {
-    put_pair(vm, OP_SET_ID, (drax_value) stack_args[i - 1]);
+    put_pair(vm, OP_SET_L_ID, (drax_value) stack_args[i - 1]);
   }
 
   free(stack_args);

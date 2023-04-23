@@ -37,12 +37,12 @@ typedef struct const_value_array{
 
 typedef struct dt_envs {
   d_fun_table* functions;
-  d_var_table* strings;
-  d_var_table* dynamic;
+  d_global_var_table* global;
+  d_local_var_table* local; // Local definitions inside functions
 } dt_envs;
 
 typedef struct  dcall_stack {
-  drax_value** values;
+  d_instructions** values;
   int count;
   int size;
 } dcall_stack;

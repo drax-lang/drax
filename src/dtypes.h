@@ -88,8 +88,10 @@ typedef enum d_op_code {
   OP_LOOP,
   OP_CALL,
   OP_FUN,
-  OP_SET_ID,
-  OP_GET_ID,
+  OP_SET_G_ID,
+  OP_GET_G_ID,
+  OP_SET_L_ID,
+  OP_GET_L_ID,
   OP_RETURN,
   OP_EXIT,
 } d_op_code;
@@ -110,10 +112,17 @@ typedef enum bimode {
  * Drax VM definitions
 */
 typedef struct d_instructions {
-    drax_value* values;
-    int instr_count;
-    int instr_size;
-    int* lines;
+  drax_value* values;
+  int instr_count;
+  int instr_size;
+  int* lines;
+  int local_range; // used by local definitions
+
+  /**
+   * _ip: Used to log current statement when 
+   * added/removed from call_stack
+   */
+  drax_value* _ip;
 } d_instructions;
 
 

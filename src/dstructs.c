@@ -16,9 +16,6 @@ static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type) {
   d_struct* d = (d_struct*) malloc(sizeof(d_struct) * size);
   d->type = type;
   d->checked = false;
-  
-  // d->next = vm->structs;
-  // vm->structs = d;
 
   return d;
 }
@@ -73,39 +70,17 @@ static drax_string* allocate_string(d_vm* vm, char* chars, int length, uint32_t 
   string->chars = chars;
   string->hash = hash;
 
-  // table_set(vm, vm->envs->strings, string, DRAX_NIL_VAL);
   return string;
 }
 
-/* Return 64-bit FNV-1a hash
- * Generate hash key
- */
-
-static size_t gen_hash_idx(const char* key, int len) {
-  uint32_t hash = 2166136261u;
-  for (int i = 0; i < len; i++) {
-    hash ^= (d_byte_def) key[i];
-    hash *= 16777619;
-  }
-  return hash;
-}
-
 drax_string* new_dstring(d_vm* vm, char* chars, int length) {
-  uint32_t hash = gen_hash_idx(chars, length);
-  // drax_string* interned = table_find_string(vm->envs->strings, chars, length, hash);
-
-  // if (interned != NULL) {
-  //   free(chars);
-  //   return interned;
-  // }
+  uint32_t hash = fnv1a_hasg(chars, length);
 
   return allocate_string(vm, chars, length, hash);
 }
 
 drax_string* copy_dstring(d_vm* vm, const char* chars, int length) {
-  uint32_t hash = gen_hash_idx(chars, length);
-  // drax_string* interned = table_find_string(vm->envs->strings, chars, length, hash);
-  // if (interned != NULL) return interned;
+  uint32_t hash = fnv1a_hasg(chars, length);
 
   char* heap_chars = malloc(sizeof(char) * length + 1);
   memcpy(heap_chars, chars, length);

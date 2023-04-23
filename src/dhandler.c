@@ -14,10 +14,10 @@ static unsigned long generate_hash(const char* str, size_t size) {
   return hashval % size;
 }
 
-/**
- * Convert string to hash.
+/* Return 64-bit FNV-1a hash
+ * Generate hash key
  */
-static size_t string_to_id(const char* key, int len) {
+size_t fnv1a_hasg(const char* key, int len) {
   uint32_t hash = 2166136261u;
   for (int i = 0; i < len; i++) {
     hash ^= (d_byte_def) key[i];
@@ -29,8 +29,8 @@ static size_t string_to_id(const char* key, int len) {
 /**
  * Closed hashing implementation
  */
-d_var_table* new_var_table() {
-  d_var_table* t = (d_var_table*) malloc(sizeof(d_var_table));
+d_global_var_table* new_var_table() {
+  d_global_var_table* t = (d_global_var_table*) malloc(sizeof(d_global_var_table));
   t->size = HASH_VAR_TABLE_SIZE;
     t->array = malloc(HASH_VAR_TABLE_SIZE * sizeof(struct node*));
     for (int i = 0; i < HASH_VAR_TABLE_SIZE; i++) {
@@ -40,12 +40,12 @@ d_var_table* new_var_table() {
   return t;
 }
 
-void free_table(d_vm* vm, d_var_table* t) {
+void free_var_table(d_vm* vm, d_global_var_table* t) {
   UNUSED(vm);
     for (int i = 0; i < t->size; i++) {
-        struct drax_node* current = t->array[i];
+        struct drax_global_node* current = t->array[i];
         while (current != NULL) {
-            struct drax_node* next = current->next;
+            struct drax_global_node* next = current->next;
             // free(current->value);
             free(current);
             current = next;
@@ -55,20 +55,20 @@ void free_table(d_vm* vm, d_var_table* t) {
     free(t);
 }
 
-void put_var_table(d_var_table* t, char* name, drax_value value) {
+void put_var_table(d_global_var_table* t, char* name, drax_value value) {
     int index = generate_hash(name, t->size);
-    drax_node* node = malloc(sizeof(drax_node));
-    node->key = string_to_id(name, strlen(name));
+    drax_global_node* node = malloc(sizeof(drax_global_node));
+    node->key = fnv1a_hasg(name, strlen(name));
     node->value = value;
     node->next = t->array[index];
     t->array[index] = node;
 }
 
-int get_var_table(d_var_table* t, char* name, drax_value* value) {
+int get_var_table(d_global_var_table* t, char* name, drax_value* value) {
     int index = generate_hash(name, t->size);
-    size_t key = string_to_id(name, strlen(name));
+    size_t key = fnv1a_hasg(name, strlen(name));
 
-    drax_node* current = t->array[index];
+    drax_global_node* current = t->array[index];
     while (current != NULL) {
         if (current->key == key) {
             *value = current->value;
@@ -103,23 +103,62 @@ void free_fun_table(d_vm* vm, d_fun_table* t) {
 void put_fun_table(d_fun_table* t, drax_value value) {
   if (t->count >= t->limit) {
     t->limit = t->limit == 0 ? 8 : t->limit * 2;
-    t->pairs = realloc(t->pairs, sizeof(drax_fun_store) * t->limit);
+    t->pairs = realloc(t->pairs, sizeof(drax_fun_node) * t->limit);
   }
 
   drax_function* f = CAST_FUNCTION(value);
-  t->pairs[t->count].key = string_to_id(f->name, strlen(f->name));
+  t->pairs[t->count].key = fnv1a_hasg(f->name, strlen(f->name));
   t->pairs[t->count].value = value;
   t->pairs[t->count].args = f->arity;
   t->count++;
 }
 
 drax_value get_fun_table(d_fun_table* t, char* key, uint8_t arity) {
-  size_t hs = string_to_id(key, strlen(key));
+  size_t hs = fnv1a_hasg(key, strlen(key));
   for (int i = 0; i < t->count; i++) {
     if (t->pairs[i].key == hs && t->pairs[i].args == arity) {
       return t->pairs[i].value;
     }
   }
 
+  return 0;
+}
+
+/**
+ * starting helper definitions for local definitions
+ */
+
+d_local_var_table* new_local_table() {
+  d_local_var_table* t = (d_local_var_table*) malloc(sizeof(d_local_var_table));
+  t->count = 0;
+  t->limit = MAX_LOCAL_INSTRUCTIONS;
+  t->array = (d_local_var_node**) malloc(sizeof(d_local_var_node*) * MAX_LOCAL_INSTRUCTIONS);
+
+  return t;
+}
+
+void put_local_table(d_local_var_table* t, char* name, drax_value value) {
+  if (t->count >= t->limit) {
+    t->limit = t->limit + MAX_LOCAL_INSTRUCTIONS;
+    t->array = (d_local_var_node**) realloc(t->array, sizeof(d_local_var_node*) * t->limit);
+  }
+
+  d_local_var_node* node = malloc(sizeof(d_local_var_node));
+  node->key = fnv1a_hasg(name, strlen(name));
+  node->value = value;
+  t->array[t->count++] = node;
+}
+
+drax_value get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value) {
+  size_t key = fnv1a_hasg(name, strlen(name));
+  int limit = t->count - local_range;
+  
+  for (int i = t->count; i > limit; i--) {
+    if (t->array[i -1]->key == key) {
+      *value = t->array[i -1]->value;
+      return 1;
+    }
+  }
+  
   return 0;
 }
