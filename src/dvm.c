@@ -5,6 +5,7 @@
 
 #include "ddefs.h"
 #include "dvm.h"
+#include "dbuiltin.h"
 #include "dtypes.h"
 #include "dinspect.h"
 
@@ -184,7 +185,7 @@ static void trace_error(d_vm* vm) {
   #define DO_TRACE_ERROR_ROUTINE() \
     d_instructions* instr = vm->active_instr; \
     if (instr) { \
-      int idx = vm->ip - instr->values; \
+      int idx = vm->ip - instr->values -1; \
       fprintf(stderr, TRACE_DESCRIPTION_LINE, instr->lines[idx]); \
       putchar('\n'); \
     }
@@ -200,6 +201,7 @@ static void raise_drax_error(d_vm* vm, const char* format, ...) {
   va_list args;
   va_start(args, format);
   drax_print_error(format, args);
+  putchar('\n');
   va_end(args);
 
   trace_error(vm);
@@ -403,19 +405,39 @@ static void __start__(d_vm* vm, int inter_mode) {
       VMCase(OP_CALL) {
         drax_value a = GET_VALUE(vm);
         char* n = (char*) (peek(vm, a));
-        drax_value v = get_fun_table(vm->envs->functions, n, a);
+        drax_value v = get_fun_table(vm->envs->native, n, a);
 
         if (v == 0) {
-          raise_drax_error(vm, "error: function '%s' is not defined\n", n);
-          return;
+          v = get_fun_table(vm->envs->functions, n, a);
+        
+          if (v == 0) {
+            raise_drax_error(vm, "error: function '%s' is not defined\n", n);
+            return;
+          }
         }
 
-        drax_function* f = CAST_FUNCTION(v);
+        if (IS_NATIVE(v)) {
+          int scs = 0;
+          drax_os_native* ns = CAST_NATIVE(v);
+          low_level_callback* nf = ns->function;
+          drax_value result = nf(vm, &scs);
 
-        vm->active_instr->_ip = vm->ip;
-        callstack_push(vm, vm->active_instr);
-        vm->active_instr = f->instructions;
-        vm->ip = f->instructions->values;
+          if (!scs) {
+            drax_error* e = CAST_ERROR(result);
+            raise_drax_error(vm, e->chars);
+            return;
+          }
+
+          push(vm, result);
+        } else {
+          drax_function* f = CAST_FUNCTION(v);
+
+          vm->active_instr->_ip = vm->ip;
+          callstack_push(vm, vm->active_instr);
+          vm->active_instr = f->instructions;
+          vm->ip = f->instructions->values;
+        }
+        
         break;
       }
       VMCase(OP_FUN) {
@@ -447,12 +469,24 @@ static void __start__(d_vm* vm, int inter_mode) {
   
 }
 
-/* Conatructor */
+/* Constructor */
+
+static void register_builtin(d_vm* vm, const char* n, int a, low_level_callback* f) {
+  drax_value v = DS_VAL(new_dllcallback(vm, f, n, a));
+  put_fun_table(vm->envs->native, v);
+}
+
+
+static void initialize_builtin_functions(d_vm* vm) {
+  load_callback_fn(vm, &register_builtin);
+}
+
 
 static dt_envs* new_environment() {
   dt_envs* e = (dt_envs*) malloc(sizeof(dt_envs));
   e->global = new_var_table();
   e->functions = new_fun_table();
+  e->native = new_fun_table();
   e->local = new_local_table();
   return e;
 }
@@ -492,6 +526,7 @@ d_vm* createVM() {
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
   vm->envs = new_environment();
+  initialize_builtin_functions(vm);
 
   vm->call_stack = (dcall_stack*) malloc(sizeof(dcall_stack));
   vm->call_stack->size = CALL_STACK_SIZE;

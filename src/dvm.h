@@ -36,6 +36,7 @@ typedef struct const_value_array{
 } const_value_array;
 
 typedef struct dt_envs {
+  d_fun_table* native;
   d_fun_table* functions;
   d_global_var_table* global;
   d_local_var_table* local; // Local definitions inside functions

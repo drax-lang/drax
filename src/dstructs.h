@@ -19,16 +19,17 @@ typedef struct d_vm d_vm;
 #define IS_STRING(v)      IS_ST_TYPE(v, DS_STRING)
 
 #define CAST_ERROR(v)     ((drax_error*) CAST_STRUCT(v))
-#define CAST_BLOCK(v)     ((drax_block*) CAST_STRUCT(v))
 #define CAST_FUNCTION(v)  ((drax_function*) CAST_STRUCT(v))
-#define CAST_NATIVE(v)    (((drax_os_native*) CAST_STRUCT(v))->function)
+#define CAST_NATIVE(v)    (((drax_os_native*) CAST_STRUCT(v)))
 #define CAST_STRING(v)    ((drax_string*) CAST_STRUCT(v))
 #define CAST_LIST(v)      ((drax_list*) CAST_STRUCT(v))
 
-typedef drax_value (low_level_callback) (d_vm* g, int argc, drax_value* argv, bool* stat);
+typedef drax_value (low_level_callback) (d_vm* g, int* stat);
 
 typedef struct drax_os_native {
   d_struct d_struct;
+  const char* name;
+  int arity;
   low_level_callback* function;
 } drax_os_native;
 
@@ -67,7 +68,7 @@ drax_list* new_dlist(d_vm* vm, int cap);
 
 drax_function* new_function(d_vm* vm);
 
-drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* function);
+drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* f, const char* name, int arity);
 
 drax_string* new_dstring(d_vm* vm, char* chars, int length);
 

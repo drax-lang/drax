@@ -8,14 +8,14 @@
 #include "ddefs.h"
 #include "dvm.h"
 
-#define ALLOCATE_DSTRUCT(b, type, d_structType) \
-    (type*) allocate_struct(b, sizeof(type), d_structType)
+#define ALLOCATE_DSTRUCT(b, type, d_struct_type) \
+    (type*) allocate_struct(b, sizeof(type), d_struct_type)
 
 static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type) {
   UNUSED(vm);
   d_struct* d = (d_struct*) malloc(sizeof(d_struct) * size);
   d->type = type;
-  d->checked = false;
+  d->checked = 0;
 
   return d;
 }
@@ -50,9 +50,11 @@ drax_error* new_derror(d_vm* vm, char* msg) {
   return v;
 }
 
-drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* function) {
+drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* f, const char* name, int arity) {
   drax_os_native* native = ALLOCATE_DSTRUCT(vm, drax_os_native, DS_NATIVE);
-  native->function = function;
+  native->name = name;
+  native->function = f;
+  native->arity = arity;
   return native;
 }
 
@@ -74,13 +76,13 @@ static drax_string* allocate_string(d_vm* vm, char* chars, int length, uint32_t 
 }
 
 drax_string* new_dstring(d_vm* vm, char* chars, int length) {
-  uint32_t hash = fnv1a_hasg(chars, length);
+  uint32_t hash = fnv1a_hash(chars, length);
 
   return allocate_string(vm, chars, length, hash);
 }
 
 drax_string* copy_dstring(d_vm* vm, const char* chars, int length) {
-  uint32_t hash = fnv1a_hasg(chars, length);
+  uint32_t hash = fnv1a_hash(chars, length);
 
   char* heap_chars = malloc(sizeof(char) * length + 1);
   memcpy(heap_chars, chars, length);

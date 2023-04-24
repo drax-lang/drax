@@ -9,13 +9,15 @@ FILES= ./src/dvm.c \
        ./src/dtypes.c \
        ./src/dparser.c \
        ./src/dshell.c \
-	   ./src/dflags.c \
-	   ./src/dio.c \
-	   ./src/dlex.c \
+       ./src/dflags.c \
+       ./src/dio.c \
+       ./src/dlex.c \
        ./src/drax.c \
        ./src/dinspect.c \
-	   ./src/dhandler.c \
-	   ./src/dstructs.c
+       ./src/dhandler.c \
+       ./src/dstructs.c \
+       ./src/dbuiltin.c \
+       ./src/dtime.c
 
 DEBUGF= -ggdb \
 		-g

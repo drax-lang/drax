@@ -53,7 +53,7 @@ typedef struct d_fun_table {
  * Variable definitions
  */
 
-size_t fnv1a_hasg(const char* key, int len);
+size_t fnv1a_hash(const char* key, int len);
 
 d_global_var_table* new_var_table();
 
