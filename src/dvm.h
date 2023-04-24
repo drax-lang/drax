@@ -49,7 +49,6 @@ typedef struct  dcall_stack {
 } dcall_stack;
 
 typedef struct d_vm {
-  // uint8_t ip
   dt_envs* envs;
   drax_value* ip;
   drax_value* stack;
@@ -58,6 +57,7 @@ typedef struct d_vm {
   int stack_size;
   d_instructions* instructions; // global instructions
   d_instructions* active_instr; // active instructions
+  d_struct* d_ls;
 } d_vm;
 
 typedef struct value_array{

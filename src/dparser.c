@@ -223,6 +223,13 @@ void process_grouping(d_vm* vm, bool v) {
 
 void process_list(d_vm* vm, bool v) {
   UNUSED(v);
+
+  if (eq_and_next(DTK_BKT_CLOSE)) {
+    put_const(vm, NUMBER_VAL(0));
+    put_instruction(vm, OP_LIST);
+    return;
+  }
+
   double lc = 0;
   do {
     expression(vm);

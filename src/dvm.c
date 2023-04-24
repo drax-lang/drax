@@ -521,6 +521,7 @@ void __reset__(d_vm* vm) {
 d_vm* createVM() {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
   vm->instructions = new_instructions();
+  vm->d_ls = NULL;
 
   vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
   vm->stack_size = MAX_STACK_SIZE;

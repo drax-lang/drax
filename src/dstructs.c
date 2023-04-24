@@ -12,15 +12,16 @@
     (type*) allocate_struct(b, sizeof(type), d_struct_type)
 
 static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type) {
-  UNUSED(vm);
   d_struct* d = (d_struct*) malloc(sizeof(d_struct) * size);
   d->type = type;
   d->checked = 0;
+  d->next = vm->d_ls;
 
   return d;
 }
 
-/* Drax list helpers
+/* 
+ * Drax list helpers
  */
 
 #define LIST_PRE_SIZE 10
