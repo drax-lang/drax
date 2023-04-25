@@ -97,6 +97,7 @@ drax_frame* new_dframe(d_vm* vm, int cap) {
   l->length = 0;
   l->cap = cap == 0 ? 8 : cap;
   l->values = (drax_value*) malloc(sizeof(drax_value) * l->cap);
+  l->literals = (char**) malloc(sizeof(char*) * l->cap);
   l->keys = (int*) malloc(sizeof(int) * l->cap);
   return l;
 }
@@ -122,6 +123,7 @@ void put_value_dframe(drax_frame* l, char* k, drax_value v) {
     l->cap = (l->cap + 8);
     l->keys = realloc(l->keys, sizeof(int) * l->cap);
     l->values = realloc(l->values, sizeof(drax_value) * l->cap);
+    l->literals = realloc(l->literals, sizeof(char*) * l->cap);
   }
 
   drax_value tv;
@@ -133,6 +135,7 @@ void put_value_dframe(drax_frame* l, char* k, drax_value v) {
   }
 
   l->keys[l->length] = fnv1a_hash(k, strlen(k));
+  l->literals[l->length] = k;
   l->values[l->length] = v;
   l->length++;
 }

@@ -67,6 +67,9 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_LIST:
         MAKE_STRING_RETURN(vm, "list");
 
+      case DS_FRAME:
+        MAKE_STRING_RETURN(vm, "frame");
+
       default: break;
     }
   }

@@ -123,29 +123,39 @@ static d_instructions* callstack_pop(d_vm* vm) {
  * Print Helpers
 */
 
-static void print_drax(drax_value value);
+static void print_drax(drax_value value, int formated);
 
 static void dbreak_line() { putchar('\n'); }
 
 static void print_list(drax_list* l) {
   putchar('[');
   for (int i = 0; i < l->length; i++) {
-    print_drax(l->elems[i]);
+    print_drax(l->elems[i], 1);
 
     if ((i+1) < l->length) printf(", ");
   }
   putchar(']');
 }
 
-static void print_d_struct(drax_value value) {
+static void print_frame(drax_frame* f) {
+  putchar('{');
+  for (int i = 0; i < f->length; i++) {
+    printf("%s: ", f->literals[i]);
+    print_drax(f->values[i], 1);
+
+    if ((i+1) < f->length) printf(", ");
+  }
+  putchar('}');
+}
+
+static void print_d_struct(drax_value value, int formated) {
   switch (DRAX_STYPEOF(value)) {
     case DS_LIST:
       print_list(CAST_LIST(value));
       break;
 
     case DS_FRAME:
-      printf("<frame>");
-      // print_frame(CAST_FRAME(value));
+      print_frame(CAST_FRAME(value));
       break;
 
     case DS_FUNCTION:
@@ -157,7 +167,7 @@ static void print_d_struct(drax_value value) {
       break;
 
     case DS_STRING:
-      printf("%s", CAST_STRING(value)->chars);
+      printf(formated ? "\"%s\"" : "%s", CAST_STRING(value)->chars);
       break;
 
     case DS_ERROR:
@@ -170,7 +180,7 @@ static void drax_print_error(const char* format, va_list args) {
   vfprintf(stderr, format, args);
 }
 
-static void print_drax(drax_value value) {
+static void print_drax(drax_value value, int formated) {
   if (IS_BOOL(value)) {
     printf(CAST_BOOL(value) ? "true" : "false");
   } else if (IS_NIL(value)) {
@@ -178,7 +188,7 @@ static void print_drax(drax_value value) {
   } else if (IS_NUMBER(value)) {
     printf("%g", CAST_NUMBER(value));
   } else if (IS_STRUCT(value)) {
-    print_d_struct(value);
+    print_d_struct(value, formated);
   }
 }
 
@@ -275,8 +285,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         int limit = (int) CAST_NUMBER(lc);
         drax_frame* l = new_dframe(vm, limit);
 
-        for (int i = limit; i > 0; i=-2) {
-
+        for (int i = limit; i > 0; i-=2) {
           char* k = (char*) peek(vm, i - 1);
           put_value_dframe(l, k, peek(vm, i - 2));
         }
@@ -323,6 +332,21 @@ static void __start__(d_vm* vm, int inter_mode) {
         if(get_local_table(vm->envs->local, vm->active_instr->local_range, k, &val) == 0) {
           raise_drax_error(vm, "error: variable '%s' is not defined\n", k);
           return;
+        }
+
+        push(vm, val);
+        break;
+      }
+      VMCase(OP_SET_I_ID) {
+        break;
+      }
+      VMCase(OP_GET_I_ID) {
+        drax_value k = pop(vm);
+        drax_value f = pop(vm);
+        drax_value val;
+        if(get_value_dframe(CAST_FRAME(f), (char*) k, &val) == -1) {
+          push(vm, DRAX_NIL_VAL);
+          break;
         }
 
         push(vm, val);
@@ -404,7 +428,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_PRINT) {
-        print_drax(pop(vm));
+        print_drax(pop(vm), 0);
         dbreak_line();
         break;
       }
@@ -475,7 +499,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         if (inter_mode) {
           if (peek(vm, 0) == 0) return;
 
-          print_drax(pop(vm));
+          print_drax(pop(vm), inter_mode);
           dbreak_line();
         }
         return;

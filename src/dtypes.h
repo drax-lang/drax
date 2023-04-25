@@ -90,10 +90,12 @@ typedef enum d_op_code {
   OP_LOOP,
   OP_CALL,
   OP_FUN,
-  OP_SET_G_ID,
+  OP_SET_G_ID, // global
   OP_GET_G_ID,
-  OP_SET_L_ID,
+  OP_SET_L_ID, // local
   OP_GET_L_ID,
+  OP_SET_I_ID, // inside
+  OP_GET_I_ID,
   OP_RETURN,
   OP_EXIT,
 } d_op_code;

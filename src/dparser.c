@@ -31,7 +31,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_DO,        NULL,                NULL,           iNONE),
   make_op_line(DTK_END,       NULL,                NULL,           iNONE),
   make_op_line(DTK_COMMA,     NULL,                NULL,           iNONE),
-  make_op_line(DTK_DOT,       NULL,                NULL,           iNONE),
+  make_op_line(DTK_DOT,       NULL,                process_dot,    iCALL),
   make_op_line(DTK_SUB,       process_unary,       process_binary, iTERM),
   make_op_line(DTK_ADD,       NULL,                process_binary, iTERM),
   make_op_line(DTK_DIV,       NULL,                process_binary, iFACTOR),
@@ -452,6 +452,23 @@ void process_call(d_vm* vm, bool v) {
   UNUSED(v);
   drax_value arg_count = process_arguments(vm);
   put_pair(vm, OP_CALL, arg_count);
+}
+
+void process_dot(d_vm* vm, bool v) {
+  UNUSED(v);
+  process_token(DTK_ID, "Expect 'identifier' after '.'.");
+
+  char* k = malloc(sizeof(char) * parser.prev.length + 1);
+  memcpy(k, parser.prev.first, parser.prev.length);
+  k[parser.prev.length] = '\0';
+  put_pair(vm, OP_PUSH, (drax_value) k);
+
+  if (eq_and_next(DTK_PAR_OPEN)) {
+    drax_value arg_count = process_arguments(vm);
+    put_pair(vm, OP_CALL, arg_count);
+  } else {
+    put_instruction(vm, OP_GET_I_ID);
+  }
 }
 
 static void if_definition(d_vm* vm) {

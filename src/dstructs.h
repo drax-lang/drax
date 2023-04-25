@@ -23,6 +23,7 @@ typedef struct d_vm d_vm;
 #define CAST_NATIVE(v)    (((drax_os_native*) CAST_STRUCT(v)))
 #define CAST_STRING(v)    ((drax_string*) CAST_STRUCT(v))
 #define CAST_LIST(v)      ((drax_list*) CAST_STRUCT(v))
+#define CAST_FRAME(v)      ((drax_frame*) CAST_STRUCT(v))
 
 typedef drax_value (low_level_callback) (d_vm* g, int* stat);
 
@@ -45,6 +46,7 @@ typedef struct drax_frame {
   int length;
   int cap;
   int* keys;
+  char** literals;
   drax_value* values;
 } drax_frame;
 
