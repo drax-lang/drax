@@ -338,6 +338,10 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_SET_I_ID) {
+        drax_value n = pop(vm);
+        drax_value k = pop(vm);
+        drax_value f = pop(vm);
+        put_value_dframe(CAST_FRAME(f), (char*) k, n);
         break;
       }
       VMCase(OP_GET_I_ID) {

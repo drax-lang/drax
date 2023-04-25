@@ -112,7 +112,7 @@ int get_value_dframe(drax_frame* l, char* name, drax_value* value) {
   for (int i = 0; i < l->length; i++) {
     if (l->keys[i] == k) {
       *value = l->values[i];
-      return 1;
+      return i;
     }
   }
   return -1;

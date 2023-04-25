@@ -466,6 +466,9 @@ void process_dot(d_vm* vm, bool v) {
   if (eq_and_next(DTK_PAR_OPEN)) {
     drax_value arg_count = process_arguments(vm);
     put_pair(vm, OP_CALL, arg_count);
+  } else if (eq_and_next(DTK_EQ)) {
+    expression(vm);
+    put_instruction(vm, OP_SET_I_ID);
   } else {
     put_instruction(vm, OP_GET_I_ID);
   }
