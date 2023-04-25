@@ -23,6 +23,8 @@ static const drax_tokens drax_t[] = {
   {"or",     DTK_OR},
   {"print",  DTK_PRINT},
   {"true",   DTK_TRUE},
+  {"import", DTK_IMPORT},
+  {"export", DTK_EXPORT},
  };
 
 /* Helpers */
@@ -150,7 +152,10 @@ d_token next_token() {
       case ')': return dmake_symbol(DTK_PAR_CLOSE);
       case '[': return dmake_symbol(DTK_BKT_OPEN);
       case ']': return dmake_symbol(DTK_BKT_CLOSE);
+      case '{': return dmake_symbol(DTK_CBR_OPEN);
+      case '}': return dmake_symbol(DTK_CBR_CLOSE);
       case ',': return dmake_symbol(DTK_COMMA);
+      case ':': return dmake_symbol(DTK_COLON);
       case '.': {
         return dmake_symbol(DTK_DOT);
       }

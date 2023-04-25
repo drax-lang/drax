@@ -40,6 +40,14 @@ typedef struct drax_list {
   drax_value* elems;
 } drax_list;
 
+typedef struct drax_frame {
+  d_struct d_struct;
+  int length;
+  int cap;
+  int* keys;
+  drax_value* values;
+} drax_frame;
+
 typedef struct drax_error {
   d_struct d_struct;
   int length;
@@ -73,5 +81,11 @@ drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* f, const char* nam
 drax_string* new_dstring(d_vm* vm, char* chars, int length);
 
 drax_string* copy_dstring(d_vm* vm, const char* chars, int length);
+
+drax_frame* new_dframe(d_vm* vm, int cap);
+
+int get_value_dframe(drax_frame* l, char* name, drax_value* value);
+
+void put_value_dframe(drax_frame* l, char* k, drax_value v);
 
 #endif

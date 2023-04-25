@@ -12,16 +12,16 @@ typedef struct d_vm d_vm;
 
 /* Global envinronment */
 
-typedef struct drax_global_node {
+typedef struct drax_generic_var_node {
   size_t key;
   drax_value value;
-  struct drax_global_node* next;
-} drax_global_node;
+  struct drax_generic_var_node* next;
+} drax_generic_var_node;
 
-typedef struct d_global_var_table {
+typedef struct d_generic_var_table {
     int size;
-    drax_global_node** array;
-} d_global_var_table;
+    drax_generic_var_node** array;
+} d_generic_var_table;
 
 /* Local envinronment */
 
@@ -55,13 +55,13 @@ typedef struct d_fun_table {
 
 size_t fnv1a_hash(const char* key, int len);
 
-d_global_var_table* new_var_table();
+d_generic_var_table* new_var_table();
 
-void free_var_table(d_vm* vm, d_global_var_table* t);
+void free_var_table(d_vm* vm, d_generic_var_table* t);
 
-void put_var_table(d_global_var_table* t, char* name, drax_value value);
+void put_var_table(d_generic_var_table* t, char* name, drax_value value);
 
-int get_var_table(d_global_var_table* t, char* name, drax_value* value);
+int get_var_table(d_generic_var_table* t, char* name, drax_value* value);
 
 /**
  * Local variable definitions.

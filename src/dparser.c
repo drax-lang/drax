@@ -26,6 +26,8 @@ static operation_line op_lines[] = {
   make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_BKT_OPEN,  process_list,        NULL,           iNONE),
   make_op_line(DTK_BKT_CLOSE, NULL,                NULL,           iNONE),
+  make_op_line(DTK_CBR_OPEN,  process_struct,      NULL,           iNONE),
+  make_op_line(DTK_CBR_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_DO,        NULL,                NULL,           iNONE),
   make_op_line(DTK_END,       NULL,                NULL,           iNONE),
   make_op_line(DTK_COMMA,     NULL,                NULL,           iNONE),
@@ -57,6 +59,8 @@ static operation_line op_lines[] = {
   make_op_line(DTK_EOF,       NULL,                NULL,           iNONE),
   make_op_line(DTK_CONCAT,    NULL,                process_binary, iTERM),
   make_op_line(DTK_ID,        process_variable,    NULL,           iNONE),
+  make_op_line(DTK_IMPORT,    process_import,      NULL,           iNONE),
+  make_op_line(DTK_EXPORT,    process_export,      NULL,           iNONE),
 };
 
 #define GET_PRIORITY(v) (&op_lines[v])
@@ -241,6 +245,35 @@ void process_list(d_vm* vm, bool v) {
   put_instruction(vm, OP_LIST);
 }
 
+void process_struct(d_vm* vm, bool v) {
+  UNUSED(v);
+
+  if (eq_and_next(DTK_CBR_CLOSE)) {
+    put_const(vm, NUMBER_VAL(0));
+    put_instruction(vm, OP_STRUCT);
+    return;
+  }
+
+  double lc = 0;
+  do {
+    process_token(DTK_ID, "Expect 'identifier' as an key.");
+    
+    char* name = (char*) malloc(sizeof(char) * (parser.prev.length + 1));
+    strncpy(name, parser.prev.first, parser.prev.length);
+    name[parser.prev.length] = '\0';
+
+    put_pair(vm, OP_PUSH, (drax_value) name);
+    process_token(DTK_COLON, "Expect ':' after elements.");
+    expression(vm);
+    lc += 2;
+  } while (eq_and_next(DTK_COMMA));
+
+  process_token(DTK_CBR_CLOSE, "Expect '}' after elements.");
+  put_const(vm, NUMBER_VAL(lc));
+  put_instruction(vm, OP_STRUCT);
+
+}
+
 void process_number(d_vm* vm, bool v) {
   UNUSED(v);
   double value = strtod(parser.prev.first, NULL);
@@ -300,6 +333,16 @@ void process_variable(d_vm* vm, bool v) {
 
   put_pair(vm, is_global ? OP_GET_G_ID : OP_GET_L_ID, (drax_value) name);
   if (!is_global) vm->active_instr->local_range++;
+}
+
+void process_import(d_vm* vm, bool v) {
+  UNUSED(vm);
+  UNUSED(v);
+}
+
+void process_export(d_vm* vm, bool v) {
+  UNUSED(vm);
+  UNUSED(v);
 }
 
 /* end of processors functions */

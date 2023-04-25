@@ -22,6 +22,7 @@ typedef enum dstruct_type{
   DS_FUNCTION,
   DS_NATIVE,
   DS_STRING,
+  DS_FRAME,
   DS_ERROR,
 } dstruct_type;
 
@@ -70,6 +71,7 @@ typedef enum d_op_code {
   OP_TRUE,
   OP_FALSE,
   OP_LIST,
+  OP_STRUCT,
   OP_POP,
   OP_PUSH,
   OP_EQUAL,

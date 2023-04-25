@@ -143,6 +143,11 @@ static void print_d_struct(drax_value value) {
       print_list(CAST_LIST(value));
       break;
 
+    case DS_FRAME:
+      printf("<frame>");
+      // print_frame(CAST_FRAME(value));
+      break;
+
     case DS_FUNCTION:
       printf("<function>");
       break;
@@ -259,6 +264,21 @@ static void __start__(d_vm* vm, int inter_mode) {
 
         for (int i = 0; i < limit; i++) {
           put_value_dlist(l, peek(vm, (limit -1) - i));
+        }
+
+        pop_times(vm, limit);
+        push(vm, DS_VAL(l));
+        break;
+      }
+      VMCase(OP_STRUCT) {
+        drax_value lc = pop(vm);
+        int limit = (int) CAST_NUMBER(lc);
+        drax_frame* l = new_dframe(vm, limit);
+
+        for (int i = limit; i > 0; i=-2) {
+
+          char* k = (char*) peek(vm, i - 1);
+          put_value_dframe(l, k, peek(vm, i - 2));
         }
 
         pop_times(vm, limit);
@@ -462,7 +482,7 @@ static void __start__(d_vm* vm, int inter_mode) {
       }
       default: {
         printf("runtime error.\n");
-        break;
+        return;
       }
     }
   }

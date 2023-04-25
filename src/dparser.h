@@ -73,6 +73,10 @@ callback_table(process_string);
 callback_table(process_number);
 callback_table(process_and);
 callback_table(process_or);
+callback_table(process_import);
+callback_table(process_export);
+callback_table(process_struct);
+
 callback_table(literal_translation);
 
 void dfatal(d_token* token, const char* message);

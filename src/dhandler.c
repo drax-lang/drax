@@ -29,8 +29,8 @@ size_t fnv1a_hash(const char* key, int len) {
 /**
  * Closed hashing implementation
  */
-d_global_var_table* new_var_table() {
-  d_global_var_table* t = (d_global_var_table*) malloc(sizeof(d_global_var_table));
+d_generic_var_table* new_var_table() {
+  d_generic_var_table* t = (d_generic_var_table*) malloc(sizeof(d_generic_var_table));
   t->size = HASH_VAR_TABLE_SIZE;
     t->array = malloc(HASH_VAR_TABLE_SIZE * sizeof(struct node*));
     for (int i = 0; i < HASH_VAR_TABLE_SIZE; i++) {
@@ -40,12 +40,12 @@ d_global_var_table* new_var_table() {
   return t;
 }
 
-void free_var_table(d_vm* vm, d_global_var_table* t) {
+void free_var_table(d_vm* vm, d_generic_var_table* t) {
   UNUSED(vm);
     for (int i = 0; i < t->size; i++) {
-        struct drax_global_node* current = t->array[i];
+        struct drax_generic_var_node* current = t->array[i];
         while (current != NULL) {
-            struct drax_global_node* next = current->next;
+            struct drax_generic_var_node* next = current->next;
             // free(current->value);
             free(current);
             current = next;
@@ -55,20 +55,20 @@ void free_var_table(d_vm* vm, d_global_var_table* t) {
     free(t);
 }
 
-void put_var_table(d_global_var_table* t, char* name, drax_value value) {
+void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
     int index = generate_hash(name, t->size);
-    drax_global_node* node = malloc(sizeof(drax_global_node));
+    drax_generic_var_node* node = malloc(sizeof(drax_generic_var_node));
     node->key = fnv1a_hash(name, strlen(name));
     node->value = value;
     node->next = t->array[index];
     t->array[index] = node;
 }
 
-int get_var_table(d_global_var_table* t, char* name, drax_value* value) {
+int get_var_table(d_generic_var_table* t, char* name, drax_value* value) {
     int index = generate_hash(name, t->size);
     size_t key = fnv1a_hash(name, strlen(name));
 
-    drax_global_node* current = t->array[index];
+    drax_generic_var_node* current = t->array[index];
     while (current != NULL) {
         if (current->key == key) {
             *value = current->value;

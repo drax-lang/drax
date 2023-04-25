@@ -29,7 +29,7 @@ static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type) {
 drax_list* new_dlist(d_vm* vm, int cap) {
   drax_list* l = ALLOCATE_DSTRUCT(vm, drax_list, DS_LIST);
   l->length = 0;
-  l->cap = cap == 0 ? cap : LIST_PRE_SIZE;
+  l->cap = cap == 0 ? LIST_PRE_SIZE : cap;
   l->elems = malloc(sizeof(drax_value) * l->cap);
   return l;
 }
@@ -92,3 +92,47 @@ drax_string* copy_dstring(d_vm* vm, const char* chars, int length) {
   return allocate_string(vm, heap_chars, length, hash);
 }
 
+drax_frame* new_dframe(d_vm* vm, int cap) {
+  drax_frame* l = ALLOCATE_DSTRUCT(vm, drax_frame, DS_FRAME);
+  l->length = 0;
+  l->cap = cap == 0 ? 8 : cap;
+  l->values = (drax_value*) malloc(sizeof(drax_value) * l->cap);
+  l->keys = (int*) malloc(sizeof(int) * l->cap);
+  return l;
+}
+
+/**
+ * return the index of the value in the frame
+ * -1 if not found
+ */
+
+int get_value_dframe(drax_frame* l, char* name, drax_value* value) {
+  int k = fnv1a_hash(name, strlen(name));
+  for (int i = 0; i < l->length; i++) {
+    if (l->keys[i] == k) {
+      *value = l->values[i];
+      return 1;
+    }
+  }
+  return -1;
+}
+
+void put_value_dframe(drax_frame* l, char* k, drax_value v) {
+  if (l->cap <= l->length) {
+    l->cap = (l->cap + 8);
+    l->keys = realloc(l->keys, sizeof(int) * l->cap);
+    l->values = realloc(l->values, sizeof(drax_value) * l->cap);
+  }
+
+  drax_value tv;
+  int idx = get_value_dframe(l, k, &tv);
+
+  if (idx != -1) {
+    l->values[idx] = v;
+    return;
+  }
+
+  l->keys[l->length] = fnv1a_hash(k, strlen(k));
+  l->values[l->length] = v;
+  l->length++;
+}

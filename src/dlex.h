@@ -9,6 +9,7 @@
 typedef enum dlex_types {
   DTK_PAR_OPEN, DTK_PAR_CLOSE,
   DTK_BKT_OPEN, DTK_BKT_CLOSE,
+  DTK_CBR_OPEN, DTK_CBR_CLOSE,
 
   /* str. op. */
   DTK_CONCAT,
@@ -25,10 +26,16 @@ typedef enum dlex_types {
   DTK_FALSE, DTK_FUN, DTK_IF, DTK_NIL, 
   DTK_OR, DTK_PRINT, DTK_TRUE, DTK_LET, 
 
-  DTK_ID, DTK_STRING, DTK_NUMBER, DTK_COMMA, DTK_DOT, 
+  DTK_ID, DTK_STRING, DTK_NUMBER, DTK_COMMA,
+  DTK_DOT, DTK_COLON,
 
+  /* modules */
+  DTK_IMPORT, DTK_EXPORT,
+
+  /* errors */
   DTK_ERROR,
   
+  /* break line */
   DTK_BREAK_LINE,
 
   /* last element */
