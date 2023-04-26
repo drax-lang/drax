@@ -330,8 +330,10 @@ static void __start__(d_vm* vm, int inter_mode) {
         char* k = (char*) GET_VALUE(vm);
         drax_value val;
         if(get_local_table(vm->envs->local, vm->active_instr->local_range, k, &val) == 0) {
-          raise_drax_error(vm, "error: variable '%s' is not defined\n", k);
-          return;
+          if(get_var_table(vm->envs->global, k, &val) == 0) {
+            raise_drax_error(vm, "error: variable '%s' is not defined\n", k);
+            return;
+          }
         }
 
         push(vm, val);
