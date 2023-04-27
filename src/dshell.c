@@ -15,7 +15,8 @@ char* b_read_content() {
   size_t sz = strlen(buffer + 1);
   char* tmp = (char*) malloc(sz * sizeof(char));
 
-  for (size_t i = 0; i < sz; i++) {
+  size_t i = 0;
+  for (i = 0; i < sz; i++) {
       tmp[i] = buffer[i];
   }
   

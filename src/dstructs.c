@@ -108,8 +108,9 @@ drax_frame* new_dframe(d_vm* vm, int cap) {
  */
 
 int get_value_dframe(drax_frame* l, char* name, drax_value* value) {
+  int i;
   int k = fnv1a_hash(name, strlen(name));
-  for (int i = 0; i < l->length; i++) {
+  for (i = 0; i < l->length; i++) {
     if (l->keys[i] == k) {
       *value = l->values[i];
       return i;

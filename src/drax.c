@@ -55,7 +55,7 @@ static int process_file(d_vm* v, char** argv) {
 int main(int argc, char** argv) {
   bimode bmode = get_bimode(argc, argv);
 
-  // create init vm
+  /* create init vm */
   d_vm* gdvm = createVM();
   
   switch (bmode) {

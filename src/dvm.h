@@ -29,17 +29,11 @@
 #define MSG_NUMBER_OF_INVALID_ARGS "Number of invalid arguments, expected %d arguments."
 #define MSG_BAD_AGR_ARITH_OP       "Bad argument in arithmetic expression."
 
-typedef struct const_value_array{
-  int limit;
-  int count;
-  drax_value* values;
-} const_value_array;
-
 typedef struct dt_envs {
   d_fun_table* native;
   d_fun_table* functions;
   d_generic_var_table* global;
-  d_local_var_table* local; // Local definitions inside functions
+  d_local_var_table* local; /* Local definitions inside functions */
 } dt_envs;
 
 typedef struct  dcall_stack {
@@ -55,8 +49,8 @@ typedef struct d_vm {
   dcall_stack* call_stack;
   int stack_count;
   int stack_size;
-  d_instructions* instructions; // global instructions
-  d_instructions* active_instr; // active instructions
+  d_instructions* instructions; /* global instructions */
+  d_instructions* active_instr; /* active instructions */
   d_struct* d_ls;
 } d_vm;
 
@@ -84,8 +78,6 @@ int add_drax_value(d_vm* vm, drax_byte* d_byte, drax_value value);
 
 /* VM */
 d_vm* createVM();
-
-const_value_array* new_const_value_array();
 
 void push(d_vm* vm, drax_value v);
 

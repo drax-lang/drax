@@ -21,7 +21,7 @@
 
 #define CURR_CALLSTACK_SIZE(vm) vm->call_stack->count
 
-// validation only number
+/* validation only number */
 #define binary_op(vm, op) \
         double b = AS_NUMBER(pop(vm)); \
         double a = AS_NUMBER(pop(vm)); \
@@ -129,7 +129,8 @@ static void dbreak_line() { putchar('\n'); }
 
 static void print_list(drax_list* l) {
   putchar('[');
-  for (int i = 0; i < l->length; i++) {
+  int i;
+  for (i = 0; i < l->length; i++) {
     print_drax(l->elems[i], 1);
 
     if ((i+1) < l->length) printf(", ");
@@ -139,7 +140,8 @@ static void print_list(drax_list* l) {
 
 static void print_frame(drax_frame* f) {
   putchar('{');
-  for (int i = 0; i < f->length; i++) {
+  int i;
+  for (i = 0; i < f->length; i++) {
     printf("%s: ", f->literals[i]);
     print_drax(f->values[i], 1);
 
@@ -272,7 +274,8 @@ static void __start__(d_vm* vm, int inter_mode) {
         int limit = (int) CAST_NUMBER(lc);
         drax_list* l = new_dlist(vm, limit);
 
-        for (int i = 0; i < limit; i++) {
+        int i;
+        for (i = 0; i < limit; i++) {
           put_value_dlist(l, peek(vm, (limit -1) - i));
         }
 
@@ -285,7 +288,8 @@ static void __start__(d_vm* vm, int inter_mode) {
         int limit = (int) CAST_NUMBER(lc);
         drax_frame* l = new_dframe(vm, limit);
 
-        for (int i = limit; i > 0; i-=2) {
+        int i;
+        for (i = limit; i > 0; i-=2) {
           char* k = (char*) peek(vm, i - 1);
           put_value_dframe(l, k, peek(vm, i - 2));
         }
@@ -500,7 +504,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_EXIT) {
-        // check if is stopVM or exit
+        /* check if is stopVM or exit */
 
         if (inter_mode) {
           if (peek(vm, 0) == 0) return;

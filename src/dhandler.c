@@ -8,7 +8,8 @@
 
 static unsigned long generate_hash(const char* str, size_t size) {
   unsigned int hashval = 0;
-  for (int i = 0; str[i] != '\0'; i++) {
+  int i;
+  for (i = 0; str[i] != '\0'; i++) {
       hashval = str[i] + 31 * hashval;
   }
   return hashval % size;
@@ -19,7 +20,8 @@ static unsigned long generate_hash(const char* str, size_t size) {
  */
 size_t fnv1a_hash(const char* key, int len) {
   uint32_t hash = 2166136261u;
-  for (int i = 0; i < len; i++) {
+  int i;
+  for (i = 0; i < len; i++) {
     hash ^= (d_byte_def) key[i];
     hash *= 16777619;
   }
@@ -33,7 +35,8 @@ d_generic_var_table* new_var_table() {
   d_generic_var_table* t = (d_generic_var_table*) malloc(sizeof(d_generic_var_table));
   t->size = HASH_VAR_TABLE_SIZE;
     t->array = malloc(HASH_VAR_TABLE_SIZE * sizeof(struct node*));
-    for (int i = 0; i < HASH_VAR_TABLE_SIZE; i++) {
+    int i;
+    for (i = 0; i < HASH_VAR_TABLE_SIZE; i++) {
         t->array[i] = NULL;
     }
 
@@ -42,17 +45,18 @@ d_generic_var_table* new_var_table() {
 
 void free_var_table(d_vm* vm, d_generic_var_table* t) {
   UNUSED(vm);
-    for (int i = 0; i < t->size; i++) {
-        struct drax_generic_var_node* current = t->array[i];
-        while (current != NULL) {
-            struct drax_generic_var_node* next = current->next;
-            // free(current->value);
-            free(current);
-            current = next;
-        }
-    }
-    free(t->array);
-    free(t);
+  int i;
+  for (i = 0; i < t->size; i++) {
+      struct drax_generic_var_node* current = t->array[i];
+      while (current != NULL) {
+          struct drax_generic_var_node* next = current->next;
+          /* free(current->value); */
+          free(current);
+          current = next;
+      }
+  }
+  free(t->array);
+  free(t);
 }
 
 void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
@@ -124,7 +128,8 @@ void put_fun_table(d_fun_table* t, drax_value value) {
 
 drax_value get_fun_table(d_fun_table* t, char* key, uint8_t arity) {
   size_t hs = fnv1a_hash(key, strlen(key));
-  for (int i = 0; i < t->count; i++) {
+  int i;
+  for (i = 0; i < t->count; i++) {
     if (t->pairs[i].key == hs && t->pairs[i].args == arity) {
       return t->pairs[i].value;
     }
@@ -164,7 +169,8 @@ int get_local_table(d_local_var_table* t, int local_range, char* name, drax_valu
   size_t key = fnv1a_hash(name, strlen(name));
   int limit = t->count - local_range;
   
-  for (int i = t->count; i > limit; i--) {
+  int i;
+  for (i = t->count; i > limit; i--) {
     if (t->array[i -1]->key == key) {
       *value = t->array[i -1]->value;
       return 1;

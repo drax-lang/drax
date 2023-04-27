@@ -90,11 +90,11 @@ typedef enum d_op_code {
   OP_LOOP,
   OP_CALL,
   OP_FUN,
-  OP_SET_G_ID, // global
+  OP_SET_G_ID, /* global */
   OP_GET_G_ID,
-  OP_SET_L_ID, // local
+  OP_SET_L_ID, /* local */
   OP_GET_L_ID,
-  OP_SET_I_ID, // inside
+  OP_SET_I_ID, /* inside */
   OP_GET_I_ID,
   OP_RETURN,
   OP_EXIT,
@@ -120,7 +120,7 @@ typedef struct d_instructions {
   int instr_count;
   int instr_size;
   int* lines;
-  int local_range; // used by local definitions
+  int local_range; /* used by local definitions */
 
   /**
    * _ip: Used to log current statement when 

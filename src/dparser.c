@@ -21,7 +21,8 @@ static d_local_registers* new_locals() {
 }
 
 static void reset_locals() {
-  for (int i = 0; i < parser.locals->length; i++) {
+  int i;
+  for (i = 0; i < parser.locals->length; i++) {
     free(parser.locals->vars[i]);
   }
 
@@ -46,7 +47,8 @@ static void put_local(char* name) {
 }
 
 static int get_local(char* name) {
-  for (int i = parser.locals->length - 1; i >= 0; i--) {
+  int i;
+  for (i = parser.locals->length - 1; i >= 0; i--) {
     if (strcmp(parser.locals->vars[i], name) == 0) {
       return i;
     }
@@ -459,7 +461,8 @@ static void fun_declaration(d_vm* vm) {
       drax_value constant = parse_variable(vm, "Expect parameter name.");
       drax_string* s = CAST_STRING(constant);
 
-      for(int i = 0; i < f->arity -1; i++) {
+      int i;
+      for(i = 0; i < f->arity -1; i++) {
         if(strcmp(s->chars, stack_args[i]) == 0) {
           FATAL("duplicate argument in function definition");
         }
@@ -469,7 +472,8 @@ static void fun_declaration(d_vm* vm) {
     } while (eq_and_next(DTK_COMMA));
   }
 
-  for (int i = f->arity; i > 0 ; i--) {
+  int i;
+  for (i = f->arity; i > 0 ; i--) {
     char* s = (char*) malloc(sizeof(char) * strlen(stack_args[i - 1]));
     strcpy(s, stack_args[i - 1]);
     put_pair(vm, OP_SET_L_ID, (drax_value) s);
@@ -485,7 +489,7 @@ static void fun_declaration(d_vm* vm) {
   put_pair(vm, OP_RETURN, 0x00);
   vm->active_instr = gi;
   put_pair(vm, OP_FUN, DS_VAL(f));
-  reset_locals(vm);
+  reset_locals();
 }
 
 static drax_value process_arguments(d_vm* vm) {

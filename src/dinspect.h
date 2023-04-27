@@ -9,8 +9,9 @@
 #ifdef _AST_INSPECT
 
 #include "dtypes.h"
+#include "dvm.h"
 
-void __ast_inspect__(drax_state* curr, int ident);
+void __ast_inspect__(d_vm* vm);
 
 #endif
 

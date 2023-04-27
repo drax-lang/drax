@@ -35,7 +35,8 @@ int argcmp(char sname, const char * name, char * arg) {
 bimode get_bimode(int argc, char** argv) {
   if (argc <= 1) return BI_INTERACTIVE_DEFAULT;
 
-  for (int i = 1; i < argc; i++)
+  int i;
+  for (i = 1; i < argc; i++)
   {
     if (non_flag(argv[i])) return BI_PROCESS_DEFAULT;
 

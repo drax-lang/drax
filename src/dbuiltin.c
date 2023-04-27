@@ -30,7 +30,6 @@ static drax_value __d_assert(d_vm* vm, int* stat) {
   DX_ERROR_FN(stat);
 
   if (!IS_STRING(b)) {
-    DX_ERROR_FN(stat);
     return DS_VAL(new_derror(vm, (char*) "assert error"));
   }
 

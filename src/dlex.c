@@ -33,7 +33,8 @@ static bool is_alpha(const char c) {
 
   char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_?";
   
-  for (size_t i = 0; i < 55; i++) {
+  size_t i = 0;
+  for (i = 0; i < 55; i++) {
     if (c == accepted_chars[i])
       return true;
   }
@@ -46,7 +47,8 @@ static bool is_number(const char c) {
 
   char accepted_num[] = "0123456789";
   
-  for (size_t i = 0; i < 11; i++) {
+  size_t i = 0;
+  for (i = 0; i < 11; i++) {
     if (c == accepted_num[i])
       return true;
   }
@@ -213,10 +215,11 @@ d_token next_token() {
 
           /* Check if is keyword */
           int ne = NUM_ELEMS(drax_t);
-          for (int i = 0; i < ne; i++) {
+          int i, j;
+          for (i = 0; i < ne; i++) {
             int size = strlen(drax_t[i].str);
             bool eql = true;
-            for (int j = 0; j < size; j++) {
+            for (j = 0; j < size; j++) {
               if (drax_t[i].str[j] != clexs.first[j]) {
                 eql = false;
                 break;
