@@ -9,7 +9,6 @@
 #include "dtypes.h"
 #include "dinspect.h"
 
-
 /**
  * Helpers
 */
@@ -447,7 +446,12 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_RETURN) {
+        drax_value v = vm->active_instr->instr_count == 1 ?
+          DRAX_NIL_VAL :
+          pop(vm);
         back_scope(vm);
+        pop(vm); /* func. name */
+        push(vm, v);
         break;
       }
       VMCase(OP_EXIT) {

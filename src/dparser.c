@@ -486,7 +486,7 @@ static void fun_declaration(d_vm* vm) {
   process_token(DTK_PAR_CLOSE, "Expect ')' after parameters.");
   process_token(DTK_DO, "Expect 'do' before function body.");
   block(vm);
-  put_pair(vm, OP_RETURN, 0x00);
+  put_instruction(vm, OP_RETURN);
   vm->active_instr = gi;
   put_pair(vm, OP_FUN, DS_VAL(f));
   reset_locals();
