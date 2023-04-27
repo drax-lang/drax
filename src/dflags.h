@@ -15,12 +15,6 @@
 
 void initial_info();
 
-void version_app();
-
-int non_flag(char * name);
-
-int argcmp(char sname, const char * name, char * arg);
-
 bimode get_bimode(int argc, char** argv);
 
 #endif

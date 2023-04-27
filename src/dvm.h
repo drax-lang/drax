@@ -54,28 +54,6 @@ typedef struct d_vm {
   d_struct* d_ls;
 } d_vm;
 
-typedef struct value_array{
-  int limit;
-  int count;
-  drax_value* values;
-} value_array;
-
-typedef struct drax_byte {
-  int count;
-  int limit;
-  drax_value* code;
-  int* lines;
-  value_array constants;
-} drax_byte;
-
-drax_byte* new_drax_value();
-
-/* Value drax */
-
-void append_drax_value(d_vm* vm, drax_byte* d_byte, drax_value byte, int line);
-
-int add_drax_value(d_vm* vm, drax_byte* d_byte, drax_value value);
-
 /* VM */
 d_vm* createVM();
 

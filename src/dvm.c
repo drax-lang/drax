@@ -32,59 +32,6 @@
         vm->active_instr = callstack_pop(vm); \
         vm->ip = vm->active_instr->_ip;
 
-/* Value Handler */
-
-static void write_value_array(d_vm* vm, value_array* array, drax_value value) {
-  UNUSED(vm);
-  if (array->limit < array->count + 1) {
-    int old_cap = array->limit;
-    array->limit = EXPAND_CAPACITY(old_cap);
-    array->values = realloc(array->values, sizeof(drax_value) * array->limit);
-  }
-  
-  array->values[array->count] = value;
-  array->count++;
-}
-
-static void init_value_array(value_array* array) {
-  array->values = NULL;
-  array->limit = 0;
-  array->count = 0;
-}
-
-int add_drax_value(d_vm* vm, drax_byte* d_byte, drax_value value) {
-  push(vm, value);
-  write_value_array(vm, &d_byte->constants, value);
-  pop(vm);
-  return d_byte->constants.count - 1;
-}
-
-/* Byte Handler */
-drax_byte* new_drax_value() {
-  drax_byte* d_byte = (drax_byte*) malloc(sizeof(drax_byte));
-  d_byte->count = 0;
-  d_byte->limit = 0;
-  d_byte->code = NULL;
-  d_byte->lines = NULL;
-
-  init_value_array(&d_byte->constants);
-  return d_byte;
-}
-
-void append_drax_value(d_vm* vm, drax_byte* d_byte, drax_value byte, int line) {
-  UNUSED(vm);
-  if (d_byte->limit < d_byte->count + 1) {
-    int old_cap = d_byte->limit;
-    d_byte->limit = EXPAND_CAPACITY(old_cap);
-    d_byte->code = (drax_value*) realloc(d_byte->code, sizeof(drax_value) * d_byte->limit);
-    d_byte->lines = (int*) realloc(d_byte->code, sizeof(int) * d_byte->limit);
-  }
-
-  d_byte->code[d_byte->count] = byte;
-  d_byte->lines[d_byte->count] = line;
-  d_byte->count++;
-}
-
 /* VM stack. */
 
 void push(d_vm* vm, drax_value v) {
