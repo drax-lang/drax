@@ -12,13 +12,53 @@
 parser_state parser;
 parser_builder* current = NULL;
 
+static d_local_registers* new_locals() {
+  d_local_registers* l = (d_local_registers*) malloc(sizeof(d_local_registers));
+  l->length = 0;
+  l->capacity = LOCAL_SIZE_FACTOR;
+  l->vars = (char**) malloc(sizeof(char*) * l->capacity);
+  return l;
+}
+
+static void reset_locals() {
+  for (int i = 0; i < parser.locals->length; i++) {
+    free(parser.locals->vars[i]);
+  }
+
+  free(parser.locals->vars);
+  free(parser.locals);
+  parser.locals->length = 0;
+  parser.locals = new_locals();
+}
+
+static void put_local(char* name) {
+  if (parser.locals->length >= parser.locals->capacity) {
+    parser.locals->capacity = parser.locals->capacity + LOCAL_SIZE_FACTOR;
+    parser.locals->vars = (char**) realloc(parser.locals->vars, sizeof(char*) * parser.locals->capacity);
+  }
+
+  size_t size = strlen(name);
+  char* new_name = (char*) malloc(sizeof(char) * size);
+  strcpy(new_name, name);
+  new_name[size] = '\0';
+
+  parser.locals->vars[parser.locals->length++] = new_name;
+}
+
+static int get_local(char* name) {
+  for (int i = parser.locals->length - 1; i >= 0; i--) {
+    if (strcmp(parser.locals->vars[i], name) == 0) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
 static void init_parser(d_vm* vm) {
   vm->active_instr = vm->instructions;
 
-  parser.locals = (d_local_registers*) malloc(sizeof(d_local_registers));
-  parser.locals->length = 0;
-  parser.locals->capacity = LOCAL_SIZE_FACTOR;
-  parser.locals->vars = (char**) malloc(sizeof(char*) * parser.locals->capacity);
+  parser.locals = new_locals();
 }
 
 static operation_line op_lines[] = {
@@ -321,8 +361,14 @@ void process_variable(d_vm* vm, bool v) {
   name[ctk.length] = '\0';
 
   if (eq_and_next(DTK_EQ)) {
-      expression(vm);
+      expression(vm);      
+
       put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
+      
+      if (!is_global) {
+        put_local(name);
+        vm->active_instr->local_range++;
+      }
       return;
   }
 
@@ -331,8 +377,12 @@ void process_variable(d_vm* vm, bool v) {
     return;
   }
 
-  put_pair(vm, is_global ? OP_GET_G_ID : OP_GET_L_ID, (drax_value) name);
-  if (!is_global) vm->active_instr->local_range++;
+  if (is_global || get_local(name) == -1) {
+    put_pair(vm, OP_GET_G_ID, (drax_value) name);
+    return;
+  }
+
+  put_pair(vm, OP_GET_L_ID, (drax_value) name);
 }
 
 void process_import(d_vm* vm, bool v) {
@@ -420,8 +470,12 @@ static void fun_declaration(d_vm* vm) {
   }
 
   for (int i = f->arity; i > 0 ; i--) {
-    put_pair(vm, OP_SET_L_ID, (drax_value) stack_args[i - 1]);
+    char* s = (char*) malloc(sizeof(char) * strlen(stack_args[i - 1]));
+    strcpy(s, stack_args[i - 1]);
+    put_pair(vm, OP_SET_L_ID, (drax_value) s);
+    put_local(stack_args[i - 1]);
   }
+  vm->active_instr->local_range = f->arity;
 
   free(stack_args);
 
@@ -431,6 +485,7 @@ static void fun_declaration(d_vm* vm) {
   put_pair(vm, OP_RETURN, 0x00);
   vm->active_instr = gi;
   put_pair(vm, OP_FUN, DS_VAL(f));
+  reset_locals(vm);
 }
 
 static drax_value process_arguments(d_vm* vm) {

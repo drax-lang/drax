@@ -158,7 +158,7 @@ void put_local_table(d_local_var_table* t, char* name, drax_value value) {
   t->array[t->count++] = node;
 }
 
-drax_value get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value) {
+int get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value) {
   if (t->count <= 0) return 0;
 
   size_t key = fnv1a_hash(name, strlen(name));

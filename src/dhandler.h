@@ -71,7 +71,7 @@ d_local_var_table* new_local_table();
 
 void put_local_table(d_local_var_table* t, char* name, drax_value value);
 
-drax_value get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value);
+int get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value);
 
 
 /**
