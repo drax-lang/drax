@@ -160,25 +160,29 @@ d_token next_token() {
       }
 
       case '!':
-        if(next_char() == '=') {
+        if(CURR_TOKEN() == '=') {
+          next_char();
           return dmake_symbol(DTK_BNG_EQ);
         }
         return dmake_symbol(DTK_BNG);
 
       case '=':
-        if(next_char() == '=') {
+        if(CURR_TOKEN() == '=') {
+          next_char();
           return dmake_symbol(DTK_DEQ);
         }
         return dmake_symbol(DTK_EQ);
 
       case '<':
-        if(next_char() == '=') {
+        if(CURR_TOKEN() == '=') {
+          next_char();
           return dmake_symbol(DTK_LE);
         }
         return dmake_symbol(DTK_LS);
 
       case '>':
-        if(next_char() == '=') {
+        if(CURR_TOKEN() == '=') {
+          next_char();
           return dmake_symbol(DTK_BE);
         }
         return dmake_symbol(DTK_BG);
