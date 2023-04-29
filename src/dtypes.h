@@ -23,6 +23,7 @@ typedef enum dstruct_type{
   DS_NATIVE,
   DS_STRING,
   DS_FRAME,
+  DS_MODULE,
   DS_ERROR,
 } dstruct_type;
 

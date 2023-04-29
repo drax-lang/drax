@@ -179,3 +179,41 @@ int get_local_table(d_local_var_table* t, int local_range, char* name, drax_valu
   
   return 0;
 }
+
+/**
+ * Modules implementation
+ */
+
+#define MOD_TABLE_INIT_SIZE 8
+
+d_mod_table* new_mod_table() {
+
+  d_mod_table* t = (d_mod_table*) malloc(sizeof(d_mod_table));
+  t->limit = MOD_TABLE_INIT_SIZE;
+  t->count = 0;
+  t->modules = (drax_value*) malloc(sizeof(drax_value) * MOD_TABLE_INIT_SIZE);
+
+  return t;
+}
+
+void put_mod_table(d_mod_table* t, drax_value value) {
+  if (t->count >= t->limit) {
+    t->limit = t->limit + MOD_TABLE_INIT_SIZE;
+    t->modules = (drax_value*) realloc(t->modules, sizeof(drax_value) * t->limit);
+  }
+
+  t->modules[t->count++] = value;
+}
+
+int get_mod_table(d_mod_table* t, char* name, drax_value* value) {
+  int i;
+  for (i = 0; i < t->count; i++) {
+    drax_native_module* m = CAST_MODULE(t->modules[i]);
+    if (strcmp(m->name, name) == 0) {
+      *value = DS_VAL(t->modules[i]);
+      return 1;
+    }
+  }
+
+  return 0;
+} 

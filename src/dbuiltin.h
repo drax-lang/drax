@@ -13,4 +13,6 @@ typedef void (vm_builtin_setter) (d_vm* vm, const char* n, int a, low_level_call
 
 void load_callback_fn(d_vm* vm, vm_builtin_setter* reg);
 
+void create_native_modules(d_vm* vm);
+
 #endif

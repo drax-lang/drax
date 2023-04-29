@@ -49,6 +49,16 @@ typedef struct d_fun_table {
   drax_fun_node* pairs;
 } d_fun_table;
 
+/**
+ * Module envinronment
+ */
+
+typedef struct d_mod_table {
+  int count;
+  int limit;
+  drax_value* modules;
+} d_mod_table;
+
 /* 
  * Variable definitions
  */
@@ -85,5 +95,15 @@ void free_fun_table(d_vm* vm, d_fun_table* t);
 void put_fun_table(d_fun_table* t, drax_value value);
 
 drax_value get_fun_table(d_fun_table* t, char* key, uint8_t arity);
+
+/**
+ * Module definitions.
+ */
+
+d_mod_table* new_mod_table();
+
+void put_mod_table(d_mod_table* t, drax_value value);
+
+int get_mod_table(d_mod_table* t, char* name, drax_value* value);
 
 #endif

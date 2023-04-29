@@ -114,6 +114,10 @@ static void print_d_struct(drax_value value, int formated) {
       printf("<function:native>");
       break;
 
+    case DS_MODULE:
+      printf("<module>");
+      break;
+
     case DS_STRING:
       printf(formated ? "\"%s\"" : "%s", CAST_STRING(value)->chars);
       break;
@@ -183,12 +187,15 @@ static bool values_equal(drax_value a, drax_value b) {
   return a == b;
 }
 
-static int get_var(d_vm* vm, int is_local) {
+static int get_definition(d_vm* vm, int is_local) {
   #define _L_MSG_NOT_DEF "error: variable '%s' is not defined\n"
-
   char* k = (char*) GET_VALUE(vm);
   drax_value v;
-  if(!is_local || get_local_table(vm->envs->local, vm->active_instr->local_range, k, &v) == 0) {
+
+  if (
+    (get_mod_table(vm->envs->modules, k, &v) == 0) &&
+    ((!is_local) || (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &v) == 0))
+  ) {
     if(get_var_table(vm->envs->global, k, &v) == 0) {
       raise_drax_error(vm, _L_MSG_NOT_DEF, k);
       return 0;
@@ -196,6 +203,62 @@ static int get_var(d_vm* vm, int is_local) {
   }
 
   push(vm, v);
+  return 1;
+}
+
+static int do_dcall(d_vm* vm) {
+  #define return_if_not_found_error(v, n, a) \
+    if (v == 0) { \
+    raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+    return 0; \
+  }
+
+  #define return_if_native_call_error(s, r, c) \
+    if (!s) { \
+      drax_error* e = CAST_ERROR(r); \
+      raise_drax_error(vm, c); \
+      return 0; \
+    }
+
+  drax_value a = GET_VALUE(vm);
+  drax_value m = peek(vm, a + 1);
+  char* n = (char*) (peek(vm, a));
+
+  if (IS_MODULE(m)) {
+    low_level_callback* nf = get_fun_on_module(CAST_MODULE(m), n, a);
+
+    return_if_not_found_error(nf, n, a);
+    int scs = 0;
+    drax_value result = nf(vm, &scs);
+    return_if_native_call_error(scs, result, e->chars);
+
+    push(vm, result);
+    return 1;
+  }
+
+  drax_value v = get_fun_table(vm->envs->native, n, a);
+  if (v == 0) {
+    v = get_fun_table(vm->envs->functions, n, a);
+  
+    return_if_not_found_error(v, n, a);
+  }
+
+  if (IS_NATIVE(v)) {
+    int scs = 0;
+    drax_os_native* ns = CAST_NATIVE(v);
+    low_level_callback* nf = ns->function;
+    drax_value result = nf(vm, &scs);
+
+    return_if_native_call_error(scs, result, e->chars);
+    push(vm, result);
+  } else {
+    drax_function* f = CAST_FUNCTION(v);
+
+    vm->active_instr->_ip = vm->ip;
+    callstack_push(vm, vm->active_instr);
+    vm->active_instr = f->instructions;
+    vm->ip = f->instructions->values;
+  }
   return 1;
 }
 
@@ -276,7 +339,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_GET_G_ID) {
-        if(get_var(vm, 0) == 0) { return; }
+        if(get_definition(vm, 0) == 0) { return; }
 
         break;
       }
@@ -287,7 +350,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_GET_L_ID) {
-        if(get_var(vm, 1) == 0) { return; }
+        if(get_definition(vm, 1) == 0) { return; }
 
         break;
       }
@@ -302,6 +365,13 @@ static void __start__(d_vm* vm, int inter_mode) {
         drax_value k = pop(vm);
         drax_value f = pop(vm);
         drax_value val;
+
+        if (IS_MODULE(f)) {
+          /* return native function here */
+          push(vm, DRAX_NIL_VAL);
+          break;
+        }
+
         if(get_value_dframe(CAST_FRAME(f), (char*) k, &val) == -1) {
           push(vm, DRAX_NIL_VAL);
           break;
@@ -405,40 +475,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_CALL) {
-        drax_value a = GET_VALUE(vm);
-        char* n = (char*) (peek(vm, a));
-        drax_value v = get_fun_table(vm->envs->native, n, a);
-
-        if (v == 0) {
-          v = get_fun_table(vm->envs->functions, n, a);
-        
-          if (v == 0) {
-            raise_drax_error(vm, "error: function '%s' is not defined\n", n);
-            return;
-          }
-        }
-
-        if (IS_NATIVE(v)) {
-          int scs = 0;
-          drax_os_native* ns = CAST_NATIVE(v);
-          low_level_callback* nf = ns->function;
-          drax_value result = nf(vm, &scs);
-
-          if (!scs) {
-            drax_error* e = CAST_ERROR(result);
-            raise_drax_error(vm, e->chars);
-            return;
-          }
-
-          push(vm, result);
-        } else {
-          drax_function* f = CAST_FUNCTION(v);
-
-          vm->active_instr->_ip = vm->ip;
-          callstack_push(vm, vm->active_instr);
-          vm->active_instr = f->instructions;
-          vm->ip = f->instructions->values;
-        }
+        if (do_dcall(vm) == 0) return;
         
         break;
       }
@@ -493,6 +530,7 @@ static dt_envs* new_environment() {
   e->functions = new_fun_table();
   e->native = new_fun_table();
   e->local = new_local_table();
+  e->modules = new_mod_table();
   return e;
 }
 
@@ -533,6 +571,12 @@ d_vm* createVM() {
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
   vm->envs = new_environment();
+
+  /**
+   * Created on builtin definitions
+  */
+  create_native_modules(vm);
+
   initialize_builtin_functions(vm);
 
   vm->call_stack = (dcall_stack*) malloc(sizeof(dcall_stack));

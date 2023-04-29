@@ -30,6 +30,7 @@
 #define MSG_BAD_AGR_ARITH_OP       "Bad argument in arithmetic expression."
 
 typedef struct dt_envs {
+  d_mod_table* modules;
   d_fun_table* native;
   d_fun_table* functions;
   d_generic_var_table* global;

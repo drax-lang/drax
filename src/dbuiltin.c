@@ -62,6 +62,7 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_STRING: MSR(vm, "string");
       case DS_LIST: MSR(vm, "list");
       case DS_FRAME: MSR(vm, "frame");
+      case DS_MODULE: MSR(vm, "module");
       default: break;
     }
   }
@@ -77,4 +78,18 @@ void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
   reg(vm, "assert", 2, __d_assert);
   reg(vm, "typeof", 1, __d_typeof);
   reg(vm, "sleep", 1, __d_sleep);
+}
+
+void create_native_modules(d_vm* vm) {
+  UNUSED(vm);
+  drax_native_module* m;
+  
+  m = new_native_module(vm, "os", 4);
+  const drax_native_module_helper os_helper[] = {
+    /* {2, "none", __none }, */
+  };
+
+  put_fun_on_module(m, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper));
+  put_mod_table(vm->envs->modules, DS_VAL(m));
+
 }
