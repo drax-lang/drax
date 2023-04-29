@@ -183,6 +183,22 @@ static bool values_equal(drax_value a, drax_value b) {
   return a == b;
 }
 
+static int get_var(d_vm* vm, int is_local) {
+  #define _L_MSG_NOT_DEF "error: variable '%s' is not defined\n"
+
+  char* k = (char*) GET_VALUE(vm);
+  drax_value v;
+  if(!is_local || get_local_table(vm->envs->local, vm->active_instr->local_range, k, &v) == 0) {
+    if(get_var_table(vm->envs->global, k, &v) == 0) {
+      raise_drax_error(vm, _L_MSG_NOT_DEF, k);
+      return 0;
+    }
+  }
+
+  push(vm, v);
+  return 1;
+}
+
 static void __start__(d_vm* vm, int inter_mode) {
 
   #define dbin_op(op, v) \
@@ -260,14 +276,8 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_GET_G_ID) {
-        char* k = (char*) GET_VALUE(vm);
-        drax_value val;
-        if(get_var_table(vm->envs->global, k, &val) == 0) {
-          raise_drax_error(vm, "error: variable '%s' is not defined\n", k);
-          return;
-        }
+        if(get_var(vm, 0) == 0) { return; }
 
-        push(vm, val);
         break;
       }
       VMCase(OP_SET_L_ID) {
@@ -277,16 +287,8 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_GET_L_ID) {
-        char* k = (char*) GET_VALUE(vm);
-        drax_value val;
-        if(get_local_table(vm->envs->local, vm->active_instr->local_range, k, &val) == 0) {
-          if(get_var_table(vm->envs->global, k, &val) == 0) {
-            raise_drax_error(vm, "error: variable '%s' is not defined\n", k);
-            return;
-          }
-        }
+        if(get_var(vm, 1) == 0) { return; }
 
-        push(vm, val);
         break;
       }
       VMCase(OP_SET_I_ID) {
@@ -481,11 +483,9 @@ static void register_builtin(d_vm* vm, const char* n, int a, low_level_callback*
   put_fun_table(vm->envs->native, v);
 }
 
-
 static void initialize_builtin_functions(d_vm* vm) {
   load_callback_fn(vm, &register_builtin);
 }
-
 
 static dt_envs* new_environment() {
   dt_envs* e = (dt_envs*) malloc(sizeof(dt_envs));
@@ -520,6 +520,7 @@ void __reset__(d_vm* vm) {
   vm->instructions = new_instructions();
 
   vm->call_stack->count = 0;
+  vm->stack_count = 0;
   vm->ip = NULL;
 }
 

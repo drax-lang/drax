@@ -6,7 +6,8 @@
 #include "dtime.h"
 #include "dvm.h"
 
-#define MAKE_STRING_RETURN(g, c)  \
+/* Make String as Return */
+#define MSR(g, c)  \
     return DS_VAL(copy_dstring(g, c, strlen(c)));
 
 #define DX_SUCESS_FN(v) *v = 1;
@@ -57,29 +58,19 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
   if (IS_STRUCT(val)) {
     switch (DRAX_STYPEOF(val)) {
       case DS_NATIVE:
-      case DS_FUNCTION: 
-        MAKE_STRING_RETURN(vm, "function");
-
-      case DS_STRING: 
-        MAKE_STRING_RETURN(vm, "string");
-      
-      case DS_LIST:
-        MAKE_STRING_RETURN(vm, "list");
-
-      case DS_FRAME:
-        MAKE_STRING_RETURN(vm, "frame");
-
+      case DS_FUNCTION: MSR(vm, "function");
+      case DS_STRING: MSR(vm, "string");
+      case DS_LIST: MSR(vm, "list");
+      case DS_FRAME: MSR(vm, "frame");
       default: break;
     }
   }
   
-  if (IS_BOOL(val))   { MAKE_STRING_RETURN(vm, "boolean"); }
+  if (IS_BOOL(val)) { MSR(vm, "boolean"); }
+  if (IS_NIL(val)) { MSR(vm, "nil"); }
+  if (IS_NUMBER(val)) { MSR(vm, "number"); }
 
-  if (IS_NIL(val))    { MAKE_STRING_RETURN(vm, "nil"); }
-
-  if (IS_NUMBER(val)) { MAKE_STRING_RETURN(vm, "number"); }
-
-  MAKE_STRING_RETURN(vm, "none");
+  MSR(vm, "none");
 }
 
 void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
