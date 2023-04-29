@@ -1,10 +1,14 @@
 #include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "dbuiltin.h"
 #include "ddefs.h"
 #include "dtypes.h"
 #include "dtime.h"
 #include "dvm.h"
+
+#include "mods/d_mod_os.h"
 
 /* Make String as Return */
 #define MSR(g, c)  \
@@ -71,7 +75,22 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
   if (IS_NIL(val)) { MSR(vm, "nil"); }
   if (IS_NUMBER(val)) { MSR(vm, "number"); }
 
+  DX_SUCESS_FN(stat);
   MSR(vm, "none");
+}
+
+static drax_value __d_command(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  char buf[1024];
+  int bytes_read = d_popen(CAST_STRING(a)->chars, buf, sizeof(buf));
+  if (bytes_read == -1) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char *) "Fail to execute command"));
+  } else {
+    buf[bytes_read] = '\0';
+    DX_SUCESS_FN(stat);
+    MSR(vm, buf);
+  }
 }
 
 void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
@@ -86,7 +105,7 @@ void create_native_modules(d_vm* vm) {
   
   m = new_native_module(vm, "os", 4);
   const drax_native_module_helper os_helper[] = {
-    /* {2, "none", __none }, */
+    {1, "command", __d_command },
   };
 
   put_fun_on_module(m, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper));

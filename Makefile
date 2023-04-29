@@ -17,7 +17,8 @@ FILES= ./src/dvm.c \
        ./src/dhandler.c \
        ./src/dstructs.c \
        ./src/dbuiltin.c \
-       ./src/dtime.c
+       ./src/dtime.c \
+	   ./src/mods/d_mod_os.c
 
 DEBUGF= -ggdb \
 		-g
@@ -40,6 +41,7 @@ WARNING= \
 
 FLAGS=  -std=c99 \
 		-Wall  \
+		-ansi \
 		$(WARNING) \
 		$(DWN_CCFLAGS) \
 		$(LIBS) \
