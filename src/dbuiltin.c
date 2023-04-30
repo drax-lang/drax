@@ -88,8 +88,9 @@ static drax_value __d_command(d_vm* vm, int* stat) {
     return DS_VAL(new_derror(vm, (char *) "Fail to execute command"));
   } else {
     buf[bytes_read] = '\0';
+    char* r = replace_special_char('\n', 'n', buf);
     DX_SUCESS_FN(stat);
-    MSR(vm, buf);
+    MSR(vm, r);
   }
 }
 
