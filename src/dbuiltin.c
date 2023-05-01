@@ -79,6 +79,8 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
   MSR(vm, "none");
 }
 
+/* Module OS */
+
 static drax_value __d_command(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
   char buf[1024];

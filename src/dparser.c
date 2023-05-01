@@ -292,7 +292,7 @@ void process_struct(d_vm* vm, bool v) {
 
   if (eq_and_next(DTK_CBR_CLOSE)) {
     put_const(vm, NUMBER_VAL(0));
-    put_instruction(vm, OP_STRUCT);
+    put_instruction(vm, OP_FRAME);
     return;
   }
 
@@ -312,7 +312,7 @@ void process_struct(d_vm* vm, bool v) {
 
   process_token(DTK_CBR_CLOSE, "Expect '}' after elements.");
   put_const(vm, NUMBER_VAL(lc));
-  put_instruction(vm, OP_STRUCT);
+  put_instruction(vm, OP_FRAME);
 
 }
 

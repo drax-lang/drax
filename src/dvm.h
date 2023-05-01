@@ -21,6 +21,14 @@
 
 #define VMCase(t) case t:
 
+#define AS_NUMBER(v) draxvalue_to_num(v)
+#define AS_VALUE(v)  num_to_draxvalue(v)
+
+#define GET_VALUE(vm) *(vm->ip++)
+#define GET_NUMBER(vm) AS_NUMBER(GET_VALUE(vm))
+
+#define CURR_CALLSTACK_SIZE(vm) vm->call_stack->count
+
 /* Trace messages */
 #define TRACE_DESCRIPTION_LINE "  line: %d "
 

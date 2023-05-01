@@ -72,7 +72,7 @@ typedef enum d_op_code {
   OP_TRUE,
   OP_FALSE,
   OP_LIST,
-  OP_STRUCT,
+  OP_FRAME,
   OP_POP,
   OP_PUSH,
   OP_EQUAL,

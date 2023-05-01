@@ -9,16 +9,11 @@
 #include "dtypes.h"
 #include "dinspect.h"
 
+#include "dstring.h"
+
 /**
  * Helpers
 */
-#define AS_NUMBER(v) draxvalue_to_num(v)
-#define AS_VALUE(v)  num_to_draxvalue(v)
-
-#define GET_VALUE(vm) *(vm->ip++)
-#define GET_NUMBER(vm) AS_NUMBER(GET_VALUE(vm))
-
-#define CURR_CALLSTACK_SIZE(vm) vm->call_stack->count
 
 /* validation only number */
 #define binary_op(vm, op) \
@@ -206,20 +201,24 @@ static int get_definition(d_vm* vm, int is_local) {
   return 1;
 }
 
-static int do_dcall(d_vm* vm) {
-  #define return_if_not_found_error(v, n, a) \
-    if (v == 0) { \
-    raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+/**
+ * Call Definitions
+ */
+
+#define return_if_not_found_error(v, n, a) \
+  if (v == 0) { \
+  raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+  return 0; \
+}
+
+#define return_if_native_call_error(s, r, c) \
+  if (!s) { \
+    drax_error* e = CAST_ERROR(r); \
+    raise_drax_error(vm, c); \
     return 0; \
   }
 
-  #define return_if_native_call_error(s, r, c) \
-    if (!s) { \
-      drax_error* e = CAST_ERROR(r); \
-      raise_drax_error(vm, c); \
-      return 0; \
-    }
-
+static int do_dcall(d_vm* vm) {
   drax_value a = GET_VALUE(vm);
   drax_value m = peek(vm, a + 1);
   char* n = (char*) (peek(vm, a));
@@ -234,6 +233,10 @@ static int do_dcall(d_vm* vm) {
 
     push(vm, result);
     return 1;
+  }
+  
+  if (IS_STRING(m)) {
+    return dstr_handle_str_call(vm, n, a, m); /* TODO: Created error message */
   }
 
   drax_value v = get_fun_table(vm->envs->native, n, a);
@@ -251,14 +254,17 @@ static int do_dcall(d_vm* vm) {
 
     return_if_native_call_error(scs, result, e->chars);
     push(vm, result);
-  } else {
-    drax_function* f = CAST_FUNCTION(v);
-
-    vm->active_instr->_ip = vm->ip;
-    callstack_push(vm, vm->active_instr);
-    vm->active_instr = f->instructions;
-    vm->ip = f->instructions->values;
+    return 1;
   }
+
+  /* Drax Function */
+  drax_function* f = CAST_FUNCTION(v);
+
+  vm->active_instr->_ip = vm->ip;
+  callstack_push(vm, vm->active_instr);
+  vm->active_instr = f->instructions;
+  vm->ip = f->instructions->values;
+
   return 1;
 }
 
@@ -308,7 +314,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         push(vm, DS_VAL(l));
         break;
       }
-      VMCase(OP_STRUCT) {
+      VMCase(OP_FRAME) {
         drax_value lc = pop(vm);
         int limit = (int) CAST_NUMBER(lc);
         drax_frame* l = new_dframe(vm, limit);
@@ -365,6 +371,11 @@ static void __start__(d_vm* vm, int inter_mode) {
         drax_value k = pop(vm);
         drax_value f = pop(vm);
         drax_value val;
+
+        if(IS_STRING(f)) {
+          if (dstr_handle_str_call(vm, (char*) k, 0, f) == 0) { return; }; /* TODO: set error */
+          break;
+        }
 
         if (IS_MODULE(f)) {
           /* return native function here */
