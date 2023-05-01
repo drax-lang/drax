@@ -45,7 +45,7 @@ static drax_value dstr_split(d_vm *vm, int a, drax_string* ds) {
   drax_value v1 = pop(vm);
   dvalidate_string(vm, v1, "error: expected string as argument");
 
-  drax_string* dd = CAST_STRING(pop(vm));
+  drax_string* dd = CAST_STRING(v1);
   char *str = ds->chars;
   char *delim = dd->chars;
 
