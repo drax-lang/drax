@@ -6,7 +6,6 @@
 #include "dvm.h"
 #include "dbuiltin.h"
 #include "dtypes.h"
-#include "dinspect.h"
 #include "dgc.h"
 
 #include "dstring.h"
@@ -219,6 +218,8 @@ static int get_definition(d_vm* vm, int is_local) {
   }
 
 static int do_dcall(d_vm* vm) {
+  /* DEBUG( printf(" --do_dcall\n") ); */
+
   drax_value a = GET_VALUE(vm);
   drax_value m = peek(vm, a + 1);
   char* n = (char*) (peek(vm, a));
@@ -487,7 +488,6 @@ static void __start__(d_vm* vm, int inter_mode) {
       }
       VMCase(OP_CALL) {
         if (do_dcall(vm) == 0) return;
-        
         break;
       }
       VMCase(OP_FUN) {

@@ -13,7 +13,6 @@ FILES= ./src/dvm.c \
        ./src/dio.c \
        ./src/dlex.c \
        ./src/drax.c \
-       ./src/dinspect.c \
        ./src/dhandler.c \
        ./src/dstructs.c \
        ./src/dbuiltin.c \

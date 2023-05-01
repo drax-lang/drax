@@ -12,6 +12,13 @@
 
 #define is_call_fn(v) ((v->act != BACT_CALL_OP) && (v->act != BACT_CORE_OP))
 
+#ifdef _AST_INSPECT
+ #define DEBUG(x) (x)
+#else
+ #define DEBUG(x)
+#endif
+
+
 #define VMDispatch while(true)
 
 #define VMcond(f) \

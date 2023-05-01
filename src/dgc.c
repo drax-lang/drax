@@ -17,5 +17,5 @@ int dgc_swap(d_vm* vm) {
     p = d;
     d = d->next;
   }
-  
+  return 1;  
 }

@@ -5,6 +5,7 @@
 #ifndef __D_GC
 #define __D_GC
 
+#include <stdlib.h>
 #include "dstructs.h"
 #include "dvm.h"
 
