@@ -38,6 +38,18 @@
 #define MSG_NUMBER_OF_INVALID_ARGS "Number of invalid arguments, expected %d arguments."
 #define MSG_BAD_AGR_ARITH_OP       "Bad argument in arithmetic expression."
 
+/**
+ * Validators for arguments
+*/
+#define dvalidate_type(vm, fun, v, msg)  \
+  if (!fun(v)) { raise_drax_error(vm, msg); return 0; }
+
+#define dvalidate_string(vm, v, msg) dvalidate_type(vm, IS_STRING, v, msg)
+
+#define dvalidate_number(vm, v, msg) dvalidate_type(vm, IS_NUMBER, v, msg)
+
+#define dvalidate_list(vm, v, msg) dvalidate_type(vm, IS_LIST, v, msg)
+
 typedef struct dt_envs {
   d_mod_table* modules;
   d_fun_table* native;
