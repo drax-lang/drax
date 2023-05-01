@@ -16,6 +16,7 @@ static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type) {
   d->type = type;
   d->checked = 0;
   d->next = vm->d_ls;
+  vm->d_ls = d;
 
   return d;
 }

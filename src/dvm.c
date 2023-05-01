@@ -7,6 +7,7 @@
 #include "dbuiltin.h"
 #include "dtypes.h"
 #include "dinspect.h"
+#include "dgc.h"
 
 #include "dstring.h"
 
