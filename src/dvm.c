@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <string.h>
 
 #include "ddefs.h"
@@ -159,7 +158,7 @@ static void trace_error(d_vm* vm) {
 }
 
 /* Delegate to drax_print_error */
-static void raise_drax_error(d_vm* vm, const char* format, ...) {
+void raise_drax_error(d_vm* vm, const char* format, ...) {
   va_list args;
   va_start(args, format);
   drax_print_error(format, args);

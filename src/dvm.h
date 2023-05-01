@@ -6,6 +6,7 @@
 #define __DVM
 
 #include <stdbool.h>
+#include <stdarg.h>
 #include "dtypes.h"
 #include "dhandler.h"
 
@@ -69,6 +70,8 @@ d_vm* createVM();
 void push(d_vm* vm, drax_value v);
 
 drax_value pop(d_vm* vm);
+
+void raise_drax_error(d_vm* vm, const char* format, ...);
 
 void __reset__(d_vm* vm);
 

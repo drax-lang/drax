@@ -18,6 +18,7 @@ FILES= ./src/dvm.c \
        ./src/dstructs.c \
        ./src/dbuiltin.c \
        ./src/dtime.c \
+	   ./src/dstring.c \
 	   ./src/mods/d_mod_os.c
 
 DEBUGF= -ggdb \
