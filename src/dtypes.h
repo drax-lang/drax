@@ -90,6 +90,7 @@ typedef enum d_op_code {
   OP_JMF,
   OP_LOOP,
   OP_CALL,
+  OP_CALL_I,   /* inside */
   OP_FUN,
   OP_SET_G_ID, /* global */
   OP_GET_G_ID,

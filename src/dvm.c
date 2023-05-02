@@ -204,40 +204,47 @@ static int get_definition(d_vm* vm, int is_local) {
  * Call Definitions
  */
 
-#define return_if_not_found_error(v, n, a) \
-  if (v == 0) { \
-  raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
-  return 0; \
-}
-
-#define return_if_native_call_error(s, r, c) \
-  if (!s) { \
-    drax_error* e = CAST_ERROR(r); \
-    raise_drax_error(vm, c); \
+static int do_dcall(d_vm* vm, int inside) {
+  #define return_if_not_found_error(v, n, a) \
+    if (v == 0) { \
+    raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
     return 0; \
   }
 
-static int do_dcall(d_vm* vm) {
+  #define return_if_native_call_error(s, r, c) \
+    if (!s) { \
+      drax_error* e = CAST_ERROR(r); \
+      raise_drax_error(vm, c); \
+      return 0; \
+    }
+
   /* DEBUG( printf(" --do_dcall\n") ); */
 
   drax_value a = GET_VALUE(vm);
+
+  /**
+   * if call is using dot operator
+   */
   drax_value m = peek(vm, a + 1);
+  
   char* n = (char*) (peek(vm, a));
 
-  if (IS_MODULE(m)) {
-    low_level_callback* nf = get_fun_on_module(CAST_MODULE(m), n, a);
+  if (inside) {
+    if (IS_MODULE(m)) {
+      low_level_callback* nf = get_fun_on_module(CAST_MODULE(m), n, a);
 
-    return_if_not_found_error(nf, n, a);
-    int scs = 0;
-    drax_value result = nf(vm, &scs);
-    return_if_native_call_error(scs, result, e->chars);
+      return_if_not_found_error(nf, n, a);
+      int scs = 0;
+      drax_value result = nf(vm, &scs);
+      return_if_native_call_error(scs, result, e->chars);
 
-    push(vm, result);
-    return 1;
-  }
-  
-  if (IS_STRING(m)) {
-    return dstr_handle_str_call(vm, n, a, m); /* TODO: Created error message */
+      push(vm, result);
+      return 1;
+    }
+    
+    if (IS_STRING(m)) {
+      return dstr_handle_str_call(vm, n, a, m); /* TODO: Created error message */
+    }
   }
 
   drax_value v = get_fun_table(vm->envs->native, n, a);
@@ -254,6 +261,7 @@ static int do_dcall(d_vm* vm) {
     drax_value result = nf(vm, &scs);
 
     return_if_native_call_error(scs, result, e->chars);
+    pop(vm);
     push(vm, result);
     return 1;
   }
@@ -487,7 +495,11 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_CALL) {
-        if (do_dcall(vm) == 0) return;
+        if (do_dcall(vm, 0) == 0) return;
+        break;
+      }
+      VMCase(OP_CALL_I) {
+        if (do_dcall(vm, 1) == 0) return;
         break;
       }
       VMCase(OP_FUN) {
