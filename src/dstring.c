@@ -94,41 +94,66 @@ static int dstr_length(d_vm* vm, int a, drax_string* ds) {
  */
 
 static int dstr_copy(d_vm* vm, int a, drax_string* ds) {
-    args_fail_required_bigger_than(a, 1);
-    args_fail_required_less_than(a, 3);
+  args_fail_required_bigger_than(a, 1);
+  args_fail_required_less_than(a, 3);
 
-    drax_value v2 = a > 1 ? pop(vm) : AS_VALUE(1);
-    drax_value v1 = pop(vm);
+  drax_value v2 = a > 1 ? pop(vm) : AS_VALUE(1);
+  drax_value v1 = pop(vm);
 
-    dvalidate_number(vm, v1, "error: copy arguments must be numbers");
-    dvalidate_number(vm, v2, "error: copy arguments must be numbers");
-    
-    int a2 = (int) (AS_NUMBER(v2));
-    int a1 = (int) (AS_NUMBER(v1));
+  dvalidate_number(vm, v1, "error: copy arguments must be numbers");
+  dvalidate_number(vm, v2, "error: copy arguments must be numbers");
+  
+  int a2 = (int) (AS_NUMBER(v2));
+  int a1 = (int) (AS_NUMBER(v1));
 
-    char* str = ds->chars;
-    if (str == NULL) {
-      push(vm, DS_VAL(new_dstring(vm, (char*) "", 0)));
-      return 1;
-    }
-
-    int str_len = strlen(str);
-    if (a1 >= str_len || a2 < 0) {
-      push(vm, DS_VAL(new_dstring(vm, (char*) "", 0)));
-      return 1;
-    }
-
-    a1 = a1 < 0 ? ds->length + a1 : a1;
-    int copy_len = str_len - a1;
-    if (a2 < copy_len) copy_len = a2;
-
-    char* copy = (char*) malloc(copy_len + 1);
-    strncpy(copy, str + a1, copy_len);
-    copy[copy_len] = '\0';
-
-    push(vm, DS_VAL(new_dstring(vm, copy, copy_len)));
+  char* str = ds->chars;
+  if (str == NULL) {
+    push(vm, DS_VAL(new_dstring(vm, (char*) "", 0)));
     return 1;
+  }
+
+  int str_len = strlen(str);
+  if (a1 >= str_len || a2 < 0) {
+    push(vm, DS_VAL(new_dstring(vm, (char*) "", 0)));
+    return 1;
+  }
+
+  a1 = a1 < 0 ? ds->length + a1 : a1;
+  int copy_len = str_len - a1;
+  if (a2 < copy_len) copy_len = a2;
+
+  char* copy = (char*) malloc(copy_len + 1);
+  strncpy(copy, str + a1, copy_len);
+  copy[copy_len] = '\0';
+
+  push(vm, DS_VAL(new_dstring(vm, copy, copy_len)));
+  return 1;
 }
+
+/**
+ * returns the length of the string
+ * 
+ *  "foo".get(0) => "f"
+ *  "foo"[0]  => "f"
+ *  "foo"[1]  => "o"
+ *  "foo"[-1] => ""
+ */
+static int dstr_get(d_vm* vm, int a, drax_string* ds) {
+  args_fail_required_size(a, 1, "expected one argument.");
+  double v1 = draxvalue_to_num(pop(vm));
+
+  if (v1 < 0 || v1 >= ds->length) {
+    push(vm, DS_VAL(new_dstring(vm, (char*) "", 0)));
+    return 1;
+  }
+
+  char* str = (char*) malloc(2);
+  str[0] = ds->chars[(int) v1];
+  str[1] = '\0';
+  push(vm, DS_VAL(new_dstring(vm, str, 1)));
+  return 1;
+}
+
 
 int dstr_handle_str_call(d_vm* vm, char* n, int a, drax_value o) {
   drax_string* s = CAST_STRING(o);
@@ -137,6 +162,8 @@ int dstr_handle_str_call(d_vm* vm, char* n, int a, drax_value o) {
   match_dfunction(n, "length",    dstr_length,    vm, a, s);
   match_dfunction(n, "to_number", dstr_to_number, vm, a, s);
   match_dfunction(n, "copy",      dstr_copy,      vm, a, s);
+
+  match_dfunction(n, "get",       dstr_get,       vm, a, s);
 
   raise_drax_error(vm, "error: function '%s/%d' is not defined", n, a);
 

@@ -226,7 +226,7 @@ static int do_dcall(d_vm* vm, int inside) {
    * if call is using dot operator
    */
   drax_value m = peek(vm, a + 1);
-  
+
   char* n = (char*) (peek(vm, a));
 
   if (inside) {
@@ -243,7 +243,7 @@ static int do_dcall(d_vm* vm, int inside) {
     }
     
     if (IS_STRING(m)) {
-      return dstr_handle_str_call(vm, n, a, m); /* TODO: Created error message */
+      return dstr_handle_str_call(vm, n, a, m);
     }
   }
 
@@ -382,7 +382,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         drax_value val;
 
         if(IS_STRING(f)) {
-          if (dstr_handle_str_call(vm, (char*) k, 0, f) == 0) { return; }; /* TODO: set error */
+          if (dstr_handle_str_call(vm, (char*) k, 0, f) == 0) { return; };
           break;
         }
 
@@ -482,7 +482,6 @@ static void __start__(d_vm* vm, int inter_mode) {
       }
       VMCase(OP_JMP) {
         uint16_t offset = dg16_byte(vm);
-
         vm->ip += offset;
         break;
       }

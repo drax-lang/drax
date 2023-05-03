@@ -66,7 +66,7 @@ static void init_parser(d_vm* vm) {
 static operation_line op_lines[] = {
   make_op_line(DTK_PAR_OPEN,  process_grouping,    process_call,   iCALL),
   make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
-  make_op_line(DTK_BKT_OPEN,  process_list,        NULL,           iNONE),
+  make_op_line(DTK_BKT_OPEN,  process_list,        process_index,  iTERM),
   make_op_line(DTK_BKT_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_CBR_OPEN,  process_struct,      NULL,           iNONE),
   make_op_line(DTK_CBR_CLOSE, NULL,                NULL,           iNONE),
@@ -267,6 +267,16 @@ void process_grouping(d_vm* vm, bool v) {
   process_token(DTK_PAR_CLOSE, "Expect ')' after expression.");
 }
 
+void process_index(d_vm* vm, bool v) {
+  UNUSED(v);
+  put_pair(vm, OP_PUSH, (drax_value) "get");
+  expression(vm);
+  process_token(DTK_BKT_CLOSE, "Expect ']' after index.");
+
+  put_pair(vm, OP_CALL_I, 1);
+
+}
+
 void process_list(d_vm* vm, bool v) {
   UNUSED(v);
 
@@ -313,7 +323,6 @@ void process_struct(d_vm* vm, bool v) {
   process_token(DTK_CBR_CLOSE, "Expect '}' after elements.");
   put_const(vm, NUMBER_VAL(lc));
   put_instruction(vm, OP_FRAME);
-
 }
 
 void process_number(d_vm* vm, bool v) {

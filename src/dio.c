@@ -10,7 +10,7 @@ char* b_pwd() {
   #include <direct.h>
   #define MAX_PATH_SIZE 255
 
-  char* relative_path = (char*) malloc(sizeof(char) * MAX_FATH_SIZE);
+  char* relative_path = (char*) malloc(sizeof(char) * MAX_PATH_SIZE);
   _getcwd(relative_path, MAX_PATH_SIZE);
   return relative_path;
   #else
