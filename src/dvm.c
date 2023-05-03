@@ -9,6 +9,7 @@
 #include "dgc.h"
 
 #include "dstring.h"
+#include "dlist.h"
 
 /**
  * Helpers
@@ -245,6 +246,10 @@ static int do_dcall(d_vm* vm, int inside) {
     if (IS_STRING(m)) {
       return dstr_handle_str_call(vm, n, a, m);
     }
+
+    if (IS_LIST(m)) {
+      return dstr_handle_list_call(vm, n, a, m);
+    }
   }
 
   drax_value v = get_fun_table(vm->envs->native, n, a);
@@ -383,6 +388,11 @@ static void __start__(d_vm* vm, int inter_mode) {
 
         if(IS_STRING(f)) {
           if (dstr_handle_str_call(vm, (char*) k, 0, f) == 0) { return; };
+          break;
+        }
+
+        if(IS_LIST(f)) {
+          if (dstr_handle_list_call(vm, (char*) k, 0, f) == 0) { return; };
           break;
         }
 

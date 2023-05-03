@@ -1,9 +1,9 @@
-# What is Drax ? 
-Drax is an ongoing research and development project. <br />
-The proposal is to build a functional, dynamic and extremely light language. <br/>
+# Drax
+Drax is a lightweight, dynamically typed programming language focused on integrations. <br/>
 
-### Features
 
+### Documentation
+drax documentation is available in [docs](./docs/index.md)
 
 
 ### Contributing
@@ -14,6 +14,10 @@ Run initial environment settings with:
 
 ```
 make config
+```
+
+```
+make
 ```
 
 To compile in debug mode:

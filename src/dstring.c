@@ -84,7 +84,7 @@ static int dstr_length(d_vm* vm, int a, drax_string* ds) {
 }
 
 /**
- * returns the character at the given index
+ * returns the character at the given index and quantity
  * 
  * "drax lang".copy(0) => "d"
  * "drax lang".copy(0, 4) => "drax"
@@ -131,29 +131,33 @@ static int dstr_copy(d_vm* vm, int a, drax_string* ds) {
 }
 
 /**
- * returns the length of the string
+ * returns the character at the given index 
  * 
  *  "foo".get(0) => "f"
  *  "foo"[0]  => "f"
  *  "foo"[1]  => "o"
- *  "foo"[-1] => ""
+ *  "bar"[-1] => "r"
+ *  "bar"[10] => ""
  */
 static int dstr_get(d_vm* vm, int a, drax_string* ds) {
   args_fail_required_size(a, 1, "expected one argument.");
-  double v1 = draxvalue_to_num(pop(vm));
+  drax_value v1 = pop(vm);
+  dvalidate_number(vm, v1, "error: copy arguments must be numbers");
+  double n = draxvalue_to_num(v1);
 
-  if (v1 < 0 || v1 >= ds->length) {
+  if (n < 0) { n = ds->length + n; }
+
+  if (n < 0 || n >= ds->length) {
     push(vm, DS_VAL(new_dstring(vm, (char*) "", 0)));
     return 1;
   }
 
   char* str = (char*) malloc(2);
-  str[0] = ds->chars[(int) v1];
+  str[0] = ds->chars[(int) n];
   str[1] = '\0';
   push(vm, DS_VAL(new_dstring(vm, str, 1)));
   return 1;
 }
-
 
 int dstr_handle_str_call(d_vm* vm, char* n, int a, drax_value o) {
   drax_string* s = CAST_STRING(o);
