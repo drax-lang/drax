@@ -1,14 +1,5 @@
 #include "dlist.h"
-
-
-#define args_fail_required_size(a, b, msg) \
-   if (a != b) { { raise_drax_error(vm, msg); return 0; } };
-
-#define args_fail_required_bigger_than(a, b) if (a < b) { return 0; };
-
-#define args_fail_required_less_than(a, b) if (a > b) { return 0; };
-
-#define match_dfunction(n, v, f, vm, a, s) if ((strcmp(n, v) == 0)) { return f(vm, a, s); }
+#include "ddefs.h"
 
 /**
  * returns the length of the list

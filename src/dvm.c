@@ -17,6 +17,10 @@
 
 /* validation only number */
 #define binary_op(vm, op) \
+        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
+          raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
+          return; \
+        } \
         double b = AS_NUMBER(pop(vm)); \
         double a = AS_NUMBER(pop(vm)); \
         push(vm, AS_VALUE(a op b)); 
@@ -284,7 +288,7 @@ static int do_dcall(d_vm* vm, int inside) {
 
 static void __start__(d_vm* vm, int inter_mode) {
 
-  #define dbin_op(op, v) \
+  #define dbin_bool_op(op, v) \
       do { \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
           raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
@@ -417,11 +421,11 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_GREATER) {
-        dbin_op(>, BOOL_VAL);
+        dbin_bool_op(>, BOOL_VAL);
         break;
       }
       VMCase(OP_LESS) {
-        dbin_op(<, BOOL_VAL);
+        dbin_bool_op(<, BOOL_VAL);
         break;
       }
       VMCase(OP_CONCAT) {
