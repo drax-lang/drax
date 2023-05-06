@@ -86,7 +86,8 @@ drax_string* new_dstring(d_vm* vm, char* chars, int length) {
 drax_string* copy_dstring(d_vm* vm, const char* chars, int length) {
   char* new_chars = malloc(sizeof(char) * length + 1);
   int new_length = 0;
-  for (int i = 0; i < length; i++) {
+  int i;
+  for (i = 0; i < length; i++) {
     if (chars[i] == '\\') {
       if(i + 1 < length && chars[i+1] == '\"') {
         new_chars[new_length++] = '\"';

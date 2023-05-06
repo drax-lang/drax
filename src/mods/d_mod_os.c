@@ -1,6 +1,6 @@
 #include "d_mod_os.h"
 
-#define BUF_SIZE 1024
+#define BUF_SIZE 4096
 
 char* replace_special_char(char special, char new, char* str) {
   int i, j;
@@ -27,7 +27,36 @@ char* replace_special_char(char special, char new, char* str) {
   return n;
 }
 
-int d_popen(const char* command, char* output, int output_size) {
+#if defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 199309L
+int d_command(const char* command, char* output, int output_size) {
+    FILE *pipe = popen(command, "r");
+
+    if (pipe == NULL) {
+      printf("Fail to create pipe\n");
+      return -1;
+    }
+
+    int total_bytes_read = 0;
+    char buf[BUF_SIZE];
+
+    while (fgets(buf, sizeof(buf), pipe) != NULL) {
+      int bytes_to_copy = strlen(buf);
+      if (total_bytes_read + bytes_to_copy >= output_size) {
+          printf("Output buffer too small\n");
+          pclose(pipe);
+          return -1;
+      }
+
+      memcpy(output + total_bytes_read, buf, bytes_to_copy);
+      total_bytes_read += bytes_to_copy;
+    }
+
+    pclose(pipe);
+
+    return total_bytes_read;
+}
+#else
+int d_command(const char* command, char* output, int output_size) {
     int pipe_fd[2];
     pid_t pid;
 
@@ -73,3 +102,4 @@ int d_popen(const char* command, char* output, int output_size) {
       return total_bytes_read;
     }
 }
+#endif

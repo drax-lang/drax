@@ -83,8 +83,8 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
 
 static drax_value __d_command(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
-  char buf[1024];
-  int bytes_read = d_popen(CAST_STRING(a)->chars, buf, sizeof(buf));
+  char buf[4096];
+  int bytes_read = d_command(CAST_STRING(a)->chars, buf, sizeof(buf));
   if (bytes_read == -1) {
     DX_ERROR_FN(stat);
     return DS_VAL(new_derror(vm, (char *) "Fail to execute command"));

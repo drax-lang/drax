@@ -12,7 +12,8 @@ static int dstr_to_number(d_vm* vm, int a, drax_string* ds) {
   return 1;
 }
 
-static char *strndup(const char *s, size_t n) {
+#if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
+static char* strndup(const char *s, size_t n) {
   char *p;
   size_t len = strlen(s);
 
@@ -24,7 +25,7 @@ static char *strndup(const char *s, size_t n) {
   }
   return p;
 }
-
+#endif
 /**
  * returns a list of strings split by the delimiter
  * 

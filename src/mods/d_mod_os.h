@@ -18,6 +18,6 @@
 
 char* replace_special_char(char special, char new, char* str);
 
-int d_popen(const char *command, char *output, int output_size);
+int d_command(const char *command, char *output, int output_size);
 
 #endif
