@@ -648,10 +648,8 @@ void dfatal(d_token* token, const char* message) {
 
   if (token->type == DTK_EOF) {
     fprintf(stderr, "  end of file");
-  }  else {
-    fprintf(stderr, " '%.*s'", token->length, token->first);
   }
 
-  fprintf(stderr, " %s\n", message);
+  fprintf(stderr, " '%s'\n", message);
   parser.has_error = true;
 }
