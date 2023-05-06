@@ -84,13 +84,29 @@ drax_string* new_dstring(d_vm* vm, char* chars, int length) {
 }
 
 drax_string* copy_dstring(d_vm* vm, const char* chars, int length) {
-  uint32_t hash = fnv1a_hash(chars, length);
+  char* new_chars = malloc(sizeof(char) * length + 1);
+  int new_length = 0;
+  for (int i = 0; i < length; i++) {
+    if (chars[i] == '\\') {
+      if(i + 1 < length && chars[i+1] == '\"') {
+        new_chars[new_length++] = '\"';
+        i++;
+        continue;
+      } 
+      
+      if(i + 1 < length && chars[i+1] == '\\') {
+        new_chars[new_length++] = '\\';
+        i++;
+        continue;
+      }
+    }
+    new_chars[new_length++] = chars[i];
+  }
+  new_chars[new_length] = '\0';
 
-  char* heap_chars = malloc(sizeof(char) * length + 1);
-  memcpy(heap_chars, chars, length);
-  heap_chars[length] = '\0';
+  uint32_t hash = fnv1a_hash(new_chars, new_length);
 
-  return allocate_string(vm, heap_chars, length, hash);
+  return allocate_string(vm, new_chars, new_length, hash);
 }
 
 drax_frame* new_dframe(d_vm* vm, int cap) {

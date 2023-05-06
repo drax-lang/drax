@@ -5,6 +5,8 @@
 
 curr_lex_state clexs;
 
+#define PREV_TOKEN()  (clexs.current[-1])
+
 #define CURR_TOKEN()  (*clexs.current)
 
 #define IS_EOF()      (*clexs.current == '\0')
@@ -190,8 +192,25 @@ d_token next_token() {
         return dmake_symbol(DTK_BG);
 
       case '"': {
-        while (CURR_TOKEN() != '"' && !IS_EOF()) {
+        int isScaped = 0;
+        while (
+          !((CURR_TOKEN() == '"') && (!isScaped)) &&
+          (!IS_EOF())
+        ) {
+          isScaped = 0;
           if (CURR_TOKEN() == '\n') clexs.line++;
+          if (CURR_TOKEN() == '\\') {
+            char sc = check_next();
+
+            if (sc == '\\') {
+              next_char();
+            } else if (sc == 't') {
+              next_char();
+            } else {
+              isScaped = 1;
+            }
+          }
+
           next_char();
         }
         
