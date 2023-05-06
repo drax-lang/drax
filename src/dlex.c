@@ -236,9 +236,13 @@ d_token next_token() {
           int ne = NUM_ELEMS(drax_t);
           int i, j;
           for (i = 0; i < ne; i++) {
-            int size = strlen(drax_t[i].str);
+            int sz1 = strlen(drax_t[i].str);
+            int sz2 = (int) (clexs.current - clexs.first);
+
+            if (sz1 != sz2) continue;
+
             bool eql = true;
-            for (j = 0; j < size; j++) {
+            for (j = 0; j < sz1; j++) {
               if (drax_t[i].str[j] != clexs.first[j]) {
                 eql = false;
                 break;
