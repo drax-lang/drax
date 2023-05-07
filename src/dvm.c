@@ -434,7 +434,7 @@ static void __start__(d_vm* vm, int inter_mode) {
           drax_string* a = CAST_STRING(peek(vm, 1));
 
           int length = a->length + b->length;
-          char* n_str = (char*) malloc(length);
+          char* n_str = (char*) malloc(length + 1);
           memcpy(n_str, a->chars, a->length);
           memcpy(n_str + a->length, b->chars, b->length);
           n_str[length] = '\0';

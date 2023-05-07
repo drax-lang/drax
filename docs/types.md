@@ -20,13 +20,23 @@ Are reserved for *true* and *false* values
 ### Numbers
 Both integers and floating point numbers are internally represented as double.
 
+Number can be created with some prefixes and have different interpretations like:
+
+    0b: represents a number in binary
+    0o: represents a number in octal
+    0x: represents a number in hexadecimal
+
 Here are some accepted notations:
 
      123
      123.4
      123.456
-
+     0x7b
+     0b1111011
+     0o173
 ---
+
+
 
 ### String
 String is represented internally as a sequence of characters.
