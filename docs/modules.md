@@ -20,9 +20,24 @@ Example:
 
 **get_env**: The get_env function retrieves the value of the environment variable specified by the given name.
 
-
 Example:
 ```drax
   > os.get_env("HOME")
   "/home/drax"
 ```
+
+**mkdir**: try to create a directory for the path passed as an argument
+
+Example:
+```drax
+  > os.mkdir("folder")
+  true
+```
+You can pass a second argument that indicates the permission of the folder.
+
+the second argument must be an octal number.
+
+Example:
+```drax
+  > os.mkdir("folder", 0o777)
+  true
