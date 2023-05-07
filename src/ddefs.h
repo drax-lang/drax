@@ -21,6 +21,8 @@
 
 #define MAX_SIZE_TABLE 0.85
 
+#define MODE_T_MAX ((mode_t)-1)
+
 typedef uint8_t d_byte_def;
 
 /**

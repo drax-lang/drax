@@ -176,9 +176,9 @@ drax_native_module* new_native_module(d_vm* vm, const char* name, int cap) {
 void put_fun_on_module(drax_native_module* m, const drax_native_module_helper helper[], int size) {
   int i;
   for (i = 0; i < size; i++) {
-    m->fn_names[m->count] = helper[i].name;
-    m->fun[m->count] = helper[i].fun;
-    m->arity[m->count] = helper[i].arity;
+    m->fn_names[i] = helper[i].name;
+    m->fun[i] = helper[i].fun;
+    m->arity[i] = helper[i].arity;
   }
   m->count = size;
 }
@@ -187,10 +187,7 @@ low_level_callback* get_fun_on_module(drax_native_module* m, const char* n, int 
   int i;
   for (i = 0; i < m->count; i++) {
     if (strcmp(m->fn_names[i], n) == 0) {
-      if (m->arity[i] != a) {
-        return 0;
-      }
-
+      if (m->arity[i] != a) { continue; }
       return m->fun[i];
     }
   }

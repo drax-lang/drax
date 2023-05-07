@@ -42,6 +42,13 @@ typedef enum dlex_types {
   DTK_EOF
 } dlex_types;
 
+typedef enum d_num_type {
+  DNT_DECIMAL = 0,
+  DNT_HEX,
+  DNT_BIN,
+  DNT_OCT
+} d_num_type;
+
 typedef enum dfstap_errors_type {
   DCE_NONE,
   DCE_LEX,
@@ -56,6 +63,7 @@ typedef struct drax_tokens {
 } drax_tokens;
 
 typedef struct d_token {
+  d_num_type num_type;
   dlex_types type;
   dfstap_errors_type error_type;
   const char* first;

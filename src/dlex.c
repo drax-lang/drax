@@ -58,6 +58,20 @@ static bool is_number(const char c) {
   return false;
 }
 
+static bool is_hex_number(const char c) {
+  if (c == 0) return false;
+
+  char accepted_num[] = "0123456789abcdefABCDEF";
+  
+  size_t i = 0;
+  for (i = 0; i < 23; i++) {
+    if (c == accepted_num[i])
+      return true;
+  }
+  
+  return false;
+}
+
 /* Lexer State Handlers */
 
 void init_lexan(const char* b) {
@@ -89,6 +103,12 @@ static d_token dmake_symbol(dlex_types type) {
   return token;
 }
 
+static d_token dmake_number(d_num_type num_type) {
+  d_token token = dmake_symbol(DTK_NUMBER);
+  token.num_type = num_type;
+  return token;
+}
+
 static d_token make_error(const char* reason) {
   d_token token;
   int size = (int) strlen(reason);
@@ -98,6 +118,22 @@ static d_token make_error(const char* reason) {
   token.length = size;
   token.line = clexs.line;
   return token;
+}
+
+static d_num_type get_number_type(char c) {
+  switch (c) {
+  case 'x':
+    return DNT_HEX;
+
+  case 'b':
+    return DNT_BIN;
+  
+  case 'o':
+    return DNT_OCT;
+  
+  default:
+    return DNT_DECIMAL;
+  }
 }
 
 d_token next_token() {
@@ -128,7 +164,13 @@ d_token next_token() {
       case '7':
       case '8':
       case '9': {
-        while (is_number(CURR_TOKEN())) {
+        d_num_type nt = get_number_type(CURR_TOKEN());
+
+        if (nt > 0) {
+          next_char();
+        }
+
+        while (is_number(CURR_TOKEN()) || (is_hex_number(CURR_TOKEN()) && nt == DNT_HEX)) {
           next_char();
         }
 
@@ -139,7 +181,7 @@ d_token next_token() {
           }
         }
 
-        return dmake_symbol(DTK_NUMBER);
+        return dmake_number(nt);
       }
 
       case '+': {

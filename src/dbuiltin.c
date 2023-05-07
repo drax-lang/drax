@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/stat.h>
 
 #include "dbuiltin.h"
 #include "ddefs.h"
@@ -120,6 +121,53 @@ static drax_value __d_command(d_vm* vm, int* stat) {
   }
 }
 
+static drax_value __d_mkdir(d_vm* vm, int* stat, int permission) {
+  drax_value b = permission ? pop(vm) : DRAX_NIL_VAL;
+  drax_value a = pop(vm);
+
+  if (permission) {
+    if (!IS_NUMBER(b)) {
+      DX_ERROR_FN(stat);
+      return DS_VAL(new_derror(vm, (char *) "Expected number as argument"));
+    }
+  }
+
+  if (!IS_STRING(a)) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char *) "Expected string as argument"));
+  }
+  
+  mode_t mode = 0;
+  if (permission) {
+    double d = CAST_NUMBER(b);
+    mode = (d >= 0 && d <= MODE_T_MAX) ? (mode_t) d : 0;
+    
+    if (mode == 0 && d != 0) {
+      DX_ERROR_FN(stat);
+      return DS_VAL(new_derror(vm, (char *) "Invalid mode"));
+    }
+  } else {
+    mode = umask(0);
+    /**
+     * sets the permissions for creating the directory, ignoring the umask
+     * mode = S_IRWXU | S_IRWXG | S_IRWXO;
+     */
+  }
+
+  int r = mkdir(CAST_STRING(a)->chars, mode);
+
+  if (r == -1) {
+    DX_SUCESS_FN(stat);
+    return DRAX_FALSE_VAL;
+  }
+
+  DX_SUCESS_FN(stat);
+  return DRAX_TRUE_VAL;
+}
+
+static drax_value __d_mkdir1(d_vm* v, int* s) { return __d_mkdir(v, s, 0); }
+static drax_value __d_mkdir2(d_vm* v, int* s) { return __d_mkdir(v, s, 1); }
+
 void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
   reg(vm, "assert", 2, __d_assert);
   reg(vm, "typeof", 1, __d_typeof);
@@ -133,10 +181,12 @@ void create_native_modules(d_vm* vm) {
   m = new_native_module(vm, "os", 4);
   const drax_native_module_helper os_helper[] = {
     {1, "command", __d_command },
-    /*{1, "get_env", __d_get_env },*/
+    {1, "get_env", __d_get_env },
+    {1, "mkdir", __d_mkdir1 },
+    {2, "mkdir", __d_mkdir2 },
   };
 
-  put_fun_on_module(m, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper));
+  put_fun_on_module(m, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(m));
 
 }

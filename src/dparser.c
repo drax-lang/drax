@@ -325,7 +325,34 @@ void process_struct(d_vm* vm, bool v) {
 
 void process_number(d_vm* vm, bool v) {
   UNUSED(v);
-  double value = strtod(parser.prev.first, NULL);
+  double value;
+  long int lv;
+  char* endptr = (char*) parser.prev.first + parser.prev.length;
+
+  switch (parser.prev.num_type) {
+    case DNT_DECIMAL:
+      value = strtod(parser.prev.first, &endptr);
+      break;
+
+    case DNT_BIN:
+      lv = strtol(parser.prev.first + 2, &endptr, 2);
+      value = (double) lv;
+      break;
+
+    case DNT_OCT:
+      lv = strtol(parser.prev.first + 2, &endptr, 8);
+      value = (double) lv;
+      break;
+    
+    case DNT_HEX:
+      lv = strtol(parser.prev.first + 2, &endptr, 16);
+      value = (double) lv;
+      break;
+
+    default:
+      FATAL("Invalid number format.");
+      break;
+  }    
 
   put_pair(vm, OP_PUSH, num_to_draxvalue(value));
 }
