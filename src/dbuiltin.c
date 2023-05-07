@@ -133,7 +133,7 @@ void create_native_modules(d_vm* vm) {
   m = new_native_module(vm, "os", 4);
   const drax_native_module_helper os_helper[] = {
     {1, "command", __d_command },
-    {1, "get_env", __d_get_env },
+    /*{1, "get_env", __d_get_env },*/
   };
 
   put_fun_on_module(m, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper));
