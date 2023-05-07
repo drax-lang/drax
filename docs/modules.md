@@ -17,3 +17,12 @@ Example:
   > os.command("ls /")
   "bin\nboot\ndev\ntmp\nusr\nvar\n"
 ```
+
+**get_env**: The get_env function retrieves the value of the environment variable specified by the given name.
+
+
+Example:
+```drax
+  > os.get_env("HOME")
+  "/home/drax"
+```

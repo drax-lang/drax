@@ -15,7 +15,8 @@ static unsigned long generate_hash(const char* str, size_t size) {
   return hashval % size;
 }
 
-/* Return 64-bit FNV-1a hash
+/**
+ * Return 64-bit FNV-1a hash
  * Generate hash key
  */
 size_t fnv1a_hash(const char* key, int len) {
