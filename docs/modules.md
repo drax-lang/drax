@@ -41,3 +41,4 @@ Example:
 ```drax
   > os.mkdir("folder", 0o777)
   true
+```
