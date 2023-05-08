@@ -174,6 +174,10 @@ d_token next_token() {
           next_char();
         }
 
+        if (CURR_TOKEN() == '.' && nt != DNT_DECIMAL) {
+          return make_error("Unexpected number.");
+        }
+
         if (CURR_TOKEN() == '.' && is_number(check_next())) {
           next_char();
           while (is_number(CURR_TOKEN())) {
