@@ -1,0 +1,14 @@
+r = os.command("echo Hello Drax")
+
+assert(r == "Hello Drax\n", "os error: invad return")
+
+### env var test
+
+r = os.get_env("MODE")
+
+assert(r == "test", "os error: fail to get MODE env")
+
+r = os.get_env("_NOME_TEST")
+
+assert(r == nil, "os error: unspected env val on os")
+

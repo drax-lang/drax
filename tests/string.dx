@@ -1,0 +1,40 @@
+fun say(name) do
+    name
+end
+
+fun say(name, last) do
+    name ++ " " ++ last
+end
+
+assert(say("one arg") == "one arg", "os error: say one arg")
+
+expected = (say("Hello", "World"))
+
+assert(expected == "Hello World", "os error: Concat with nested functions")
+
+assert("1234".to_number() == 1234, "os error: unspected return to_number with cmp")
+
+assert(typeof("1234".to_number()) == typeof(1234), "os error: unspected return to_number with cmp")
+
+v = "foo\nbar\nbaz".split("\n")
+
+assert(typeof(v) == "list", "os error: failt split return type")
+
+assert("1234".to_number() == 1234, "os error: fail to compare to_number return value")
+
+### check index
+
+assert("foo"[0] == "f", "os error: array indexing error to string case 1")
+
+assert("bar"[-1] == "r", "os error: array indexing error to string case 2")
+
+assert("bar"[10] == "", "os error: array indexing error to string case 3")
+
+### teste with definitions
+
+s = "bar"[-10]
+assert(s == "", "os error: array indexing error to string case 4")
+
+assert("process \" ".length == 10, "os error: fail to scape string")
+
+print("String done!")

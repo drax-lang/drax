@@ -1,0 +1,15 @@
+f = {name: "drax"}
+
+assert(f.name == "drax", "frame error: invalid name in field")
+
+assert(f.foo == nil, "frame error: invalid name in field")
+
+fun get_full_name(f) do
+    f.first ++ " " ++ f.last
+end
+
+v = get_full_name({first: "drax", last: "lang"})
+
+assert(v == "drax lang", "frame error: get field by function")
+
+print("Frames done!")

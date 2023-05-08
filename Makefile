@@ -75,5 +75,8 @@ run:
 config:
 	mkdir bin
 
+test:
+	sh tests/run-test.sh
+
 clean:
 	rm -rf ./bin/$(APP)

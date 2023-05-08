@@ -1,0 +1,14 @@
+ll = [1, 2, 3, "string", [1,2,3]]
+
+assert(ll.length == 5, "list error: length error")
+
+assert(ll[3] == "string", "list error: array indexing")
+
+assert(ll[-3] == 3, "list error: array indexing negative")
+
+assert([1,2,[42]][2][0] == 42, "list error: nested list access")
+
+assert([1,2,[42, [123]]][2][1][0] == 123, "list error: nested big 3 level access ")
+
+print("List done!")
+

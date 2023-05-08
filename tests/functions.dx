@@ -1,0 +1,44 @@
+fun calc(num) do
+    if (num > 100) do
+        num
+    else
+        calc(num + 1)
+    end
+end
+
+expected = calc(1)
+
+assert(expected == 101, "function error: recursion sum")
+
+###  empty function
+
+fun empty() do end
+
+expected = empty()
+
+assert(expected == nil, "function error: unspected return")
+
+### scope test
+
+global = "abc"
+
+fun change() do
+    assert(global == "abc", "function error: fail to get global definition")
+    global = "cba"
+    assert(global == "cba", "function error: fail to get local definition")
+end
+
+change()
+
+assert(global == "abc", "function error: security fail, local writting without permission")
+
+fun say(n) do n end
+
+assert(say("drax") == say("drax"), "function error: wrap fail")
+
+assert(
+    (say("drax") == (say("drax") == say("drax"))) == (say("drax") == (say("drax") == say("drax"))),
+    "function error: nested"
+)
+
+print("Functions done!")
