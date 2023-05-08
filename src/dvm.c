@@ -254,6 +254,8 @@ static int do_dcall(d_vm* vm, int inside) {
     if (IS_LIST(m)) {
       return dstr_handle_list_call(vm, n, a, m);
     }
+
+    return_if_not_found_error(0, n, a);
   }
 
   drax_value v = get_fun_table(vm->envs->native, n, a);
@@ -270,6 +272,10 @@ static int do_dcall(d_vm* vm, int inside) {
     drax_value result = nf(vm, &scs);
 
     return_if_native_call_error(scs, result, e->chars);
+
+    /**
+     * Remove the function name from the stack.
+     */
     pop(vm);
     push(vm, result);
     return 1;
@@ -282,6 +288,12 @@ static int do_dcall(d_vm* vm, int inside) {
   callstack_push(vm, vm->active_instr);
   vm->active_instr = f->instructions;
   vm->ip = f->instructions->values;
+
+  /**
+   * In this case, the function name is 
+   * only removed from the stack during the return,
+   * because we can have nested calls.
+   */
 
   return 1;
 }
@@ -513,6 +525,14 @@ static void __start__(d_vm* vm, int inter_mode) {
       }
       VMCase(OP_CALL_I) {
         if (do_dcall(vm, 1) == 0) return;
+        drax_value t = pop(vm);
+
+        /**
+         * Remove the function name and struct 
+         * from the stack.
+         */
+        pop_times(vm, 2);
+        push(vm, t);
         break;
       }
       VMCase(OP_FUN) {
