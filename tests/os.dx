@@ -1,6 +1,22 @@
-r = os.command("echo Hello Drax")
+### cmd test
 
-assert(r == "Hello Drax\n", "os error: invad return")
+r = os.cmd("echo Hello Drax")
+
+assert(r == "Hello Drax\n", "os error: invalid return")
+
+### cmd with status test
+
+r = os.cmd_with_status("echo Hello Drax")
+
+assert(r[0] == 0, "os error: invalid return")
+
+assert(r[1] == "Hello Drax\n", "os error: invalid return")
+
+r = os.cmd_with_status("foo_bar")
+
+assert(r[0] == 127, "os error: invalid return (foo_bar)")
+
+assert(r[1] == "", "os error: invalid return (foo_bar)")
 
 ### env var test
 

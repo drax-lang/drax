@@ -19,6 +19,18 @@
 
 #define DX_ERROR_FN(v) *v = 0;
 
+#define return_if_is_not_string(v, s) \
+  if (!IS_STRING(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected string as argument")); \
+  }
+
+#define return_if_is_not_number(v, s) \
+  if (!IS_NUMBER(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected number as argument")); \
+  }
+
 static drax_value __d_assert(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
   drax_value a = pop(vm);
@@ -45,11 +57,7 @@ static drax_value __d_assert(d_vm* vm, int* stat) {
 static drax_value __d_sleep(d_vm* vm, int* stat) { 
   UNUSED(vm);
   drax_value val = pop(vm);
-
-  if (!(IS_NUMBER(val))) {
-    DX_ERROR_FN(stat);
-    return DS_VAL(new_derror(vm, (char *) "Expected number as argument"));
-  }
+  return_if_is_not_number(val, stat)
   
   double t = CAST_NUMBER(val);
   dx_sleep(t);
@@ -85,10 +93,7 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
 static drax_value __d_get_env(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
 
-  if (!IS_STRING(a)) {
-    DX_ERROR_FN(stat);
-    return DS_VAL(new_derror(vm, (char *) "Expected string as argument"));
-  }
+  return_if_is_not_string(a, stat);
 
   char* env = getenv(CAST_STRING(a)->chars);
   if (env == NULL) {
@@ -100,42 +105,46 @@ static drax_value __d_get_env(d_vm* vm, int* stat) {
   MSR(vm, env);
 }
 
-static drax_value __d_command(d_vm* vm, int* stat) {
+static drax_value __d_cmd(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
 
-  if (!IS_STRING(a)) {
-    DX_ERROR_FN(stat);
-    return DS_VAL(new_derror(vm, (char *) "Expected string as argument"));
-  }
+  return_if_is_not_string(a, stat);
 
   char buf[4096];
-  int bytes_read = d_command(CAST_STRING(a)->chars, buf, sizeof(buf));
-  if (bytes_read == -1) {
+  double status = (double) d_command(CAST_STRING(a)->chars, buf, sizeof(buf));
+  char* r = replace_special_char('\n', 'n', buf);
+
+  if (status != 0) {
     DX_ERROR_FN(stat);
     return DS_VAL(new_derror(vm, (char *) "Fail to execute command"));
-  } else {
-    buf[bytes_read] = '\0';
-    char* r = replace_special_char('\n', 'n', buf);
-    DX_SUCESS_FN(stat);
-    MSR(vm, r);
   }
+  DX_SUCESS_FN(stat);
+  return DS_VAL(new_dstring(vm, r, strlen(r)));
+}
+
+static drax_value __d_cmd_with_status(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_string(a, stat);
+
+  char buf[4096];
+  double status = (double) d_command(CAST_STRING(a)->chars, buf, sizeof(buf));
+  char* r = replace_special_char('\n', 'n', buf);
+
+  drax_list* l = new_dlist(vm, 2);
+  put_value_dlist(l, AS_VALUE(status));
+  put_value_dlist(l, DS_VAL(new_dstring(vm, r, strlen(r))));
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l);
 }
 
 static drax_value __d_mkdir(d_vm* vm, int* stat, int permission) {
   drax_value b = permission ? pop(vm) : DRAX_NIL_VAL;
   drax_value a = pop(vm);
 
-  if (permission) {
-    if (!IS_NUMBER(b)) {
-      DX_ERROR_FN(stat);
-      return DS_VAL(new_derror(vm, (char *) "Expected number as argument"));
-    }
-  }
+  if (permission) { return_if_is_not_number(b, stat); }
 
-  if (!IS_STRING(a)) {
-    DX_ERROR_FN(stat);
-    return DS_VAL(new_derror(vm, (char *) "Expected string as argument"));
-  }
+  return_if_is_not_string(a, stat);
   
   mode_t mode = 0;
   if (permission) {
@@ -180,7 +189,8 @@ void create_native_modules(d_vm* vm) {
   
   m = new_native_module(vm, "os", 4);
   const drax_native_module_helper os_helper[] = {
-    {1, "command", __d_command },
+    {1, "cmd", __d_cmd },
+    {1, "cmd_with_status", __d_cmd_with_status },
     {1, "get_env", __d_get_env },
     {1, "mkdir", __d_mkdir1 },
     {2, "mkdir", __d_mkdir2 },

@@ -30,6 +30,7 @@ char* replace_special_char(char special, char new, char* str) {
 #if defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 199309L
 int d_command(const char* command, char* output, int output_size) {
     FILE *pipe = popen(command, "r");
+    int status;
 
     if (pipe == NULL) {
       printf("Fail to create pipe\n");
@@ -50,10 +51,10 @@ int d_command(const char* command, char* output, int output_size) {
       memcpy(output + total_bytes_read, buf, bytes_to_copy);
       total_bytes_read += bytes_to_copy;
     }
+    output[total_bytes_read] = '\0';
+    status = pclose(pipe);
 
-    pclose(pipe);
-
-    return total_bytes_read;
+    return WEXITSTATUS(status);
 }
 #else
 int d_command(const char* command, char* output, int output_size) {
@@ -91,15 +92,12 @@ int d_command(const char* command, char* output, int output_size) {
         memcpy(output + total_bytes_read, buf, bytes_read);
         total_bytes_read += bytes_read;
       }
+      output[total_bytes_read] = '\0';
 
       int status;
       waitpid(pid, &status, 0);
 
-      if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-        return -1;
-      }
-
-      return total_bytes_read;
+      return WEXITSTATUS(status);
     }
 }
 #endif
