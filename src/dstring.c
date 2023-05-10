@@ -13,7 +13,7 @@ static int dstr_to_number(d_vm* vm, int a, drax_string* ds) {
 }
 
 #if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
-static char* strndup(const char *s, size_t n) {
+char* strndup(const char *s, size_t n) {
   char *p;
   size_t len = strlen(s);
 

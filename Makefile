@@ -20,6 +20,7 @@ FILES= ./src/dvm.c \
 	   ./src/dstring.c \
 	   ./src/dlist.c \
 	   ./src/dgc.c \
+	   ./src/deval.c \
 	   ./src/mods/d_mod_os.c
 
 DEBUGF= -ggdb \

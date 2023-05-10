@@ -7,13 +7,10 @@
 #include "dbuiltin.h"
 #include "dtypes.h"
 #include "dgc.h"
+#include "deval.h"
 
 #include "dstring.h"
 #include "dlist.h"
-
-/**
- * Helpers
-*/
 
 /* validation only number */
 #define binary_op(vm, op) \
@@ -62,85 +59,6 @@ static d_instructions* callstack_pop(d_vm* vm) {
   if (vm->call_stack->count == 0) return 0;
   vm->call_stack->count--;
   return vm->call_stack->values[vm->call_stack->count];
-}
-
-/**
- * Print Helpers
-*/
-
-static void print_drax(drax_value value, int formated);
-
-static void dbreak_line() { putchar('\n'); }
-
-static void print_list(drax_list* l) {
-  putchar('[');
-  int i;
-  for (i = 0; i < l->length; i++) {
-    print_drax(l->elems[i], 1);
-
-    if ((i+1) < l->length) printf(", ");
-  }
-  putchar(']');
-}
-
-static void print_frame(drax_frame* f) {
-  putchar('{');
-  int i;
-  for (i = 0; i < f->length; i++) {
-    printf("%s: ", f->literals[i]);
-    print_drax(f->values[i], 1);
-
-    if ((i+1) < f->length) printf(", ");
-  }
-  putchar('}');
-}
-
-static void print_d_struct(drax_value value, int formated) {
-  switch (DRAX_STYPEOF(value)) {
-    case DS_LIST:
-      print_list(CAST_LIST(value));
-      break;
-
-    case DS_FRAME:
-      print_frame(CAST_FRAME(value));
-      break;
-
-    case DS_FUNCTION:
-      printf("<function>");
-      break;
-
-    case DS_NATIVE:
-      printf("<function:native>");
-      break;
-
-    case DS_MODULE:
-      printf("<module>");
-      break;
-
-    case DS_STRING:
-      printf(formated ? "\"%s\"" : "%s", CAST_STRING(value)->chars);
-      break;
-
-    case DS_ERROR:
-      printf("error");
-      break;
-  }
-}
-
-static void drax_print_error(const char* format, va_list args) {
-  vfprintf(stderr, format, args);
-}
-
-static void print_drax(drax_value value, int formated) {
-  if (IS_BOOL(value)) {
-    printf(CAST_BOOL(value) ? "true" : "false");
-  } else if (IS_NIL(value)) {
-    printf("nil");
-  } else if (IS_NUMBER(value)) {
-    printf("%g", CAST_NUMBER(value));
-  } else if (IS_STRUCT(value)) {
-    print_d_struct(value, formated);
-  }
 }
 
 /**
