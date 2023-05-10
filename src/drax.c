@@ -34,6 +34,7 @@ static int interactive_shell(d_vm* v) {
 }
 
 static int process_file(d_vm* v, char** argv) {
+  int stat = 0;
   char * content = 0;
   char * path = argv[1];
 
@@ -43,13 +44,15 @@ static int process_file(d_vm* v, char** argv) {
   }
 
   if (__build__(v, content)) {
-    __run__(v, 0);
+    stat = __run__(v, 0);
+  } else {
+    stat = 1;
   }
 
   __reset__(v);
   free(content);
 
-  return 0;
+  return stat;
 }
 
 int main(int argc, char** argv) {

@@ -94,6 +94,6 @@ void raise_drax_error(d_vm* vm, const char* format, ...);
 
 void __reset__(d_vm* vm);
 
-void __run__(d_vm* curr, int inter_mode);
+int __run__(d_vm* curr, int inter_mode);
 
 #endif

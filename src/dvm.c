@@ -16,7 +16,7 @@
 #define binary_op(vm, op) \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
           raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
-          return; \
+          return 1; \
         } \
         double b = AS_NUMBER(pop(vm)); \
         double a = AS_NUMBER(pop(vm)); \
@@ -216,13 +216,13 @@ static int do_dcall(d_vm* vm, int inside) {
   return 1;
 }
 
-static void __start__(d_vm* vm, int inter_mode) {
+static int __start__(d_vm* vm, int inter_mode) {
 
   #define dbin_bool_op(op, v) \
       do { \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
           raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
-          return; \
+          return 1; \
         } \
         double b = CAST_NUMBER(pop(vm)); \
         double a = CAST_NUMBER(pop(vm)); \
@@ -293,7 +293,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_GET_G_ID) {
-        if(get_definition(vm, 0) == 0) { return; }
+        if(get_definition(vm, 0) == 0) { return 1; }
 
         break;
       }
@@ -304,7 +304,7 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_GET_L_ID) {
-        if(get_definition(vm, 1) == 0) { return; }
+        if(get_definition(vm, 1) == 0) { return 1; }
 
         break;
       }
@@ -321,12 +321,12 @@ static void __start__(d_vm* vm, int inter_mode) {
         drax_value val;
 
         if(IS_STRING(f)) {
-          if (dstr_handle_str_call(vm, (char*) k, 0, f) == 0) { return; };
+          if (dstr_handle_str_call(vm, (char*) k, 0, f) == 0) { return 1; };
           break;
         }
 
         if(IS_LIST(f)) {
-          if (dstr_handle_list_call(vm, (char*) k, 0, f) == 0) { return; };
+          if (dstr_handle_list_call(vm, (char*) k, 0, f) == 0) { return 1; };
           break;
         }
 
@@ -385,7 +385,7 @@ static void __start__(d_vm* vm, int inter_mode) {
           push(vm, DS_VAL(result));
         } else{
           raise_drax_error(vm, "Unspected type");
-          return;
+          return 1;
         }
         break;
       }
@@ -413,7 +413,7 @@ static void __start__(d_vm* vm, int inter_mode) {
       VMCase(OP_NEG) {
         if (!IS_NUMBER(peek(vm, 0))) {
           raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP);
-          return;
+          return 1;
         }
         
         push(vm, NUMBER_VAL(-CAST_NUMBER(pop(vm))));
@@ -438,11 +438,11 @@ static void __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_CALL) {
-        if (do_dcall(vm, 0) == 0) return;
+        if (do_dcall(vm, 0) == 0) return 1;
         break;
       }
       VMCase(OP_CALL_I) {
-        if (do_dcall(vm, 1) == 0) return;
+        if (do_dcall(vm, 1) == 0) return 1;
         drax_value t = pop(vm);
 
         /**
@@ -471,16 +471,16 @@ static void __start__(d_vm* vm, int inter_mode) {
         /* check if is stopVM or exit */
 
         if (inter_mode) {
-          if (peek(vm, 0) == 0) return;
+          if (peek(vm, 0) == 0) return 0;
 
           print_drax(pop(vm), inter_mode);
           dbreak_line();
         }
-        return;
+        return 0;
       }
       default: {
         printf("runtime error.\n");
-        return;
+        return 1;
       }
     }
   }
@@ -561,7 +561,7 @@ d_vm* createVM() {
   return vm;
 }
 
-void __run__(d_vm* vm, int inter_mode) {
+int __run__(d_vm* vm, int inter_mode) {
  __init__(vm);
- __start__(vm, inter_mode);
+ return __start__(vm, inter_mode);
 }
