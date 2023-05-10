@@ -5,10 +5,7 @@ Drax is a lightweight, dynamically typed programming language focused on integra
 ### Documentation
 drax documentation is available in [docs](./docs/index.md)
 
-
 ### Contributing
-
-Must be installed libedit
 
 Run initial environment settings with:
 
@@ -20,6 +17,11 @@ To compile run:
 
 ```
 make
+```
+
+if your distribution doesn't support libedit you can compile the project without it using
+```
+make LIGHT=1
 ```
 
 After compiling it will generate the final binary in the `/bin` directory, to be executed by Makefile execute:

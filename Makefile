@@ -50,9 +50,13 @@ FLAGS=  -std=c99 \
 		$(LIBS) \
 		$(OUTBIN)
 
-DRAX_BUILD_FULL= \
-		-D_B_BUILF_FULL \
-		-ledit
+ifeq ($(LIGHT), 1)
+    DRAX_BUILD_FULL= 
+else
+    DRAX_BUILD_FULL= \
+	    -D_B_BUILF_FULL \
+	    -ledit
+endif
 
 DEFAULT_BUILD = \
 		$(CC) \
