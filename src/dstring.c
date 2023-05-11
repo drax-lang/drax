@@ -5,9 +5,32 @@
  * Connvert string to number
  * 
  *  "123".to_number() => 123
+ *  "0b1111".to_number() => 15
+ *  "0xff".to_number() => 255
+ *  "0o777".to_number() => 511
  */
 static int dstr_to_number(d_vm* vm, int a, drax_string* ds) {
   args_fail_required_size(a, 0, "this function does not expect arguments");
+
+  if (ds->length > 2 && ds->chars[0] == '0') {
+    char* endptr = (char*) ds->chars + ds->length;
+
+    if (ds->chars[1] == 'x') {
+      push(vm, AS_VALUE((double) strtol(ds->chars, &endptr, 16)));
+      return 1;
+    }
+
+    if (ds->chars[1] == 'b') {
+      push(vm, AS_VALUE((double) strtol(ds->chars + 2, &endptr, 2)));
+      return 1;
+    }
+
+    if (ds->chars[1] == 'o') {
+      push(vm, AS_VALUE((double) strtol(ds->chars + 2, &endptr, 8)));
+      return 1;
+    }
+  }
+
   push(vm, AS_VALUE(strtod(ds->chars, NULL)));
   return 1;
 }

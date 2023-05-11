@@ -16,6 +16,16 @@ assert("1234".to_number() == 1234, "os error: unspected return to_number with cm
 
 assert(typeof("1234".to_number()) == typeof(1234), "os error: unspected return to_number with cmp")
 
+assert("0xff".to_number() == 255, "os error: unspected return to_number hex")
+assert("0xff".to_number() == 0xff, "os error: unspected return to_number hex raw")
+
+assert("0o765".to_number() == 501, "os error: unspected return to_number octal")
+assert("0o765".to_number() == 0o765, "os error: unspected return to_number octal raw")
+
+assert("0b1111011".to_number() == 123, "os error: unspected return to_number binary")
+assert("0b1111011".to_number() == 0b1111011, "os error: unspected return to_number binary raw")
+
+
 v = "foo\nbar\nbaz".split("\n")
 
 assert(typeof(v) == "list", "os error: failt split return type")
