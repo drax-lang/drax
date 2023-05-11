@@ -58,3 +58,14 @@ Example:
   > os.mkdir("folder", 0o777)
   true
 ```
+
+### core
+the core module offers functions that allow you to manipulate the drax virtual machine
+
+**exit**: terminates the vm process, this function receives the error status as an argument
+
+Example:
+```drax
+  > core.exit(1)
+```
+
