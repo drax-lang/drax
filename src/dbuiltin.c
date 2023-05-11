@@ -199,7 +199,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * OS module
   */
-  drax_native_module* mos = new_native_module(vm, "os", 4);
+  drax_native_module* mos = new_native_module(vm, "os", 5);
   const drax_native_module_helper os_helper[] = {
     {1, "cmd", __d_cmd },
     {1, "cmd_with_status", __d_cmd_with_status },
@@ -214,7 +214,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * Core module
   */
-  drax_native_module* mcore = new_native_module(vm, "core", 4);
+  drax_native_module* mcore = new_native_module(vm, "core", 1);
   const drax_native_module_helper core_helper[] = {
     {1, "exit", __d_exit },
   };

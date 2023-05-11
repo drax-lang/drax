@@ -28,7 +28,6 @@ static void reset_locals() {
 
   free(parser.locals->vars);
   free(parser.locals);
-  parser.locals->length = 0;
   parser.locals = new_locals();
 }
 
@@ -39,7 +38,7 @@ static void put_local(char* name) {
   }
 
   size_t size = strlen(name);
-  char* new_name = (char*) malloc(sizeof(char) * size);
+  char* new_name = (char*) malloc(sizeof(char) * size + 1);
   strcpy(new_name, name);
   new_name[size] = '\0';
 
@@ -508,8 +507,10 @@ static void fun_declaration(d_vm* vm) {
 
   int i;
   for (i = f->arity; i > 0 ; i--) {
-    char* s = (char*) malloc(sizeof(char) * strlen(stack_args[i - 1]));
+    size_t sz = strlen(stack_args[i - 1]);
+    char* s = (char*) malloc(sizeof(char) * (sz + 1));
     strcpy(s, stack_args[i - 1]);
+    s[sz] = '\0';
     put_pair(vm, OP_SET_L_ID, (drax_value) s);
     put_local(stack_args[i - 1]);
   }
