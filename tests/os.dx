@@ -28,9 +28,19 @@ r = os.get_env("_NOME_TEST")
 
 assert(r == nil, "os error: unspected env val on os")
 
-
 ### exit
 
 expect = os.cmd_with_status("./bin/drax ./tests/os_exit.dx")
 
 assert(expect[0] == 42, "os error: invalid return (exit)")
+
+### call module inside function
+
+fun get_env_in_fn() do
+    v = os.get_env("MODE")
+    assert(v == "test", "os error: fail to get MODE env inside wrapper")
+end
+
+fun wrapper() do get_env_in_fn() end
+
+wrapper()

@@ -12,4 +12,17 @@ v = get_full_name({first: "drax", last: "lang"})
 
 assert(v == "drax lang", "frame error: get field by function")
 
+fun get_frame() do
+    {
+        name: "drax",
+        sub: {
+            key: "lang"
+        }
+    }
+end
+
+assert(get_frame().name == "drax", "frame error: get field by function")
+
+assert(get_frame().sub.key == "lang", "frame error: get field by function")
+
 print("Frames done!")

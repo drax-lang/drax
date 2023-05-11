@@ -12,6 +12,7 @@ typedef struct d_vm d_vm;
 #define IS_ST_TYPE(v, t)  (IS_STRUCT(v) && DRAX_STYPEOF(v) == t)
 
 #define IS_ERROR(v)       IS_ST_TYPE(v, DS_ERROR)
+#define IS_FRAME(v)       IS_ST_TYPE(v, DS_FRAME)
 #define IS_LIST(v)        IS_ST_TYPE(v, DS_LIST)
 #define IS_BLOCK(v)       IS_ST_TYPE(v, DS_BLOCK)
 #define IS_FUNCTION(v)    IS_ST_TYPE(v, DS_FUNCTION)

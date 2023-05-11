@@ -304,6 +304,7 @@ static int __start__(d_vm* vm, int inter_mode) {
       VMCase(OP_SET_L_ID) {
         drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
+        /* dgc_swap_locals(vm->envs->local); */
         put_local_table(vm->envs->local, k, v);
         break;
       }

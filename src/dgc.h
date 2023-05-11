@@ -9,6 +9,8 @@
 #include "dstructs.h"
 #include "dvm.h"
 
+int dgc_swap_locals(d_local_var_table* t);
+
 int dgc_swap(d_vm* vm);
 
 #endif

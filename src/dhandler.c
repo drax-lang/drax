@@ -146,6 +146,7 @@ drax_value get_fun_table(d_fun_table* t, char* key, uint8_t arity) {
 d_local_var_table* new_local_table() {
   d_local_var_table* t = (d_local_var_table*) malloc(sizeof(d_local_var_table));
   t->count = 0;
+  t->peak = 0;
   t->limit = MAX_LOCAL_INSTRUCTIONS;
   t->array = (d_local_var_node**) malloc(sizeof(d_local_var_node*) * MAX_LOCAL_INSTRUCTIONS);
 
@@ -162,6 +163,7 @@ void put_local_table(d_local_var_table* t, char* name, drax_value value) {
   node->key = fnv1a_hash(name, strlen(name));
   node->value = value;
   t->array[t->count++] = node;
+  t->peak++;
 }
 
 int get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value) {
