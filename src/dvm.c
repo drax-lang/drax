@@ -66,13 +66,17 @@ static d_instructions* callstack_pop(d_vm* vm) {
 */
 
 static void trace_error(d_vm* vm) {
+  int last_line = -1;
   #define DO_TRACE_ERROR_ROUTINE() \
     d_instructions* instr = vm->active_instr; \
     if (instr) { \
       int idx = vm->ip - instr->values -1; \
+      if (instr->lines[idx] != last_line) {\
       fprintf(stderr, TRACE_DESCRIPTION_LINE, instr->lines[idx]); \
-      putchar('\n'); \
+      putchar('\n');} \
+      last_line = instr->lines[idx]; \
     }
+
   while (CURR_CALLSTACK_SIZE(vm) > 0) {
     DO_TRACE_ERROR_ROUTINE();
     back_scope(vm);
