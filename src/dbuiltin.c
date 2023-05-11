@@ -183,11 +183,23 @@ void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
   reg(vm, "sleep", 1, __d_sleep);
 }
 
+/**
+ * Core module
+*/
+
+static drax_value __d_exit(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_number(a, stat);
+  int ext_stat = (int) CAST_NUMBER(a);
+  exit(ext_stat);
+}
+
 void create_native_modules(d_vm* vm) {
-  UNUSED(vm);
-  drax_native_module* m;
-  
-  m = new_native_module(vm, "os", 4);
+  UNUSED(vm);  
+  /**
+   * OS module
+  */
+  drax_native_module* mos = new_native_module(vm, "os", 4);
   const drax_native_module_helper os_helper[] = {
     {1, "cmd", __d_cmd },
     {1, "cmd_with_status", __d_cmd_with_status },
@@ -196,7 +208,18 @@ void create_native_modules(d_vm* vm) {
     {2, "mkdir", __d_mkdir2 },
   };
 
-  put_fun_on_module(m, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper)); 
-  put_mod_table(vm->envs->modules, DS_VAL(m));
+  put_fun_on_module(mos, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(mos));
+
+  /**
+   * Core module
+  */
+  drax_native_module* mcore = new_native_module(vm, "core", 4);
+  const drax_native_module_helper core_helper[] = {
+    {1, "exit", __d_exit },
+  };
+
+  put_fun_on_module(mcore, core_helper, sizeof(core_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(mcore));
 
 }

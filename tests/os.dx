@@ -28,3 +28,9 @@ r = os.get_env("_NOME_TEST")
 
 assert(r == nil, "os error: unspected env val on os")
 
+
+### exit
+
+expect = os.cmd_with_status("./bin/drax ./tests/os_exit.dx")
+
+assert(expect[0] == 42, "os error: invalid return (exit)")
