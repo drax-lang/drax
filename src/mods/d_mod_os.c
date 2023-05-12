@@ -1,4 +1,5 @@
 #include "d_mod_os.h"
+#include "../dstring.h"
 
 #define BUF_SIZE 4096
 
@@ -29,7 +30,9 @@ char* replace_special_char(char special, char new, char* str) {
 
 #if defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 199309L
 int d_command(const char* command, char* output, int output_size) {
-  FILE *pipe = popen(command, "r");
+  char* tmpc = str_format_output(command);
+  FILE *pipe = popen(tmpc, "r");
+  free(tmpc);
   int status;
 
   if (pipe == NULL) {
@@ -76,7 +79,9 @@ int d_command(const char* command, char* output, int output_size) {
     close(pipe_fd[0]);
     dup2(pipe_fd[1], STDOUT_FILENO);
     close(pipe_fd[1]);
-    execl("/bin/sh", "sh", "-c", command, NULL);
+    char* tmpc = str_format_output(command);
+    execl("/bin/sh", "sh", "-c", tmpc, NULL);
+    free(tmpc);
     return -1;
   } else {
     close(pipe_fd[1]);

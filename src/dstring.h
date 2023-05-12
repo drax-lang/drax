@@ -17,6 +17,8 @@ char* strndup(const char *s, size_t n);
 
 #endif
 
+char* str_format_output(const char* str);
+
 int dstr_handle_str_call(d_vm* vm, char* n, int a, drax_value o);
 
 #endif

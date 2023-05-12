@@ -29,30 +29,11 @@ static void print_frame(drax_frame* f) {
 
 static void print_string(const char* str, int formated) {
   if (!formated) {
-    char* tmpstr = strndup(str, strlen(str));
-
+    char* tmpstr = str_format_output(str);
     if (tmpstr == NULL) {
-      printf("error");
+      printf("runtime error: cannot format string");
       return;
     }
-
-    int i, j;
-    for (i = 0, j = 0; tmpstr[i] != '\0'; i++, j++) {
-      if (tmpstr[i] == '\\') {
-        if (tmpstr[i+1] == 'n') {
-          tmpstr[j] = '\n';
-          i++;
-        } else if (tmpstr[i+1] == '\\') {
-          tmpstr[j] = '\\';
-          i++;
-        } else {
-          tmpstr[j] = tmpstr[i];
-        }
-      } else {
-        tmpstr[j] = tmpstr[i];
-      }
-    }
-    tmpstr[j] = '\0';
     printf(formated ? "\"%s\"" : "%s", tmpstr);
   } else {
     printf(formated ? "\"%s\"" : "%s", str);

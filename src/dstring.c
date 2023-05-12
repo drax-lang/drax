@@ -49,6 +49,32 @@ char* strndup(const char *s, size_t n) {
   return p;
 }
 #endif
+
+char* str_format_output(const char* str) {
+  char* tstr = strndup(str, strlen(str));
+
+  if (tstr == NULL) return NULL;
+
+  int i, j;
+  for (i = 0, j = 0; tstr[i] != '\0'; i++, j++) {
+    if (tstr[i] == '\\') {
+      if (tstr[i+1] == 'n') {
+        tstr[j] = '\n';
+        i++;
+      } else if (tstr[i+1] == '\\') {
+        tstr[j] = '\\';
+        i++;
+      } else {
+        tstr[j] = tstr[i];
+      }
+    } else {
+      tstr[j] = tstr[i];
+    }
+  }
+  tstr[j] = '\0';
+  return tstr;
+}
+
 /**
  * returns a list of strings split by the delimiter
  * 
