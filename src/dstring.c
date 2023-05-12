@@ -1,8 +1,5 @@
 #include "dstring.h"
 #include "ddefs.h"
-#include <stdlib.h>
-#include <stdio.h>
-#include <ctype.h>
 
 /**
  * Connvert string to number

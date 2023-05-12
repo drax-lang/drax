@@ -7,6 +7,8 @@
 #define __D_MOD_STRING
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <ctype.h>
 
 #include "dvm.h"
 #include "dstructs.h"
