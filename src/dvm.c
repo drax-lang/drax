@@ -136,7 +136,7 @@ static int get_definition(d_vm* vm, int is_local) {
  * 2: Proceed without clearing the stack
  */
 
-static int do_dcall(d_vm* vm, int inside) {
+static int do_dcall(d_vm* vm, int inside, int global) {
   #define return_if_not_found_error(v, n, a) \
     if (v == 0) { \
     raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
@@ -150,6 +150,15 @@ static int do_dcall(d_vm* vm, int inside) {
       return 0; \
     }
 
+  #define process_lambda_function(anf) \
+      if (anf->arity != (int) a) { \
+        raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+        return 0; }\
+      vm->active_instr->_ip = vm->ip;\
+      callstack_push(vm, vm->active_instr);\
+      vm->active_instr = anf->instructions;\
+      vm->ip = anf->instructions->values;
+
   /* DEBUG( printf(" --do_dcall\n") ); */
 
   drax_value a = GET_VALUE(vm);
@@ -162,6 +171,17 @@ static int do_dcall(d_vm* vm, int inside) {
 
   char* n = (char*) (peek(vm, a));
 
+  if (
+    (get_mod_table(vm->envs->modules, n, &v) == 0) &&
+    ((global) || (get_local_table(vm->envs->local, vm->active_instr->local_range, n, &v) == 0))
+  ) {
+    if(get_var_table(vm->envs->global, n, &v) == 1) {
+      drax_function* af = CAST_FUNCTION(v);
+      process_lambda_function(af);
+      return 2;
+    }
+  }
+
   if (inside) {
     if (IS_FRAME(m)) {
       if(get_value_dframe(CAST_FRAME(m), (char*) n, &v) == -1) {
@@ -170,16 +190,7 @@ static int do_dcall(d_vm* vm, int inside) {
       }
 
       drax_function* af = CAST_FUNCTION(v);
-
-      if (af->arity != (int) a) {
-        raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
-        return 0;
-      }
-
-      vm->active_instr->_ip = vm->ip;
-      callstack_push(vm, vm->active_instr);
-      vm->active_instr = af->instructions;
-      vm->ip = af->instructions->values;
+      process_lambda_function(af)
       return 2;
     }
 
@@ -232,10 +243,7 @@ static int do_dcall(d_vm* vm, int inside) {
   /* Drax Function */
   drax_function* f = CAST_FUNCTION(v);
 
-  vm->active_instr->_ip = vm->ip;
-  callstack_push(vm, vm->active_instr);
-  vm->active_instr = f->instructions;
-  vm->ip = f->instructions->values;
+  process_lambda_function(f);
 
   /**
    * In this case, the function name is 
@@ -468,12 +476,16 @@ static int __start__(d_vm* vm, int inter_mode) {
       VMCase(OP_LOOP) {
         break;
       }
-      VMCase(OP_CALL) {
-        if (do_dcall(vm, 0) == 0) return 1;
+      VMCase(OP_CALL_L) {
+        if (do_dcall(vm, 0, 0) == 0) return 1;
+        break;
+      }
+      VMCase(OP_CALL_G) {
+        if (do_dcall(vm, 0, 1) == 0) return 1;
         break;
       }
       VMCase(OP_CALL_I) {
-        int r = do_dcall(vm, 1);
+        int r = do_dcall(vm, 1, 0);
         
         if (r == 0) return 1;
         if (r == 2) break;

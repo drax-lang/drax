@@ -523,7 +523,11 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
   free(stack_args);
 
   process_token(DTK_PAR_CLOSE, "Expect ')' after parameters.");
-  process_token(DTK_DO, "Expect 'do' before function body.");
+
+  if (!is_anonymous) {
+    process_token(DTK_DO, "Expect 'do' before function body.");
+  }
+
   block(vm);
   put_instruction(vm, OP_RETURN);
   vm->active_instr = gi;
@@ -553,8 +557,10 @@ static drax_value process_arguments(d_vm* vm) {
 
 void process_call(d_vm* vm, bool v) {
   UNUSED(v);
+  int is_global = IS_GLOBAL_SCOPE(vm);
   drax_value arg_count = process_arguments(vm);
-  put_pair(vm, OP_CALL, arg_count);
+
+  put_pair(vm, is_global ? OP_CALL_G : OP_CALL_L, arg_count);
 }
 
 void process_dot(d_vm* vm, bool v) {

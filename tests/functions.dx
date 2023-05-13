@@ -41,4 +41,26 @@ assert(
     "function error: nested"
 )
 
+### process anonimous Functions
+
+af = lambda (name, last) name ++ "->" ++ last end
+assert(af("drax", "dev") == "drax->dev", "function error: anonimous function")
+
+fun get_lambda() do
+    lambda (name) name ++ "." end
+end
+
+gl = get_lambda()
+assert(gl("drax") == "drax.", "function error: anonimous function")
+
+### lambda returning lambda
+
+fun get_nested_lambda() do
+    lambda (name) lambda (last) name ++ "." ++ last end end
+end
+
+nl = get_nested_lambda()
+
+assert(typeof(nl) == "function", "function error: anonimous function")
+
 print("Functions done!")
