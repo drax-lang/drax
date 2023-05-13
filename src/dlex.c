@@ -196,6 +196,7 @@ d_token next_token() {
         return dmake_symbol(DTK_ADD);
       }
       case '-': return dmake_symbol(DTK_SUB);
+      case '&': return dmake_symbol(DTK_AMP);
       case '*': return dmake_symbol(DTK_MUL);
       case '/': return dmake_symbol(DTK_DIV);
       case '(': return dmake_symbol(DTK_PAR_OPEN);

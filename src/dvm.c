@@ -383,6 +383,23 @@ static int __start__(d_vm* vm, int inter_mode) {
         push(vm, val);
         break;
       }
+      VMCase(OP_GET_REF) {
+        drax_value a = pop(vm);
+        char* n = (char*) GET_VALUE(vm);
+
+        drax_value v = get_fun_table(vm->envs->native, n, a);
+        if (v == 0) {
+          v = get_fun_table(vm->envs->functions, n, a);
+        
+          if (v == 0) {
+            raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
+            return 1;
+          }
+        }
+
+        push(vm, v);        
+        break;
+      }
       VMCase(OP_EQUAL) {
         drax_value b = pop(vm);
         drax_value a = pop(vm);

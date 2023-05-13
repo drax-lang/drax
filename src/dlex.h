@@ -27,7 +27,7 @@ typedef enum dlex_types {
   DTK_OR, DTK_PRINT, DTK_TRUE, DTK_LET, 
 
   DTK_ID, DTK_STRING, DTK_NUMBER, DTK_COMMA,
-  DTK_DOT, DTK_COLON,
+  DTK_DOT, DTK_COLON, DTK_AMP,
 
   /* modules */
   DTK_IMPORT, DTK_EXPORT,

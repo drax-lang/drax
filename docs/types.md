@@ -36,8 +36,6 @@ Here are some accepted notations:
      0o173
 ---
 
-
-
 ### String
 String is represented internally as a sequence of characters.
 

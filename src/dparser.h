@@ -80,6 +80,7 @@ callback_table(process_dot);
 callback_table(process_index);
 callback_table(process_lambda);
 callback_table(literal_translation);
+callback_table(process_amper);
 
 void dfatal(d_token* token, const char* message);
 

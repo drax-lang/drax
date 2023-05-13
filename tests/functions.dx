@@ -63,4 +63,14 @@ nl = get_nested_lambda()
 
 assert(typeof(nl) == "function", "function error: anonimous function")
 
+### get function definition
+
+tmp = &get_lambda/0
+
+assert(typeof(tmp) == "function", "function error: get function definition")
+
+otmp = tmp()
+
+assert(otmp("other") == "other.", "function error: get function definition")
+
 print("Functions done!")

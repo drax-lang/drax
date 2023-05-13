@@ -85,6 +85,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_BE,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LS,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LE,        NULL,                process_binary, iDIFF),
+  make_op_line(DTK_AMP,       process_amper,       NULL,           iTERM),
   make_op_line(DTK_STRING,    process_string,      NULL,           iNONE),
   make_op_line(DTK_NUMBER,    process_number,      NULL,           iNONE),
   make_op_line(DTK_AND,       NULL,                process_and,    iAND),
@@ -248,6 +249,22 @@ void process_binary(d_vm* vm, bool v) {
     case DTK_CONCAT: put_instruction(vm, OP_CONCAT); break;
     default: return;
   }
+}
+
+void process_amper(d_vm* vm, bool v) {
+  UNUSED(v);
+  process_token(DTK_ID, "Expect 'identifier' after '&'.");
+
+  d_token ctk = parser.prev;
+  char* name = (char*) malloc(sizeof(char) * (ctk.length + 1));
+  strncpy(name, ctk.first, ctk.length);
+  name[ctk.length] = '\0';
+
+  process_token(DTK_DIV, "Expect '/' after identifier.");
+  process_token(DTK_NUMBER, "Expect 'number' after '/'.");
+  process_number(vm, false);
+
+  put_pair(vm, OP_GET_REF, (drax_value) name);
 }
 
 void literal_translation(d_vm* vm, bool v) {
