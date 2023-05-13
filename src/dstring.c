@@ -201,7 +201,7 @@ static int dstr_get(d_vm* vm, int a, drax_string* ds) {
   return 1;
 }
 
-static int dstr_touppercase(d_vm* vm, int a, drax_string* ds) {
+static int dstr_to_uppercase(d_vm* vm, int a, drax_string* ds) {
   args_fail_required_size(a, 0, "this function does not expect arguments");
 
   char* upper = (char*) malloc(ds->length);
@@ -216,7 +216,7 @@ static int dstr_touppercase(d_vm* vm, int a, drax_string* ds) {
   return 1;
 }
 
-static int dstr_tolowercase(d_vm* vm, int a, drax_string* ds) {
+static int dstr_to_lowercase(d_vm* vm, int a, drax_string* ds) {
   args_fail_required_size(a, 0, "this function does not expect arguments");
 
   char* lower = (char*) malloc(ds->length);
@@ -238,8 +238,8 @@ int dstr_handle_str_call(d_vm* vm, char* n, int a, drax_value o) {
   match_dfunction(n, "length",    dstr_length,    vm, a, s);
   match_dfunction(n, "to_number", dstr_to_number, vm, a, s);
   match_dfunction(n, "copy",      dstr_copy,      vm, a, s);
-  match_dfunction(n, "to_uppercase", dstr_touppercase,      vm, a, s);
-  match_dfunction(n, "to_lowercase", dstr_tolowercase,      vm, a, s);
+  match_dfunction(n, "to_uppercase", dstr_to_uppercase,      vm, a, s);
+  match_dfunction(n, "to_lowercase", dstr_to_lowercase,      vm, a, s);
 
   match_dfunction(n, "get",       dstr_get,       vm, a, s);
 
