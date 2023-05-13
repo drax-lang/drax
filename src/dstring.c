@@ -207,7 +207,7 @@ static int dstr_to_uppercase(d_vm* vm, int a, drax_string* ds) {
   char* upper = (char*) malloc(ds->length);
 
   int i;
-  for(i = 0; i < ds->length - 1; i++) {
+  for(i = 0; i < ds->length; i++) {
     upper[i] = toupper(ds->chars[i]);
   }
 
