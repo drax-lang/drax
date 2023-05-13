@@ -384,7 +384,7 @@ static int __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_GET_REF) {
-        drax_value a = pop(vm);
+        int a = (int) AS_NUMBER(pop(vm));
         char* n = (char*) GET_VALUE(vm);
 
         drax_value v = get_fun_table(vm->envs->native, n, a);
