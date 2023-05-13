@@ -92,7 +92,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_FALSE,     literal_translation, NULL,           iNONE),
   make_op_line(DTK_NIL,       literal_translation, NULL,           iNONE),
   make_op_line(DTK_TRUE,      literal_translation, NULL,           iNONE),
-  make_op_line(DTK_FUN,       NULL,                NULL,           iNONE),
+  make_op_line(DTK_LAMBDA,    process_lambda,      NULL,           iNONE),
   make_op_line(DTK_IF,        NULL,                NULL,           iNONE),
   make_op_line(DTK_OR,        NULL,                process_or,     iOR),
   make_op_line(DTK_PRINT,     NULL,                NULL,           iNONE),
@@ -468,17 +468,21 @@ static void block(d_vm* vm) {
   process_token(DTK_END, "Expect 'end' after block.");
 }
 
-static void fun_declaration(d_vm* vm) {
+static void fun_declaration(d_vm* vm, int is_anonymous) {
   const int max_arity = 255;
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
   vm->active_instr = f->instructions;
 
-  get_next_token();
-  d_token ctk = parser.prev;
-  f->name = (char*) malloc(sizeof(char) * (ctk.length + 1));
-  strncpy(f->name, ctk.first, ctk.length);
-  f->name[ctk.length] = '\0';
+  if (is_anonymous) {
+    f->name = (char*) "anonymous";
+  } else {
+    get_next_token();
+    d_token ctk = parser.prev;
+    f->name = (char*) malloc(sizeof(char) * (ctk.length + 1));
+    strncpy(f->name, ctk.first, ctk.length);
+    f->name[ctk.length] = '\0';
+  }
 
   process_token(DTK_PAR_OPEN, "Expect '(' after function name.");
 
@@ -523,8 +527,13 @@ static void fun_declaration(d_vm* vm) {
   block(vm);
   put_instruction(vm, OP_RETURN);
   vm->active_instr = gi;
-  put_pair(vm, OP_FUN, DS_VAL(f));
+  put_pair(vm, is_anonymous ? OP_AFUN : OP_FUN, DS_VAL(f));
   reset_locals();
+}
+
+void process_lambda(d_vm* vm, bool v) {
+  UNUSED(v);
+  fun_declaration(vm, 1);
 }
 
 static drax_value process_arguments(d_vm* vm) {
@@ -615,7 +624,7 @@ static void process(d_vm* vm) {
   switch (get_current_token()) {
     case DTK_FUN: {
       get_next_token();
-      fun_declaration(vm);
+      fun_declaration(vm, 0);
       break;
     }
 

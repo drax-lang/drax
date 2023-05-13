@@ -201,6 +201,11 @@ static int dstr_get(d_vm* vm, int a, drax_string* ds) {
   return 1;
 }
 
+/**
+ * Returns a new string with all characters converted to uppercase
+ * 
+ * "foo".to_uppercase() => "FOO"
+ */
 static int dstr_to_uppercase(d_vm* vm, int a, drax_string* ds) {
   args_fail_required_size(a, 0, "this function does not expect arguments");
 
@@ -210,12 +215,18 @@ static int dstr_to_uppercase(d_vm* vm, int a, drax_string* ds) {
   for(i = 0; i < ds->length; i++) {
     upper[i] = toupper(ds->chars[i]);
   }
+  upper[ds->length] = '\0';
 
   push(vm, DS_VAL(new_dstring(vm, upper, strlen(upper))));
 
   return 1;
 }
 
+/**
+ * Returns a new string with all characters converted to lowercase
+ * 
+ * "FOO".to_lowercase() => "foo"
+ */
 static int dstr_to_lowercase(d_vm* vm, int a, drax_string* ds) {
   args_fail_required_size(a, 0, "this function does not expect arguments");
 
@@ -225,6 +236,7 @@ static int dstr_to_lowercase(d_vm* vm, int a, drax_string* ds) {
   for(i = 0; i < ds->length; i++) {
     lower[i] = tolower(ds->chars[i]);
   }
+  lower[ds->length] = '\0';
 
   push(vm, DS_VAL(new_dstring(vm, lower, strlen(lower))));
 
@@ -234,14 +246,13 @@ static int dstr_to_lowercase(d_vm* vm, int a, drax_string* ds) {
 int dstr_handle_str_call(d_vm* vm, char* n, int a, drax_value o) {
   drax_string* s = CAST_STRING(o);
   
-  match_dfunction(n, "split",     dstr_split,     vm, a, s);
-  match_dfunction(n, "length",    dstr_length,    vm, a, s);
-  match_dfunction(n, "to_number", dstr_to_number, vm, a, s);
-  match_dfunction(n, "copy",      dstr_copy,      vm, a, s);
-  match_dfunction(n, "to_uppercase", dstr_to_uppercase,      vm, a, s);
-  match_dfunction(n, "to_lowercase", dstr_to_lowercase,      vm, a, s);
-
-  match_dfunction(n, "get",       dstr_get,       vm, a, s);
+  match_dfunction(n, "split",        dstr_split,        vm, a, s);
+  match_dfunction(n, "length",       dstr_length,       vm, a, s);
+  match_dfunction(n, "to_number",    dstr_to_number,    vm, a, s);
+  match_dfunction(n, "copy",         dstr_copy,         vm, a, s);
+  match_dfunction(n, "to_uppercase", dstr_to_uppercase, vm, a, s);
+  match_dfunction(n, "to_lowercase", dstr_to_lowercase, vm, a, s);
+  match_dfunction(n, "get",          dstr_get,          vm, a, s);
 
   raise_drax_error(vm, "error: function '%s/%d' is not defined", n, a);
 

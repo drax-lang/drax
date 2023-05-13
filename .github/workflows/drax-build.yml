@@ -1,4 +1,4 @@
-name: Drax CI
+name: Drax Test
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  check:
 
     runs-on: ubuntu-latest
 

@@ -78,6 +78,7 @@ callback_table(process_export);
 callback_table(process_struct);
 callback_table(process_dot);
 callback_table(process_index);
+callback_table(process_lambda);
 callback_table(literal_translation);
 
 void dfatal(d_token* token, const char* message);

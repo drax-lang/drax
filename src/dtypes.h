@@ -92,6 +92,7 @@ typedef enum d_op_code {
   OP_CALL,
   OP_CALL_I,   /* inside */
   OP_FUN,
+  OP_AFUN,     /* Anonimous */
   OP_SET_G_ID, /* global */
   OP_GET_G_ID,
   OP_SET_L_ID, /* local */

@@ -51,7 +51,7 @@ static void print_d_struct(drax_value value, int formated) {
       break;
 
     case DS_FUNCTION:
-      printf("<function>");
+      printf("<function/%d>", CAST_FUNCTION(value)->arity);
       break;
 
     case DS_NATIVE:

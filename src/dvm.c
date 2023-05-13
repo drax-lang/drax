@@ -129,6 +129,11 @@ static int get_definition(d_vm* vm, int is_local) {
 
 /**
  * Call Definitions
+ * 
+ * This function responds to the following statuses
+ * 0: an error occurred
+ * 1: success, proceed normally
+ * 2: Proceed without clearing the stack
  */
 
 static int do_dcall(d_vm* vm, int inside) {
@@ -153,10 +158,31 @@ static int do_dcall(d_vm* vm, int inside) {
    * if call is using dot operator
    */
   drax_value m = peek(vm, a + 1);
+  drax_value v = 0;
 
   char* n = (char*) (peek(vm, a));
 
   if (inside) {
+    if (IS_FRAME(m)) {
+      if(get_value_dframe(CAST_FRAME(m), (char*) n, &v) == -1) {
+        raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
+        return 0;
+      }
+
+      drax_function* af = CAST_FUNCTION(v);
+
+      if (af->arity != (int) a) {
+        raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
+        return 0;
+      }
+
+      vm->active_instr->_ip = vm->ip;
+      callstack_push(vm, vm->active_instr);
+      vm->active_instr = af->instructions;
+      vm->ip = af->instructions->values;
+      return 2;
+    }
+
     if (IS_MODULE(m)) {
       low_level_callback* nf = get_fun_on_module(CAST_MODULE(m), n, a);
 
@@ -180,7 +206,7 @@ static int do_dcall(d_vm* vm, int inside) {
     return_if_not_found_error(0, n, a);
   }
 
-  drax_value v = get_fun_table(vm->envs->native, n, a);
+  v = get_fun_table(vm->envs->native, n, a);
   if (v == 0) {
     v = get_fun_table(vm->envs->functions, n, a);
   
@@ -447,7 +473,11 @@ static int __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_CALL_I) {
-        if (do_dcall(vm, 1) == 0) return 1;
+        int r = do_dcall(vm, 1);
+        
+        if (r == 0) return 1;
+        if (r == 2) break;
+        
         drax_value t = pop(vm);
 
         /**
@@ -461,6 +491,11 @@ static int __start__(d_vm* vm, int inter_mode) {
       VMCase(OP_FUN) {
         drax_value v = GET_VALUE(vm);
         put_fun_table(vm->envs->functions, v);
+        break;
+      }
+      VMCase(OP_AFUN) {
+        drax_value v = GET_VALUE(vm);
+        push(vm, v);
         break;
       }
       VMCase(OP_RETURN) {
