@@ -222,7 +222,7 @@ static int dstr_to_lowercase(d_vm* vm, int a, drax_string* ds) {
   char* lower = (char*) malloc(ds->length);
 
   int i;
-  for(i = 0; i < ds->length - 1; i++) {
+  for(i = 0; i < ds->length; i++) {
     lower[i] = tolower(ds->chars[i]);
   }
 
