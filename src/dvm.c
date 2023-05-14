@@ -166,7 +166,8 @@ static int do_dcall(d_vm* vm, int inside, int global) {
   /**
    * if call is using dot operator
    */
-  drax_value m = peek(vm, a + 1);
+  drax_value m = 0;
+  if (inside) { m = peek(vm, a + 1); }
   drax_value v = 0;
 
   char* n = (char*) (peek(vm, a));
@@ -396,7 +397,7 @@ static int __start__(d_vm* vm, int inter_mode) {
             return 1;
           }
         }
-
+        free(n);
         push(vm, v);        
         break;
       }
@@ -545,6 +546,7 @@ static int __start__(d_vm* vm, int inter_mode) {
           print_drax(pop(vm), inter_mode);
           dbreak_line();
         }
+        dgc_swap(vm);
         return 0;
       }
       default: {

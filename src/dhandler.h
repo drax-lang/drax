@@ -33,7 +33,6 @@ typedef struct d_local_var_node {
 typedef struct d_local_var_table {
   int count;
   int limit;
-  int peak;
   d_local_var_node** array;
 } d_local_var_table;
 

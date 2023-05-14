@@ -492,7 +492,7 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
   vm->active_instr = f->instructions;
 
   if (is_anonymous) {
-    f->name = (char*) "anonymous";
+    f->name = NULL;
   } else {
     get_next_token();
     d_token ctk = parser.prev;

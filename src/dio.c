@@ -38,7 +38,7 @@ char* normalize_path(char* path) {
   full_path[rs] = '/';
   for (i = 0; i < cs; i++) { full_path[i + rs + 1] = path[i]; }
   full_path[rs + cs + 1] = '\0';
- 
+  free(r_path);
   return full_path;
 }
 

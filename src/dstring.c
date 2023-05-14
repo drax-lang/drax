@@ -209,7 +209,7 @@ static int dstr_get(d_vm* vm, int a, drax_string* ds) {
 static int dstr_to_uppercase(d_vm* vm, int a, drax_string* ds) {
   args_fail_required_size(a, 0, "this function does not expect arguments");
 
-  char* upper = (char*) malloc(ds->length);
+  char* upper = (char*) malloc(ds->length + 1);
 
   int i;
   for(i = 0; i < ds->length; i++) {
@@ -230,7 +230,7 @@ static int dstr_to_uppercase(d_vm* vm, int a, drax_string* ds) {
 static int dstr_to_lowercase(d_vm* vm, int a, drax_string* ds) {
   args_fail_required_size(a, 0, "this function does not expect arguments");
 
-  char* lower = (char*) malloc(ds->length);
+  char* lower = (char*) malloc(ds->length + 1);
 
   int i;
   for(i = 0; i < ds->length; i++) {

@@ -66,8 +66,11 @@ assert(typeof(nl) == "function", "function error: anonimous function")
 ### get function definition
 
 tmp = &get_lambda/0
+tmp2 = &say/1
 
 assert(typeof(tmp) == "function", "function error: get function definition")
+
+assert(typeof(tmp2) == "function", "function error: get function definition")
 
 otmp = tmp()
 
