@@ -17,35 +17,15 @@ static void dgc_safe_free(drax_value v) {
     /**
      * If is checked then the value is used
     */
-    if (CAST_STRUCT(v)->checked) return;
+    d_struct* sct = CAST_STRUCT(v);
+    if (sct->checked) return;
 
-    DEBUG(printf("  --dgc free\n"));
+    DEBUG(printf("  -- dgc free\n"));
     if (IS_STRING(v)) {
       drax_string* s = CAST_STRING(v);
-      /* if (s->chars != NULL) { free(s->chars); } */
-      free(s);
-    } else if (IS_LIST(v)) {
-      drax_list* l = CAST_LIST(v);
-      int i;
-      for (i = 0; i < l->length; i++) {
-        dgc_safe_free(l->elems[i]);
-      }
-      /*free(l);*/
-    } else if (IS_FRAME(v)) {
-      drax_frame* f = CAST_FRAME(v);
-      int i;
-      for (i = 0; i < f->length; i++) {
-        /**
-         * listerals is a char** currently.
-         */
-        
-        /*
-        free(f->literals[i]);
-        dgc_safe_free(f->values[i]);
-        */
-      }
-      free(f);
+      free(s->chars);
     }
+    free(sct);
   }
 }
 

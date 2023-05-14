@@ -150,13 +150,17 @@ static int dstr_copy(d_vm* vm, int a, drax_string* ds) {
 
   char* str = ds->chars;
   if (str == NULL) {
-    push(vm, DS_VAL(new_dstring(vm, (char*) "", 0)));
+    char* ts = (char*) malloc(1);
+    ts[0] = '\0';
+    push(vm, DS_VAL(new_dstring(vm, (char*) ts, 0)));
     return 1;
   }
 
   int str_len = strlen(str);
   if (a1 >= str_len || a2 < 0) {
-    push(vm, DS_VAL(new_dstring(vm, (char*) "", 0)));
+    char* ts = (char*) malloc(1);
+    ts[0] = '\0';
+    push(vm, DS_VAL(new_dstring(vm, (char*) ts, 0)));
     return 1;
   }
 
@@ -190,7 +194,9 @@ static int dstr_get(d_vm* vm, int a, drax_string* ds) {
   if (n < 0) { n = ds->length + n; }
 
   if (n < 0 || n >= ds->length) {
-    push(vm, DS_VAL(new_dstring(vm, (char*) "", 0)));
+    char* ts = (char*) malloc(1);
+    ts[0] = '\0';
+    push(vm, DS_VAL(new_dstring(vm, (char*) ts, 0)));
     return 1;
   }
 

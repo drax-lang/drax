@@ -28,6 +28,7 @@ static void reset_locals() {
 
   free(parser.locals->vars);
   free(parser.locals);
+
   parser.locals = new_locals();
 }
 
