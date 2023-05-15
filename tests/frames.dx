@@ -25,4 +25,16 @@ assert(get_frame().name == "drax", "frame error: get field by function")
 
 assert(get_frame().sub.key == "lang", "frame error: get field by function")
 
+### test get frames in local scope
+
+fun another_function_test(config) do end
+
+fun test_handle_frame() do
+    config = { user: "user", pass: "pass" }
+    another_function_test(config)
+    auth = config.user ++ ":" ++ config.pass
+end
+
+test_handle_frame()
+
 print("Frames done!")

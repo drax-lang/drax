@@ -441,7 +441,7 @@ static int __start__(d_vm* vm, int inter_mode) {
           pop_times(vm, 2);
           push(vm, DS_VAL(result));
         } else{
-          raise_drax_error(vm, "Unspected type");
+          raise_drax_error(vm, "Concat with unspected type");
           return 1;
         }
         break;
