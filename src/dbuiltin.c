@@ -57,12 +57,31 @@ static drax_value __d_assert(d_vm* vm, int* stat) {
 static drax_value __d_sleep(d_vm* vm, int* stat) { 
   UNUSED(vm);
   drax_value val = pop(vm);
-  return_if_is_not_number(val, stat)
+  return_if_is_not_number(val, stat);
   
   double t = CAST_NUMBER(val);
   dx_sleep(t);
   DX_SUCESS_FN(stat);
   return DRAX_NIL_VAL;
+}
+
+static drax_value __d_read(d_vm* vm, int* stat) {
+  UNUSED(vm);
+  drax_value val = pop(vm);
+  return_if_is_not_string(val, stat);
+
+  int buffer_size = 4096;
+  char* buff = malloc(sizeof(char) * buffer_size);
+  printf("%s", CAST_STRING(val)->chars);
+
+  if (fgets(buff, buffer_size, stdin) == NULL) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char *) "Fail to read input"));
+  }
+  char* r = replace_special_char('\n', 'n', buff);
+  free(buff);
+  DX_SUCESS_FN(stat);
+  return DS_VAL(new_dstring(vm, r, strlen(r)));
 }
 
 static drax_value __d_typeof(d_vm* vm, int* stat) {
@@ -181,6 +200,7 @@ void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
   reg(vm, "assert", 2, __d_assert);
   reg(vm, "typeof", 1, __d_typeof);
   reg(vm, "sleep", 1, __d_sleep);
+  reg(vm, "read", 1, __d_read);
 }
 
 /**
