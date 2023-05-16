@@ -111,6 +111,18 @@ static int dgc_swap_stack(d_vm* vm) {
   return 1;
 }
 
+static int dgc_swap_native(d_fun_table* t) {
+  DEBUG(printf("--dcnat swap\n"));
+  if (t->count <= 0) return 1;
+
+  int i;
+  for (i = 0; i < t->count; i++) {
+    dgc_mark(t->pairs[i].value);
+  }
+  DEBUG(printf("--dcnat end\n\n"));
+  return 1;
+}
+
 int dgc_swap(d_vm* vm) {
   DEBUG(printf("[GC] swap\n"));
   d_struct *d = vm->d_ls->next;
@@ -122,6 +134,8 @@ int dgc_swap(d_vm* vm) {
   dgc_swap_global(vm->envs->global);
 
   dgc_swap_function(vm->envs->functions);
+
+  dgc_swap_native(vm->envs->native);
  
   dgc_swap_stack(vm);
 
