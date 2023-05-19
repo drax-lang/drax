@@ -60,29 +60,44 @@ void free_var_table(d_vm* vm, d_generic_var_table* t) {
   free(t);
 }
 
-void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
-    int index = generate_hash(name, t->size);
-    drax_generic_var_node* node = malloc(sizeof(drax_generic_var_node));
-    node->key = fnv1a_hash(name, strlen(name));
-    node->value = value;
-    node->next = t->array[index];
-    t->array[index] = node;
+static drax_generic_var_node*
+get_elem_on_var_table(d_generic_var_table* t, int i, size_t k) {
+  drax_generic_var_node* current = t->array[i];
+  while (current != NULL) {
+      if (current->key == k) {
+          return current;
+      }
+      current = current->next;
+  }
+
+  return NULL;
 }
 
 int get_var_table(d_generic_var_table* t, char* name, drax_value* value) {
-    int index = generate_hash(name, t->size);
-    size_t key = fnv1a_hash(name, strlen(name));
+  int i = generate_hash(name, t->size);
+  size_t k = fnv1a_hash(name, strlen(name));
 
-    drax_generic_var_node* current = t->array[index];
-    while (current != NULL) {
-        if (current->key == key) {
-            *value = current->value;
-            return 1;
-        }
-        current = current->next;
-    }
+  drax_generic_var_node* node = get_elem_on_var_table(t, i, k);
+  if (node == NULL) return 0;
 
-    return 0;
+  *value = node->value;
+  return 1;
+}
+
+void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
+  
+  int i = generate_hash(name, t->size);
+  size_t k = fnv1a_hash(name, strlen(name));
+
+  drax_generic_var_node* node = get_elem_on_var_table(t, i, k);
+  
+  if (node == NULL) {
+    node = (drax_generic_var_node*) malloc(sizeof(drax_generic_var_node));
+    node->key = k;
+    node->next = t->array[i];
+    t->array[i] = node;
+  }
+  node->value = value;
 }
 
 /**
