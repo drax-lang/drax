@@ -63,6 +63,15 @@ nl = get_nested_lambda()
 
 assert(typeof(nl) == "function", "function error: anonimous function")
 
+### lambda in local scope
+
+fun local_scope_2_tst_lambda() do
+    df = lambda (num) num + 50 end
+    assert(df(50) == 100, "function error: local scope")
+end
+
+local_scope_2_tst_lambda()
+
 ### get function definition
 
 tmp = &get_lambda/0
@@ -91,7 +100,7 @@ fun get_value(version) do
     sleep(1)
 
     if (version == "v2") do
-        test_fake_fn_1("key") 
+        test_fake_fn_1("key")
     else
         test_fake_fn_2("key")
     end

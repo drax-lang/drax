@@ -198,11 +198,13 @@ static int do_dcall(d_vm* vm, int inside, int global) {
     (get_mod_table(vm->envs->modules, n, &v) == 0) &&
     ((global) || (get_local_table(vm->envs->local, vm->active_instr->local_range, n, &v) == 0))
   ) {
-    if(get_var_table(vm->envs->global, n, &v) == 1) {
-      drax_function* af = CAST_FUNCTION(v);
-      process_lambda_function(af);
-      return 2;
-    }
+    get_var_table(vm->envs->global, n, &v);
+  }
+
+  if (v != 0) {
+    drax_function* af = CAST_FUNCTION(v);
+    process_lambda_function(af);
+    return 2;
   }
 
   if (inside) {
