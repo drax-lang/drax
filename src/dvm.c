@@ -373,11 +373,15 @@ static int __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_SET_I_ID) {
-        drax_value n = pop(vm);
-        drax_value k = pop(vm);
-        drax_value f = pop(vm);
-        put_value_dframe(CAST_FRAME(f), (char*) k, n);
-        break;
+        /**
+         * This operation is invalid, we cannot change values 
+         * of structures such as frames and lists, as this will 
+         * influence old references, resulting in side effects.
+         */
+
+        raise_drax_error(vm, "error: invalid assigment\nuse helper functions to change values of structures\n");
+
+        return 1;
       }
       VMCase(OP_GET_I_ID) {
         drax_value k = pop(vm);
