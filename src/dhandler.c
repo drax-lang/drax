@@ -173,7 +173,7 @@ void put_local_table(d_local_var_table* t, char* name, drax_value value) {
    * next_index  =>  (10 -1)
    * 
    * while verification will stop at the first 0
-   * next_index  =>  (9)
+   * next_index  =>  (8)
    */
   while (next_index >= 0 && t->array[next_index] != 0) {
     next_index--;
