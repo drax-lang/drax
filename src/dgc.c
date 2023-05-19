@@ -30,6 +30,8 @@ static void dgc_safe_free(drax_value v) {
 }
 
 static void dgc_mark(drax_value v) {
+  if (v == 0) return;
+
   if IS_STRUCT(v) {
     DEBUG(printf("marked\n"));
     CAST_STRUCT(v)->checked = 1;
@@ -62,6 +64,7 @@ static int dgc_swap_locals(d_local_var_table* t) {
 
   int i;
   for (i = t->count; i > 0; i--) {
+    if (t->array[i - 1] == NULL) continue;
     dgc_mark(t->array[i - 1]->value);
   }
   DEBUG(printf("--dcloc end\n\n"));

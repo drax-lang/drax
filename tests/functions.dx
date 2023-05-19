@@ -76,4 +76,33 @@ otmp = tmp()
 
 assert(otmp("other") == "other.", "function error: get function definition")
 
+### test local range
+### restore lacal scope size
+
+fun test_fake_fn_1(key) do key end
+fun test_fake_fn_2(key) do key end
+
+fun get_value(version) do
+    if (version == nil) do
+        version = "fake"
+        sleep(1)
+    end
+
+    sleep(1)
+
+    if (version == "v2") do
+        test_fake_fn_1("key") 
+    else
+        test_fake_fn_2("key")
+    end
+end
+
+fun local_range_scope() do
+    get_value("fake")
+    get_value("fake")
+end
+
+local_range_scope()
+
+
 print("Functions done!")

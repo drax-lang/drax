@@ -161,7 +161,25 @@ void put_local_table(d_local_var_table* t, char* name, drax_value value) {
   d_local_var_node* node = malloc(sizeof(d_local_var_node));
   node->key = fnv1a_hash(name, strlen(name));
   node->value = value;
-  t->array[t->count++] = node;
+
+  int next_index = t->count - 1;
+  /**
+   * check which is the next unused index.
+   * 
+   * x           => used
+   * 0           => not used
+   * 
+   * t->array    =>  |x|x|x|x|x|x|0|0|0|x|
+   * next_index  =>  (10 -1)
+   * 
+   * while verification will stop at the first 0
+   * next_index  =>  (9)
+   */
+  while (next_index >= 0 && t->array[next_index] != 0) {
+    next_index--;
+  }
+
+  t->array[next_index] = node;
 }
 
 int get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value) {
@@ -172,7 +190,7 @@ int get_local_table(d_local_var_table* t, int local_range, char* name, drax_valu
   limit = limit < 0 ? 0 : limit;
   int i;
   for (i = t->count; i > limit; i--) {
-    if (t->array[i -1]->key == key) {
+    if ((t->array[i -1] != 0) && (t->array[i -1]->key == key)) {
       *value = t->array[i -1]->value;
       return 1;
     }

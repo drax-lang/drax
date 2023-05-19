@@ -108,7 +108,28 @@ static bool values_equal(drax_value a, drax_value b) {
   return a == b;
 }
 
-static int get_definition(d_vm* vm, int is_local) {
+/**
+ * clear new range of local variables
+ * 
+ * x                => used
+ * 0                => not used
+ * 
+ * before:
+ *  local->count    =>  (6)
+ *  local->array    =>  |x|x|x|x|x|x|
+ *  range           =>  (4)
+ * 
+ * after:
+ *  local->array    =>  |x|x|x|x|x|x|0|0|0|0|
+ *  local->count    =>  (10)
+ * 
+ */
+static void zero_new_local_range(d_vm* vm, int range) {
+  vm->envs->local->count += range;
+  memset(&vm->envs->local->array[vm->envs->local->count - range], 0, sizeof(drax_value) * range);
+}
+
+static int get_definition(d_vm* vm, int is_local) { 
   #define _L_MSG_NOT_DEF "error: variable '%s' is not defined\n"
   char* k = (char*) GET_VALUE(vm);
   drax_value v;
@@ -156,6 +177,7 @@ static int do_dcall(d_vm* vm, int inside, int global) {
         return 0; }\
       vm->active_instr->_ip = vm->ip;\
       callstack_push(vm, vm->active_instr);\
+      zero_new_local_range(vm, anf->instructions->local_range);\
       vm->active_instr = anf->instructions;\
       vm->ip = anf->instructions->values;
 
