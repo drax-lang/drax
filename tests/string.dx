@@ -29,6 +29,11 @@ v = "foo\nbar\nbaz".split("\n")
 
 assert(typeof(v) == "list", "string error: failt split return type")
 
+v = "http://addr.com".split("http://")
+
+assert(v[0] == "", "string error: failt split return type")
+assert(v[1] == "addr.com", "string error: failt split return type")
+
 ### check index
 
 assert("foo"[0] == "f", "string error: array indexing error to string case 1")
