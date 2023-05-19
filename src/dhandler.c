@@ -113,45 +113,57 @@ d_fun_table* new_fun_table() {
   return t;
 }
 
-void free_fun_table(d_vm* vm, d_fun_table* t) {
-  UNUSED(vm);
-  free(t->pairs);
-  free(t);
-  t = new_fun_table();
-}
-
-void put_fun_table(d_fun_table* t, drax_value value) {
-  #define set_key_and_args_2_fn(f) \
-    t->pairs[t->count].key = fnv1a_hash(f->name, strlen(f->name)); \
-    t->pairs[t->count].args = f->arity;
-
-  if (t->count >= t->limit) {
-    t->limit = t->limit == 0 ? 8 : t->limit * 2;
-    t->pairs = realloc(t->pairs, sizeof(drax_fun_node) * t->limit);
+static drax_fun_node* 
+get_elem_on_fun_table(d_fun_table* t, size_t h, uint8_t a) {
+  int i;
+  for (i = 0; i < t->count; i++) {
+    if (t->pairs[i].key == h && t->pairs[i].args == a) {
+      return &t->pairs[i];
+    }
   }
 
-  if (IS_FUNCTION(value)) {
-    drax_function* f = CAST_FUNCTION(value);
-    set_key_and_args_2_fn(f);
-  } else {
-    drax_os_native* f = CAST_NATIVE(value);
-    set_key_and_args_2_fn(f);
-  }
-
-  t->pairs[t->count].value = value;
-  t->count++;
+  return NULL;
 }
 
 drax_value get_fun_table(d_fun_table* t, char* key, uint8_t arity) {
   size_t hs = fnv1a_hash(key, strlen(key));
-  int i;
-  for (i = 0; i < t->count; i++) {
-    if (t->pairs[i].key == hs && t->pairs[i].args == arity) {
-      return t->pairs[i].value;
-    }
+  drax_fun_node* elem = get_elem_on_fun_table(t, hs, arity);
+
+  if (elem == NULL) return 0;
+
+  return elem->value;
+}
+
+void put_fun_table(d_fun_table* t, drax_value value) {
+  if (t->count >= t->limit) {
+    t->limit = t->limit == 0 ? 8 : t->limit * 2;
+    t->pairs = realloc(t->pairs, sizeof(drax_fun_node) * t->limit);
+  }
+  
+  size_t hs;
+  int arity;
+
+  if (IS_FUNCTION(value)) {
+    drax_function* f = CAST_FUNCTION(value);
+    hs = fnv1a_hash(f->name, strlen(f->name));
+    arity = f->arity;
+  } else {
+    drax_os_native* f = CAST_NATIVE(value);
+    hs = fnv1a_hash(f->name, strlen(f->name));
+    arity = f->arity;
   }
 
-  return 0;
+  drax_fun_node* elem = get_elem_on_fun_table(t, hs, arity);
+
+  if (elem != NULL) {
+    elem->value = value;
+    return;
+  }
+
+  t->pairs[t->count].key = hs;
+  t->pairs[t->count].args = arity;
+  t->pairs[t->count].value = value;
+  t->count++;
 }
 
 /**

@@ -113,5 +113,17 @@ end
 
 local_range_scope()
 
+### test safe definition keep old definition
+
+fun sum_test_safe_def(a) do a + 1 end
+
+old_def = &sum_test_safe_def/1
+
+fun sum_test_safe_def(a) do a + 10 end
+
+assert(sum_test_safe_def(1) == 11, "function error: sum_test_safe_def(1) == 11")
+
+assert(old_def(1) == 2, "function error: sum_test_safe_def(1) == 2")
+
 
 print("Functions done!")
