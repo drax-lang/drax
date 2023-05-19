@@ -5,4 +5,4 @@ Drax is a programming language developed with a focus on integration with system
 * [Types](./types.md)
 * [Functions](./functions.md)
 * [Modules](./modules.md)
-* [Scopes](./scopes.md)
+* [Scopes and Definitions](./scopes-and-definitions.md)
