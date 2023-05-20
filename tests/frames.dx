@@ -44,11 +44,7 @@ ff = frame.put(ff, "name", "foo")
 
 assert(ff.name == "foo", "frame error: put field foo 1")
 
-print(ff)
-
 ff = frame.put(ff, "name2", "drax")
-
-print(ff)
 
 assert(ff.name == "foo", "frame error: put field foo 2")
 assert(ff.name2 == "drax", "frame error: put field drax")

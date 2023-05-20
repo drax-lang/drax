@@ -235,12 +235,10 @@ static drax_value __d_frame_put(d_vm* vm, int* stat) {
   drax_frame* o = CAST_FRAME(a);
   drax_frame* n = new_dframe(vm, o->length + 1);
   n->length = o->length;
-  int i;
-  for (i = 0; i < o->length; i++) {
-    n->keys[i] = o->keys[i];
-    n->literals[i] = o->literals[i];
-    n->values[i] = o->values[i];
-  }
+
+  memcpy(n->keys, o->keys, o->length * sizeof(int));
+  memcpy(n->literals, o->literals, o->length * sizeof(char*));
+  memcpy(n->values, o->values, o->length * sizeof(drax_value));
 
   put_value_dframe(n, CAST_STRING(b)->chars, c);
 
