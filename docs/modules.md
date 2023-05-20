@@ -68,4 +68,18 @@ Example:
 ```drax
   > core.exit(1)
 ```
+### frame
+All functions that manipulate the frame always return a new element, never changing the source element
+
+**put** put a value in the frame
+
+Example:
+```drax
+  > f = {name: "drax"}
+  > frame.put(f, "value", 123)
+  {name: "drax", value: 123}
+  > f
+  {name: "drax"}
+```
+
 

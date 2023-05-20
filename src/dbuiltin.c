@@ -31,6 +31,12 @@
     return DS_VAL(new_derror(vm, (char *) "Expected number as argument")); \
   }
 
+#define return_if_is_not_frame(v, s) \
+  if (!IS_FRAME(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected frame as argument")); \
+  }
+
 static drax_value __d_assert(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
   drax_value a = pop(vm);
@@ -205,13 +211,41 @@ void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
 
 /**
  * Core module
-*/
+ */
 
 static drax_value __d_exit(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
   return_if_is_not_number(a, stat);
   int ext_stat = (int) CAST_NUMBER(a);
   exit(ext_stat);
+}
+
+/**
+ * Frame module
+ */
+
+static drax_value __d_frame_put(d_vm* vm, int* stat) {
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  return_if_is_not_string(b, stat);
+  
+  drax_frame* o = CAST_FRAME(a);
+  drax_frame* n = new_dframe(vm, o->length + 1);
+  n->length = o->length;
+  int i;
+  for (i = 0; i < o->length; i++) {
+    n->keys[i] = o->keys[i];
+    n->literals[i] = o->literals[i];
+    n->values[i] = o->values[i];
+  }
+
+  put_value_dframe(n, CAST_STRING(b)->chars, c);
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(n);
 }
 
 void create_native_modules(d_vm* vm) {
@@ -241,5 +275,16 @@ void create_native_modules(d_vm* vm) {
 
   put_fun_on_module(mcore, core_helper, sizeof(core_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(mcore));
+
+  /**
+   * Frame Module
+   */ 
+  drax_native_module* frame = new_native_module(vm, "frame", 1);
+  const drax_native_module_helper frame_helper[] = {
+    {3, "put", __d_frame_put },
+  };
+
+  put_fun_on_module(frame, frame_helper, sizeof(frame_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(frame));
 
 }
