@@ -38,4 +38,36 @@ typedef uint8_t d_byte_def;
 
 #define match_dfunction(n, v, f, vm, a, s) if ((strcmp(n, v) == 0)) { return f(vm, a, s); }
 
+/* Make String as Return */
+#define MSR(g, c)  \
+    return DS_VAL(copy_dstring(g, c, strlen(c)));
+
+#define DX_SUCESS_FN(v) *v = 1;
+
+#define DX_ERROR_FN(v) *v = 0;
+
+#define return_if_is_not_string(v, s) \
+  if (!IS_STRING(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected string as argument")); \
+  }
+
+#define return_if_is_not_number(v, s) \
+  if (!IS_NUMBER(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected number as argument")); \
+  }
+
+#define return_if_is_not_frame(v, s) \
+  if (!IS_FRAME(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected frame as argument")); \
+  }
+
+#define return_if_is_not_list(v, s) \
+  if (!IS_LIST(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected list as argument")); \
+  }
+
 #endif

@@ -10,5 +10,10 @@ assert([1,2,[42]][2][0] == 42, "list error: nested list access")
 
 assert([1,2,[42, [123]]][2][1][0] == 123, "list error: nested big 3 level access ")
 
-print("List done!")
+### module list
 
+val = list.concat([1, 2, 3], [4, 5, 6])
+
+assert(val.length == 6, "list error: concat length")
+
+print("List done!")

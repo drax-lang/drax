@@ -11,32 +11,6 @@
 
 #include "mods/d_mod_os.h"
 
-/* Make String as Return */
-#define MSR(g, c)  \
-    return DS_VAL(copy_dstring(g, c, strlen(c)));
-
-#define DX_SUCESS_FN(v) *v = 1;
-
-#define DX_ERROR_FN(v) *v = 0;
-
-#define return_if_is_not_string(v, s) \
-  if (!IS_STRING(v)) { \
-    DX_ERROR_FN(s); \
-    return DS_VAL(new_derror(vm, (char *) "Expected string as argument")); \
-  }
-
-#define return_if_is_not_number(v, s) \
-  if (!IS_NUMBER(v)) { \
-    DX_ERROR_FN(s); \
-    return DS_VAL(new_derror(vm, (char *) "Expected number as argument")); \
-  }
-
-#define return_if_is_not_frame(v, s) \
-  if (!IS_FRAME(v)) { \
-    DX_ERROR_FN(s); \
-    return DS_VAL(new_derror(vm, (char *) "Expected frame as argument")); \
-  }
-
 static drax_value __d_assert(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
   drax_value a = pop(vm);
@@ -246,6 +220,30 @@ static drax_value __d_frame_put(d_vm* vm, int* stat) {
   return DS_VAL(n);
 }
 
+static drax_value __d_list_concat(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_list(a, stat);
+  return_if_is_not_list(b, stat);
+
+  drax_list* l1 = CAST_LIST(a);
+  drax_list* l2 = CAST_LIST(b);
+
+  drax_list* l = new_dlist(vm, l1->length + l2->length);
+  l->length = l1->length + l2->length;
+
+  memcpy(l->elems, l1->elems, l1->length * sizeof(drax_value));
+  memcpy(l->elems + l1->length, l2->elems, l2->length * sizeof(drax_value));
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l);
+}
+
+/**
+ * Entry point for native modules
+ */
+
 void create_native_modules(d_vm* vm) {
   UNUSED(vm);  
   /**
@@ -284,5 +282,16 @@ void create_native_modules(d_vm* vm) {
 
   put_fun_on_module(frame, frame_helper, sizeof(frame_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(frame));
+
+  /**
+   * List Module
+   */ 
+  drax_native_module* list = new_native_module(vm, "list", 1);
+  const drax_native_module_helper list_helper[] = {
+    {2, "concat", __d_list_concat },
+  };
+
+  put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(list));
 
 }

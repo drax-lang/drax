@@ -11,6 +11,6 @@
 #include "dvm.h"
 #include "dstructs.h"
 
-int dstr_handle_list_call(d_vm* vm, char* n, int a, drax_value o);
+int dlist_handle_call(d_vm* vm, char* n, int a, drax_value o);
 
 #endif

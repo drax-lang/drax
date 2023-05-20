@@ -1,6 +1,6 @@
 #include "dlist.h"
 #include "ddefs.h"
-
+#include "dstructs.h"
 /**
  * returns the length of the list
  * 
@@ -37,7 +37,7 @@ static int dlist_get(d_vm* vm, int a, drax_list* dl) {
   return 1;
 }
 
-int dstr_handle_list_call(d_vm* vm, char* n, int a, drax_value o) {
+int dlist_handle_call(d_vm* vm, char* n, int a, drax_value o) {
   drax_list* l = CAST_LIST(o);
   
   match_dfunction(n, "get",    dlist_get,    vm, a, l);

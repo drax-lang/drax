@@ -236,7 +236,7 @@ static int do_dcall(d_vm* vm, int inside, int global) {
     }
 
     if (IS_LIST(m)) {
-      return dstr_handle_list_call(vm, n, a, m);
+      return dlist_handle_call(vm, n, a, m);
     }
 
     return_if_not_found_error(0, n, a);
@@ -394,7 +394,7 @@ static int __start__(d_vm* vm, int inter_mode) {
         }
 
         if(IS_LIST(f)) {
-          if (dstr_handle_list_call(vm, (char*) k, 0, f) == 0) { return 1; };
+          if (dlist_handle_call(vm, (char*) k, 0, f) == 0) { return 1; };
           break;
         }
 
