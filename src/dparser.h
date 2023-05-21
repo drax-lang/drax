@@ -63,9 +63,10 @@ typedef struct parser_builder {
 
 int __build__(d_vm* vm, const char* input);
 
+void process_call(d_vm* vm, char* name);
+
 callback_table(process_grouping);
 callback_table(process_list);
-callback_table(process_call);
 callback_table(process_unary);
 callback_table(process_binary);
 callback_table(process_variable);

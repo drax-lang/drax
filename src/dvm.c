@@ -189,10 +189,11 @@ static int do_dcall(d_vm* vm, int inside, int global) {
    * if call is using dot operator
    */
   drax_value m = 0;
-  if (inside) { m = peek(vm, a + 1); }
   drax_value v = 0;
 
-  char* n = (char*) (peek(vm, a));
+  char* n = (char*) (pop(vm));
+
+  if (inside) { m = peek(vm, a); }
 
   if (
     (get_mod_table(vm->envs->modules, n, &v) == 0) &&
@@ -256,11 +257,6 @@ static int do_dcall(d_vm* vm, int inside, int global) {
     drax_value result = nf(vm, &scs);
 
     return_if_native_call_error(scs, result, e->chars);
-
-    /**
-     * Remove the function name from the stack.
-     */
-    pop(vm);
     push(vm, result);
     return 1;
   }
@@ -542,7 +538,7 @@ static int __start__(d_vm* vm, int inter_mode) {
          * Remove the function name and struct 
          * from the stack.
          */
-        pop_times(vm, 2);
+        pop(vm);
         push(vm, t);
         break;
       }
@@ -561,7 +557,6 @@ static int __start__(d_vm* vm, int inter_mode) {
           DRAX_NIL_VAL :
           pop(vm);
         back_scope(vm);
-        pop(vm); /* func. name */
         push(vm, v);
         break;
       }

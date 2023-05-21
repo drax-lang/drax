@@ -64,7 +64,7 @@ static void init_parser(d_vm* vm) {
 }
 
 static operation_line op_lines[] = {
-  make_op_line(DTK_PAR_OPEN,  process_grouping,    process_call,   iCALL),
+  make_op_line(DTK_PAR_OPEN,  process_grouping,    NULL,           iCALL),
   make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_BKT_OPEN,  process_list,        process_index,  iCALL),
   make_op_line(DTK_BKT_CLOSE, NULL,                NULL,           iNONE),
@@ -286,8 +286,8 @@ void process_grouping(d_vm* vm, bool v) {
 
 void process_index(d_vm* vm, bool v) {
   UNUSED(v);
-  put_pair(vm, OP_PUSH, (drax_value) "get");
   expression(vm);
+  put_pair(vm, OP_PUSH, (drax_value) "get");
   process_token(DTK_BKT_CLOSE, "Expect ']' after index.");
   put_pair(vm, OP_CALL_I, 1);
 }
@@ -414,19 +414,19 @@ void process_variable(d_vm* vm, bool v) {
   name[ctk.length] = '\0';
 
   if (eq_and_next(DTK_EQ)) {
-      expression(vm);      
+    expression(vm);
 
-      put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
-      
-      if (!is_global) {
-        put_local(name);
-        vm->active_instr->local_range++;
-      }
-      return;
+    put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
+    
+    if (!is_global) {
+      put_local(name);
+      vm->active_instr->local_range++;
+    }
+    return;
   }
 
-  if (get_current_token() == DTK_PAR_OPEN) {
-    put_pair(vm, OP_PUSH, (drax_value) name);
+  if (eq_and_next(DTK_PAR_OPEN)) {
+    process_call(vm, name);
     return;
   }
 
@@ -573,11 +573,10 @@ static drax_value process_arguments(d_vm* vm) {
   return arg_count;
 }
 
-void process_call(d_vm* vm, bool v) {
-  UNUSED(v);
+void process_call(d_vm* vm, char* name) {
   int is_global = IS_GLOBAL_SCOPE(vm);
   drax_value arg_count = process_arguments(vm);
-
+  put_pair(vm, OP_PUSH, (drax_value) name);
   put_pair(vm, is_global ? OP_CALL_G : OP_CALL_L, arg_count);
 }
 
@@ -588,15 +587,17 @@ void process_dot(d_vm* vm, bool v) {
   char* k = malloc(sizeof(char) * parser.prev.length + 1);
   memcpy(k, parser.prev.first, parser.prev.length);
   k[parser.prev.length] = '\0';
-  put_pair(vm, OP_PUSH, (drax_value) k);
 
   if (eq_and_next(DTK_PAR_OPEN)) {
     drax_value arg_count = process_arguments(vm);
+    put_pair(vm, OP_PUSH, (drax_value) k);
     put_pair(vm, OP_CALL_I, arg_count);
   } else if (eq_and_next(DTK_EQ)) {
     expression(vm);
+    put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_SET_I_ID);
   } else {
+    put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_GET_I_ID);
   }
 }
