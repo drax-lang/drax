@@ -20,6 +20,9 @@ typedef enum dlex_types {
   /* bool op */
   DTK_LS, DTK_BG, DTK_LE, DTK_BE,
   DTK_EQ, DTK_DEQ, DTK_BNG, DTK_BNG_EQ,
+
+  /* pipe */
+  DTK_PIPE,
   
   /* Keywords */
   DTK_AND, DTK_DO, DTK_ELSE, DTK_END, 

@@ -207,6 +207,13 @@ d_token next_token() {
       case '}': return dmake_symbol(DTK_CBR_CLOSE);
       case ',': return dmake_symbol(DTK_COMMA);
       case ':': return dmake_symbol(DTK_COLON);
+      case '|': {
+        if(CURR_TOKEN() == '>') {
+          next_char();
+          return dmake_symbol(DTK_PIPE);
+        }
+        return make_error("Invalid token.");
+      }
       case '.': {
         return dmake_symbol(DTK_DOT);
       }

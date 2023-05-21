@@ -23,6 +23,7 @@ typedef struct parser_state {
   d_token current;
   d_token prev;
   d_local_registers* locals;
+  int is_pipe;
   bool has_error;
   bool panic_mode;
 } parser_state;
@@ -82,6 +83,7 @@ callback_table(process_index);
 callback_table(process_lambda);
 callback_table(literal_translation);
 callback_table(process_amper);
+callback_table(process_pipe);
 
 void dfatal(d_token* token, const char* message);
 

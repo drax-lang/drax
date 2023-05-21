@@ -9,6 +9,9 @@
 
 #define LOCAL_SIZE_FACTOR 30
 
+#define DISABLE_PIPE_PROCESS() parser.is_pipe = 0
+#define ENABLE_PIPE_PROCESS()  parser.is_pipe = 1
+
 parser_state parser;
 parser_builder* current = NULL;
 
@@ -30,6 +33,7 @@ static void reset_locals() {
   free(parser.locals);
 
   parser.locals = new_locals();
+  DISABLE_PIPE_PROCESS();
 }
 
 static void put_local(char* name) {
@@ -59,7 +63,7 @@ static int get_local(char* name) {
 
 static void init_parser(d_vm* vm) {
   vm->active_instr = vm->instructions;
-
+  DISABLE_PIPE_PROCESS();
   parser.locals = new_locals();
 }
 
@@ -86,6 +90,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_BE,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LS,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LE,        NULL,                process_binary, iDIFF),
+  make_op_line(DTK_PIPE,      NULL,                process_pipe,   iTERM),
   make_op_line(DTK_AMP,       process_amper,       NULL,           iTERM),
   make_op_line(DTK_STRING,    process_string,      NULL,           iNONE),
   make_op_line(DTK_NUMBER,    process_number,      NULL,           iNONE),
@@ -250,6 +255,15 @@ void process_binary(d_vm* vm, bool v) {
     case DTK_CONCAT: put_instruction(vm, OP_CONCAT); break;
     default: return;
   }
+}
+
+void process_pipe(d_vm* vm, bool v) {
+  UNUSED(v);
+  ENABLE_PIPE_PROCESS();
+  
+  dlex_types opt = parser.prev.type;
+  operation_line* rule = GET_PRIORITY(opt);
+  parse_priorities(vm, (priorities)(rule->priorities + 1));
 }
 
 void process_amper(d_vm* vm, bool v) {
@@ -575,7 +589,8 @@ static drax_value process_arguments(d_vm* vm) {
 
 void process_call(d_vm* vm, char* name) {
   int is_global = IS_GLOBAL_SCOPE(vm);
-  drax_value arg_count = process_arguments(vm);
+  drax_value arg_count = process_arguments(vm) + parser.is_pipe;
+  DISABLE_PIPE_PROCESS();
   put_pair(vm, OP_PUSH, (drax_value) name);
   put_pair(vm, is_global ? OP_CALL_G : OP_CALL_L, arg_count);
 }
@@ -588,8 +603,12 @@ void process_dot(d_vm* vm, bool v) {
   memcpy(k, parser.prev.first, parser.prev.length);
   k[parser.prev.length] = '\0';
 
+  /**
+   *  function calls inside elements
+   */
   if (eq_and_next(DTK_PAR_OPEN)) {
-    drax_value arg_count = process_arguments(vm);
+    drax_value arg_count = process_arguments(vm) + parser.is_pipe;
+    DISABLE_PIPE_PROCESS();
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_pair(vm, OP_CALL_I, arg_count);
   } else if (eq_and_next(DTK_EQ)) {

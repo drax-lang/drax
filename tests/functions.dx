@@ -61,7 +61,7 @@ end
 
 nl = get_nested_lambda()
 
-assert(typeof(nl) == "function", "function error: anonimous function")
+assert(typeof(nl) == "function", "function error: typeof to anonimous function")
 
 ### lambda in local scope
 
@@ -125,5 +125,27 @@ assert(sum_test_safe_def(1) == 11, "function error: sum_test_safe_def(1) == 11")
 
 assert(old_def(1) == 2, "function error: sum_test_safe_def(1) == 2")
 
+### pipe operator
+
+fun cat_test_tmp(name, last) do
+    name ++ "--" ++ last
+end
+
+fun cat_test_tmp(name) do
+    name ++ ":cat:"
+end
+
+fr = {
+    fn: lambda (a) a ++ "by_lambda" end
+}
+
+gg = "drax"
+    |> cat_test_tmp()
+    |> cat_test_tmp()
+    |> cat_test_tmp()
+    |> cat_test_tmp("end")
+    #|> fr.fn()
+
+assert(gg == "drax:cat::cat::cat:--end", "function error: pipe operator")
 
 print("Functions done!")
