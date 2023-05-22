@@ -213,12 +213,13 @@ int get_local_table(d_local_var_table* t, int local_range, char* name, drax_valu
   if (t->count <= 0) return 0;
 
   size_t key = fnv1a_hash(name, strlen(name));
-  int limit = t->count - local_range;
-  limit = limit < 0 ? 0 : limit;
+  int init = t->count - local_range;
+  init = init < 0 ? 0 : init;
+
   int i;
-  for (i = t->count; i > limit; i--) {
-    if ((t->array[i -1] != 0) && (t->array[i -1]->key == key)) {
-      *value = t->array[i -1]->value;
+  for (i = init; i < t->count; i++) {
+    if ((t->array[i] != 0) && (t->array[i]->key == key)) {
+      *value = t->array[i]->value;
       return 1;
     }
   }

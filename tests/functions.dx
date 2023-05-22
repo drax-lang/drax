@@ -148,4 +148,15 @@ gg = "drax"
 
 assert(gg == "drax:cat::cat::cat:--end", "function error: pipe operator")
 
+fun assign_error(a) do
+    b = a
+    a = 1
+    a = 10
+    assert(a == 10, "assign error: a == 5")
+    a = b
+    assert(a == 5, "assign error: a == 5")
+end
+
+assign_error(5)
+
 print("Functions done!")
