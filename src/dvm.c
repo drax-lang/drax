@@ -157,7 +157,7 @@ static int get_definition(d_vm* vm, int is_local) {
  * 2: Proceed without clearing the stack
  */
 
-static int do_dcall(d_vm* vm, int inside, int global) {
+static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
   #define return_if_not_found_error(v, n, a) \
     if (v == 0) { \
     raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
@@ -193,7 +193,24 @@ static int do_dcall(d_vm* vm, int inside, int global) {
 
   char* n = (char*) (pop(vm));
 
-  if (inside) { m = peek(vm, a); }
+  if (inside) {
+    if (pipe) {
+      /**
+       * if the function is called via pipe to a 
+       * sub-element [module.function()], we invert
+       * the argument with the base element.
+       * 
+       * the base element must be inverted to not be 
+       * considered an argument.
+       */
+
+      drax_value _t = vm->stack[vm->stack_count - a];
+      vm->stack[vm->stack_count - a] = vm->stack[vm->stack_count -1 - a];
+      vm->stack[vm->stack_count -1 - a] = _t;
+    }
+
+    m = peek(vm, a);
+  }
 
   if (
     (get_mod_table(vm->envs->modules, n, &v) == 0) &&
@@ -519,15 +536,31 @@ static int __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_CALL_L) {
-        if (do_dcall(vm, 0, 0) == 0) return 1;
+        if (do_dcall(vm, 0, 0, 0) == 0) return 1;
         break;
       }
       VMCase(OP_CALL_G) {
-        if (do_dcall(vm, 0, 1) == 0) return 1;
+        if (do_dcall(vm, 0, 1, 0) == 0) return 1;
         break;
       }
       VMCase(OP_CALL_I) {
-        int r = do_dcall(vm, 1, 0);
+        int r = do_dcall(vm, 1, 0, 0);
+        
+        if (r == 0) return 1;
+        if (r == 2) break;
+        
+        drax_value t = pop(vm);
+
+        /**
+         * Remove the function name and struct 
+         * from the stack.
+         */
+        pop(vm);
+        push(vm, t);
+        break;
+      }
+      VMCase(OP_CALL_IP) {
+        int r = do_dcall(vm, 1, 0, 1);
         
         if (r == 0) return 1;
         if (r == 2) break;

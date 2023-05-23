@@ -608,9 +608,9 @@ void process_dot(d_vm* vm, bool v) {
    */
   if (eq_and_next(DTK_PAR_OPEN)) {
     drax_value arg_count = process_arguments(vm) + parser.is_pipe;
-    DISABLE_PIPE_PROCESS();
     put_pair(vm, OP_PUSH, (drax_value) k);
-    put_pair(vm, OP_CALL_I, arg_count);
+    put_pair(vm, parser.is_pipe ? OP_CALL_IP : OP_CALL_I, arg_count);
+    DISABLE_PIPE_PROCESS();
   } else if (eq_and_next(DTK_EQ)) {
     expression(vm);
     put_pair(vm, OP_PUSH, (drax_value) k);

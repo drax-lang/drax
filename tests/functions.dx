@@ -136,7 +136,7 @@ fun cat_test_tmp(name) do
 end
 
 fr = {
-    fn: lambda (a) a ++ "by_lambda" end
+    fn: lambda (a) a ++ "--by_lambda" end
 }
 
 gg = "drax"
@@ -144,9 +144,9 @@ gg = "drax"
     |> cat_test_tmp()
     |> cat_test_tmp()
     |> cat_test_tmp("end")
-    #|> fr.fn()
+    |> fr.fn()
 
-assert(gg == "drax:cat::cat::cat:--end", "function error: pipe operator")
+assert(gg == "drax:cat::cat::cat:--end--by_lambda", "function error: pipe operator")
 
 fun assign_error(a) do
     b = a
