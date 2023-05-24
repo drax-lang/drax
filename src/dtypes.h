@@ -85,7 +85,6 @@ typedef enum d_op_code {
   OP_DIV,
   OP_NOT,
   OP_NEG,
-  OP_PRINT,
   OP_JMP,
   OP_JMF,
   OP_LOOP,

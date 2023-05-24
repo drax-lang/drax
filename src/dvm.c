@@ -517,11 +517,6 @@ static int __start__(d_vm* vm, int inter_mode) {
         push(vm, NUMBER_VAL(-CAST_NUMBER(pop(vm))));
         break;
       }
-      VMCase(OP_PRINT) {
-        print_drax(pop(vm), 0);
-        dbreak_line();
-        break;
-      }
       VMCase(OP_JMP) {
         uint16_t offset = dg16_byte(vm);
         vm->ip += offset;

@@ -23,7 +23,6 @@ static const drax_tokens drax_t[] = {
   {"if",     DTK_IF},
   {"nil",    DTK_NIL},
   {"or",     DTK_OR},
-  {"print",  DTK_PRINT},
   {"true",   DTK_TRUE},
   {"import", DTK_IMPORT},
   {"export", DTK_EXPORT},
@@ -247,12 +246,12 @@ d_token next_token() {
         return dmake_symbol(DTK_BG);
 
       case '"': {
-        int isScaped = 0;
+        int is_scaped = 0;
         while (
-          !((CURR_TOKEN() == '"') && (!isScaped)) &&
+          !((CURR_TOKEN() == '"') && (!is_scaped)) &&
           (!IS_EOF())
         ) {
-          isScaped = 0;
+          is_scaped = 0;
           if (CURR_TOKEN() == '\n') clexs.line++;
           if (CURR_TOKEN() == '\\') {
             char sc = check_next();
@@ -262,7 +261,7 @@ d_token next_token() {
             } else if (sc == 't') {
               next_char();
             } else {
-              isScaped = 1;
+              is_scaped = 1;
             }
           }
 

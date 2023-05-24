@@ -8,6 +8,7 @@
 #include "dtypes.h"
 #include "dtime.h"
 #include "dvm.h"
+#include "deval.h"
 
 #include "mods/d_mod_os.h"
 
@@ -35,7 +36,6 @@ static drax_value __d_assert(d_vm* vm, int* stat) {
 }
 
 static drax_value __d_sleep(d_vm* vm, int* stat) { 
-  UNUSED(vm);
   drax_value val = pop(vm);
   return_if_is_not_number(val, stat);
   
@@ -46,7 +46,6 @@ static drax_value __d_sleep(d_vm* vm, int* stat) {
 }
 
 static drax_value __d_read(d_vm* vm, int* stat) {
-  UNUSED(vm);
   drax_value val = pop(vm);
   return_if_is_not_string(val, stat);
 
@@ -62,6 +61,13 @@ static drax_value __d_read(d_vm* vm, int* stat) {
   free(buff);
   DX_SUCESS_FN(stat);
   return DS_VAL(new_dstring(vm, r, strlen(r)));
+}
+
+static drax_value __d_print(d_vm* vm, int* stat) {
+  print_drax(pop(vm), 0);
+  dbreak_line();
+  DX_SUCESS_FN(stat);
+  return DRAX_NIL_VAL;
 }
 
 static drax_value __d_typeof(d_vm* vm, int* stat) {
@@ -181,6 +187,7 @@ void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
   reg(vm, "typeof", 1, __d_typeof);
   reg(vm, "sleep", 1, __d_sleep);
   reg(vm, "read", 1, __d_read);
+  reg(vm, "print", 1, __d_print);
 }
 
 /**
@@ -245,7 +252,6 @@ static drax_value __d_list_concat(d_vm* vm, int* stat) {
  */
 
 void create_native_modules(d_vm* vm) {
-  UNUSED(vm);  
   /**
    * OS module
   */

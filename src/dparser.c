@@ -102,7 +102,6 @@ static operation_line op_lines[] = {
   make_op_line(DTK_LAMBDA,    process_lambda,      NULL,           iNONE),
   make_op_line(DTK_IF,        NULL,                NULL,           iNONE),
   make_op_line(DTK_OR,        NULL,                process_or,     iOR),
-  make_op_line(DTK_PRINT,     NULL,                NULL,           iNONE),
   make_op_line(DTK_ERROR,     NULL,                NULL,           iNONE),
   make_op_line(DTK_EOF,       NULL,                NULL,           iNONE),
   make_op_line(DTK_CONCAT,    NULL,                process_binary, iTERM),
@@ -657,13 +656,6 @@ static void if_definition(d_vm* vm) {
   process_token(DTK_END, "Expect 'end' after if definition.");
 }
 
-static void print_definition(d_vm* vm) {
-  process_token(DTK_PAR_OPEN, "Expect '(' after arguments.");
-  expression(vm);
-  put_instruction(vm, OP_PRINT);
-  process_token(DTK_PAR_CLOSE, "Expect ')' after arguments.");
-}
-
 static void process(d_vm* vm) {
   switch (get_current_token()) {
     case DTK_FUN: {
@@ -675,12 +667,6 @@ static void process(d_vm* vm) {
     case DTK_IF: {
       get_next_token();
       if_definition(vm);
-      break;
-    }
-
-    case DTK_PRINT: {
-      get_next_token();
-      print_definition(vm);
       break;
     }
 
