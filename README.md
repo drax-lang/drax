@@ -1,6 +1,6 @@
 # Drax
-Drax is a lightweight, dynamically typed programming language focused on integrations. <br/>
 
+Drax is a lightweight, dynamically typed, functional programming language with a focus on integrations. <br/>
 
 ### Documentation
 drax documentation is available in [docs](./docs/index.md)
