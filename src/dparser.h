@@ -23,6 +23,7 @@ typedef struct parser_state {
   d_token current;
   d_token prev;
   d_local_registers* locals;
+  int is_refr;
   int is_pipe;
   bool has_error;
   bool panic_mode;

@@ -425,6 +425,26 @@ static int __start__(d_vm* vm, int inter_mode) {
         push(vm, val);
         break;
       }
+
+      /**
+       * Internal references is only allowed to modules.
+       * 
+       * &module_name.function_name/arity
+       */
+      VMCase(OP_GET_REFI) {
+        int a = (int) AS_NUMBER(pop(vm));
+        char* n = (char*) GET_VALUE(vm);
+        drax_value m = pop(vm);
+        low_level_callback* nf = get_fun_on_module(CAST_MODULE(m), n, a);
+        
+        if (nf == 0) {
+          raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
+          return 1;
+        }
+
+        push(vm, DS_VAL(new_dllcallback(vm, nf, n, a)));
+        break;
+      }
       VMCase(OP_GET_REF) {
         int a = (int) AS_NUMBER(pop(vm));
         char* n = (char*) GET_VALUE(vm);

@@ -101,6 +101,7 @@ typedef enum d_op_code {
   OP_SET_I_ID, /* inside */
   OP_GET_I_ID,
   OP_GET_REF,  /* &reference */
+  OP_GET_REFI, /* &reference inside */
   OP_RETURN,
   OP_EXIT,
 } d_op_code;

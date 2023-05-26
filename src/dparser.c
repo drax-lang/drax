@@ -12,6 +12,9 @@
 #define DISABLE_PIPE_PROCESS() parser.is_pipe = 0
 #define ENABLE_PIPE_PROCESS()  parser.is_pipe = 1
 
+#define DISABLE_REFR_PROCESS() parser.is_refr = 0
+#define ENABLE_REFR_PROCESS()  parser.is_refr = 1
+
 parser_state parser;
 parser_builder* current = NULL;
 
@@ -34,6 +37,7 @@ static void reset_locals() {
 
   parser.locals = new_locals();
   DISABLE_PIPE_PROCESS();
+  DISABLE_REFR_PROCESS();
 }
 
 static void put_local(char* name) {
@@ -266,19 +270,9 @@ void process_pipe(d_vm* vm, bool v) {
 }
 
 void process_amper(d_vm* vm, bool v) {
+  ENABLE_REFR_PROCESS();
   UNUSED(v);
-  process_token(DTK_ID, "Expect 'identifier' after '&'.");
-
-  d_token ctk = parser.prev;
-  char* name = (char*) malloc(sizeof(char) * (ctk.length + 1));
-  strncpy(name, ctk.first, ctk.length);
-  name[ctk.length] = '\0';
-
-  process_token(DTK_DIV, "Expect '/' after identifier.");
-  process_token(DTK_NUMBER, "Expect 'number' after '/'.");
-  process_number(vm, false);
-
-  put_pair(vm, OP_GET_REF, (drax_value) name);
+  expression(vm);
 }
 
 void literal_translation(d_vm* vm, bool v) {
@@ -425,6 +419,16 @@ void process_variable(d_vm* vm, bool v) {
   char* name = (char*) malloc(sizeof(char) * (ctk.length + 1));
   strncpy(name, ctk.first, ctk.length);
   name[ctk.length] = '\0';
+
+  if (parser.is_refr == 1 && get_current_token() == DTK_DIV) {
+    process_token(DTK_DIV, "Expect '/' after identifier.");
+    process_token(DTK_NUMBER, "Expect 'number' after '/'.");
+    process_number(vm, false);
+
+    put_pair(vm, OP_GET_REF, (drax_value) name);
+    DISABLE_REFR_PROCESS();
+    return;
+  }
 
   if (eq_and_next(DTK_EQ)) {
     expression(vm);
@@ -602,10 +606,10 @@ void process_dot(d_vm* vm, bool v) {
   memcpy(k, parser.prev.first, parser.prev.length);
   k[parser.prev.length] = '\0';
 
-  /**
-   *  function calls inside elements
-   */
   if (eq_and_next(DTK_PAR_OPEN)) {
+    /**
+     *  function calls inside elements
+     */
     drax_value arg_count = process_arguments(vm) + parser.is_pipe;
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_pair(vm, parser.is_pipe ? OP_CALL_IP : OP_CALL_I, arg_count);
@@ -614,6 +618,18 @@ void process_dot(d_vm* vm, bool v) {
     expression(vm);
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_SET_I_ID);
+  } else if ((parser.is_refr == 1) && (get_current_token() == DTK_DIV)) {
+    /**
+     * reference function inside module
+     * 
+     * &module.function/1
+     */
+    process_token(DTK_DIV, "Expect '/' after identifier.");
+    process_token(DTK_NUMBER, "Expect 'number' after '/'.");
+    process_number(vm, false);
+
+    put_pair(vm, OP_GET_REFI, (drax_value) k);
+    DISABLE_REFR_PROCESS();
   } else {
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_GET_I_ID);
