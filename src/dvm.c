@@ -27,6 +27,20 @@
         vm->active_instr = callstack_pop(vm); \
         vm->ip = vm->active_instr->_ip;
 
+#define process_lambda_function(vm, a, n, anf) \
+    if (anf->arity != (int) a) { \
+      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+      return 0; }\
+    vm->active_instr->_ip = vm->ip;\
+    callstack_push(vm, vm->active_instr);\
+    zero_new_local_range(vm, anf->instructions->local_range);\
+    vm->active_instr = anf->instructions;\
+    vm->ip = anf->instructions->values;
+
+#define STATUS_DCALL_ERROR            0
+#define STATUS_DCALL_SUCCESS          1
+#define STATUS_DCALL_SUCCESS_NO_CLEAR 2
+
 /* VM stack. */
 
 void push(d_vm* vm, drax_value v) {
@@ -149,37 +163,50 @@ static int get_definition(d_vm* vm, int is_local) {
 }
 
 /**
+ * Native Call Definitions
+ * 
+ * This function responds to the following status:
+ * STATUS_DCALL_ERROR:   an error occurred
+ * STATUS_DCALL_SUCCESS: success, proceed normally
+ */
+static int do_dcall_native(d_vm* vm, drax_value v) {
+  int scs = 0;
+  drax_os_native* ns = CAST_NATIVE(v);
+  low_level_callback* nf = ns->function;
+  drax_value result = nf(vm, &scs);
+
+  if (!scs) {
+    drax_error* e = CAST_ERROR(result);
+    raise_drax_error(vm, e->chars);
+    return STATUS_DCALL_ERROR;
+  }
+
+  push(vm, result);
+  return STATUS_DCALL_SUCCESS;
+}
+
+/**
  * Call Definitions
  * 
- * This function responds to the following statuses
- * 0: an error occurred
- * 1: success, proceed normally
- * 2: Proceed without clearing the stack
+ * This function responds to the following status:
+ * STATUS_DCALL_ERROR:            an error occurred
+ * STATUS_DCALL_SUCCESS:          success, proceed normally
+ * STATUS_DCALL_SUCCESS_NO_CLEAR: Proceed without clearing the stack
  */
 
 static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
   #define return_if_not_found_error(v, n, a) \
     if (v == 0) { \
     raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
-    return 0; \
+    return STATUS_DCALL_ERROR; \
   }
 
   #define return_if_native_call_error(s, r, c) \
     if (!s) { \
       drax_error* e = CAST_ERROR(r); \
       raise_drax_error(vm, c); \
-      return 0; \
+      return STATUS_DCALL_ERROR; \
     }
-
-  #define process_lambda_function(anf) \
-      if (anf->arity != (int) a) { \
-        raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
-        return 0; }\
-      vm->active_instr->_ip = vm->ip;\
-      callstack_push(vm, vm->active_instr);\
-      zero_new_local_range(vm, anf->instructions->local_range);\
-      vm->active_instr = anf->instructions;\
-      vm->ip = anf->instructions->values;
 
   /* DEBUG( printf(" --do_dcall\n") ); */
 
@@ -220,21 +247,25 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
   }
 
   if (v != 0) {
+    if (IS_NATIVE(v)) {
+      return do_dcall_native(vm, v);
+    }
+
     drax_function* af = CAST_FUNCTION(v);
-    process_lambda_function(af);
-    return 2;
+    process_lambda_function(vm, a, n, af);
+    return STATUS_DCALL_SUCCESS_NO_CLEAR;
   }
 
   if (inside) {
     if (IS_FRAME(m)) {
       if(get_value_dframe(CAST_FRAME(m), (char*) n, &v) == -1) {
         raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
-        return 0;
+        return STATUS_DCALL_ERROR;
       }
 
       drax_function* af = CAST_FUNCTION(v);
-      process_lambda_function(af)
-      return 2;
+      process_lambda_function(vm, a, n, af)
+      return STATUS_DCALL_SUCCESS_NO_CLEAR;
     }
 
     if (IS_MODULE(m)) {
@@ -246,7 +277,7 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
       return_if_native_call_error(scs, result, e->chars);
 
       push(vm, result);
-      return 1;
+      return STATUS_DCALL_SUCCESS;
     }
     
     if (IS_STRING(m)) {
@@ -268,20 +299,13 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
   }
 
   if (IS_NATIVE(v)) {
-    int scs = 0;
-    drax_os_native* ns = CAST_NATIVE(v);
-    low_level_callback* nf = ns->function;
-    drax_value result = nf(vm, &scs);
-
-    return_if_native_call_error(scs, result, e->chars);
-    push(vm, result);
-    return 1;
+    return do_dcall_native(vm, v);
   }
 
   /* Drax Function */
   drax_function* f = CAST_FUNCTION(v);
 
-  process_lambda_function(f);
+  process_lambda_function(vm, a, n, f);
 
   /**
    * In this case, the function name is 
@@ -289,7 +313,7 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
    * because we can have nested calls.
    */
 
-  return 1;
+  return STATUS_DCALL_SUCCESS;
 }
 
 static int __start__(d_vm* vm, int inter_mode) {
