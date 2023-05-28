@@ -162,6 +162,38 @@ static int get_definition(d_vm* vm, int is_local) {
   return 1;
 }
 
+#define return_if_not_found_error(vm, v, n, a) \
+  if (v == 0) { \
+    raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+    return STATUS_DCALL_ERROR; \
+  }
+
+static int do_dcall_get_fun(d_vm* vm, char* n, int a, int global, drax_value* v ) {
+  /**
+   * Priority of search:
+   * 
+   *  1. Module  4. Native
+   *  2. Local   5. Function
+   *  3. Global
+   */
+
+  if (get_mod_table(vm->envs->modules, n, v) == 1) return 1;
+
+  if (get_local_table(vm->envs->local, vm->active_instr->local_range, n, v) == 1) return 1;
+
+  if (global) {
+    if (get_var_table(vm->envs->global, n, v) == 1) return 1;
+  }
+
+  *v = get_fun_table(vm->envs->native, n, a);
+
+  if (*v != 0) return 1;
+
+  *v = get_fun_table(vm->envs->functions, n, a);
+
+  return (*v != 0);
+}
+
 /**
  * Native Call Definitions
  * 
@@ -186,6 +218,51 @@ static int do_dcall_native(d_vm* vm, drax_value v) {
 }
 
 /**
+ * Execute the function call inside an element
+ */
+static int do_dcall_inside(d_vm* vm, char* n, int a, drax_value m) {
+  drax_value v;
+
+  if (IS_FRAME(m)) {
+    if(get_value_dframe(CAST_FRAME(m), (char*) n, &v) == -1) {
+      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
+      return STATUS_DCALL_ERROR;
+    }
+
+    drax_function* af = CAST_FUNCTION(v);
+    process_lambda_function(vm, a, n, af)
+    return STATUS_DCALL_SUCCESS_NO_CLEAR;
+  }
+
+  if (IS_MODULE(m)) {
+    low_level_callback* nf = get_fun_on_module(CAST_MODULE(m), n, a);
+
+    return_if_not_found_error(vm, nf, n, a);
+    int scs = 0;
+    drax_value result = nf(vm, &scs);
+
+    if (!scs) {
+      drax_error* e = CAST_ERROR(result);
+      raise_drax_error(vm, e->chars);
+      return STATUS_DCALL_ERROR;
+    }
+
+    push(vm, result);
+    return STATUS_DCALL_SUCCESS;
+  }
+  
+  if (IS_STRING(m)) {
+    return dstr_handle_str_call(vm, n, a, m);
+  }
+
+  if (IS_LIST(m)) {
+    return dlist_handle_call(vm, n, a, m);
+  }
+
+  return_if_not_found_error(vm, 0, n, a);
+}
+
+/**
  * Call Definitions
  * 
  * This function responds to the following status:
@@ -195,19 +272,6 @@ static int do_dcall_native(d_vm* vm, drax_value v) {
  */
 
 static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
-  #define return_if_not_found_error(v, n, a) \
-    if (v == 0) { \
-    raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
-    return STATUS_DCALL_ERROR; \
-  }
-
-  #define return_if_native_call_error(s, r, c) \
-    if (!s) { \
-      drax_error* e = CAST_ERROR(r); \
-      raise_drax_error(vm, c); \
-      return STATUS_DCALL_ERROR; \
-    }
-
   /* DEBUG( printf(" --do_dcall\n") ); */
 
   drax_value a = GET_VALUE(vm);
@@ -216,7 +280,6 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
    * if call is using dot operator
    */
   drax_value m = 0;
-  drax_value v = 0;
 
   char* n = (char*) (pop(vm));
 
@@ -239,70 +302,15 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
     m = peek(vm, a);
   }
 
-  if (
-    (get_mod_table(vm->envs->modules, n, &v) == 0) &&
-    ((global) || (get_local_table(vm->envs->local, vm->active_instr->local_range, n, &v) == 0))
-  ) {
-    get_var_table(vm->envs->global, n, &v);
+  if (inside) { return do_dcall_inside(vm, n, a, m); }
+
+  drax_value v = 0;
+  if(do_dcall_get_fun(vm, n, a, global, &v) == 0) {
+    return_if_not_found_error(vm, 0, n, a);
   }
 
-  if (v != 0) {
-    if (IS_NATIVE(v)) {
-      return do_dcall_native(vm, v);
-    }
+  if (IS_NATIVE(v)) { return do_dcall_native(vm, v); }
 
-    drax_function* af = CAST_FUNCTION(v);
-    process_lambda_function(vm, a, n, af);
-    return STATUS_DCALL_SUCCESS_NO_CLEAR;
-  }
-
-  if (inside) {
-    if (IS_FRAME(m)) {
-      if(get_value_dframe(CAST_FRAME(m), (char*) n, &v) == -1) {
-        raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
-        return STATUS_DCALL_ERROR;
-      }
-
-      drax_function* af = CAST_FUNCTION(v);
-      process_lambda_function(vm, a, n, af)
-      return STATUS_DCALL_SUCCESS_NO_CLEAR;
-    }
-
-    if (IS_MODULE(m)) {
-      low_level_callback* nf = get_fun_on_module(CAST_MODULE(m), n, a);
-
-      return_if_not_found_error(nf, n, a);
-      int scs = 0;
-      drax_value result = nf(vm, &scs);
-      return_if_native_call_error(scs, result, e->chars);
-
-      push(vm, result);
-      return STATUS_DCALL_SUCCESS;
-    }
-    
-    if (IS_STRING(m)) {
-      return dstr_handle_str_call(vm, n, a, m);
-    }
-
-    if (IS_LIST(m)) {
-      return dlist_handle_call(vm, n, a, m);
-    }
-
-    return_if_not_found_error(0, n, a);
-  }
-
-  v = get_fun_table(vm->envs->native, n, a);
-  if (v == 0) {
-    v = get_fun_table(vm->envs->functions, n, a);
-  
-    return_if_not_found_error(v, n, a);
-  }
-
-  if (IS_NATIVE(v)) {
-    return do_dcall_native(vm, v);
-  }
-
-  /* Drax Function */
   drax_function* f = CAST_FUNCTION(v);
 
   process_lambda_function(vm, a, n, f);
@@ -575,18 +583,18 @@ static int __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_CALL_L) {
-        if (do_dcall(vm, 0, 0, 0) == 0) return 1;
+        if (do_dcall(vm, 0, 0, 0) == STATUS_DCALL_ERROR) return 1;
         break;
       }
       VMCase(OP_CALL_G) {
-        if (do_dcall(vm, 0, 1, 0) == 0) return 1;
+        if (do_dcall(vm, 0, 1, 0) == STATUS_DCALL_ERROR) return 1;
         break;
       }
       VMCase(OP_CALL_I) {
         int r = do_dcall(vm, 1, 0, 0);
         
-        if (r == 0) return 1;
-        if (r == 2) break;
+        if (r == STATUS_DCALL_ERROR) return 1;
+        if (r == STATUS_DCALL_SUCCESS_NO_CLEAR) break;
         
         drax_value t = pop(vm);
 

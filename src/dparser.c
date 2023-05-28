@@ -483,6 +483,11 @@ static void parse_priorities(d_vm* vm, priorities p) {
     get_next_token();
     parser_callback infix_rule = GET_PRIORITY(parser.prev.type)->infix;
 
+    if (infix_rule == NULL) {
+      FATAL("Expect expression.");
+      return;
+    }
+
     infix_rule(vm, v);
   }
 
