@@ -247,6 +247,38 @@ static drax_value __d_list_concat(d_vm* vm, int* stat) {
   return DS_VAL(l);
 }
 
+static drax_value __d_list_head(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_list(a, stat);
+  drax_list* l1 = CAST_LIST(a);
+
+  DX_SUCESS_FN(stat);
+  return l1->length > 0 ? l1->elems[0] : DRAX_NIL_VAL;
+}
+
+static drax_value __d_list_tail(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_list(a, stat);
+  drax_list* l1 = CAST_LIST(a);
+
+  drax_list* l = new_dlist(vm, l1->length -1);
+  l->length = l1->length - 1;
+  l->elems = l1->elems + 1;
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l);
+}
+
+static drax_value __d_list_length(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+  drax_list* l = CAST_LIST(a);
+
+  DX_SUCESS_FN(stat);
+  return AS_VALUE(l->length);
+}
+
 /**
  * Entry point for native modules
  */
@@ -292,9 +324,12 @@ void create_native_modules(d_vm* vm) {
   /**
    * List Module
    */ 
-  drax_native_module* list = new_native_module(vm, "list", 1);
+  drax_native_module* list = new_native_module(vm, "list", 4);
   const drax_native_module_helper list_helper[] = {
     {2, "concat", __d_list_concat },
+    {1, "head", __d_list_head},
+    {1, "tail", __d_list_tail},
+    {1, "length", __d_list_length},
   };
 
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
