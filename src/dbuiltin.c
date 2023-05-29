@@ -9,6 +9,7 @@
 #include "dtime.h"
 #include "dvm.h"
 #include "deval.h"
+#include "dgc.h"
 
 #include "mods/d_mod_os.h"
 
@@ -201,6 +202,12 @@ static drax_value __d_exit(d_vm* vm, int* stat) {
   exit(ext_stat);
 }
 
+static drax_value __d_gc_swap(d_vm* vm, int* stat) {
+  dgc_swap(vm);
+  DX_SUCESS_FN(stat);
+  return DRAX_NIL_VAL;
+}
+
 /**
  * Frame module
  */
@@ -302,8 +309,9 @@ void create_native_modules(d_vm* vm) {
   /**
    * Core module
   */
-  drax_native_module* mcore = new_native_module(vm, "core", 1);
+  drax_native_module* mcore = new_native_module(vm, "core", 2);
   const drax_native_module_helper core_helper[] = {
+    {0, "gc_swap", __d_gc_swap },
     {1, "exit", __d_exit },
   };
 
