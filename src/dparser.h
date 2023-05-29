@@ -73,6 +73,7 @@ callback_table(process_unary);
 callback_table(process_binary);
 callback_table(process_variable);
 callback_table(process_string);
+callback_table(process_dstring);
 callback_table(process_number);
 callback_table(process_and);
 callback_table(process_or);

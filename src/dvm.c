@@ -340,10 +340,6 @@ static int __start__(d_vm* vm, int inter_mode) {
   UNUSED(inter_mode);
   VMDispatch {
     VMcond(vm) {
-      VMCase(OP_CONST) {
-        push(vm, GET_VALUE(vm));
-        break;
-      }
       VMCase(OP_NIL) {
         push(vm, DRAX_NIL_VAL);
         break;
@@ -383,6 +379,15 @@ static int __start__(d_vm* vm, int inter_mode) {
 
         pop_times(vm, limit);
         push(vm, DS_VAL(l));
+        break;
+      }
+      VMCase(OP_DSTR) {
+        /* TODO: process db string */
+        push(vm, GET_VALUE(vm));
+        break;
+      }
+      VMCase(OP_CONST) {
+        push(vm, GET_VALUE(vm));
         break;
       }
       VMCase(OP_POP) {

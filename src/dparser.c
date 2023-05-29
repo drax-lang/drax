@@ -97,6 +97,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_PIPE,      NULL,                process_pipe,   iTERM),
   make_op_line(DTK_AMP,       process_amper,       NULL,           iTERM),
   make_op_line(DTK_STRING,    process_string,      NULL,           iNONE),
+  make_op_line(DTK_DSTRING,   process_dstring,     NULL,           iNONE),
   make_op_line(DTK_NUMBER,    process_number,      NULL,           iNONE),
   make_op_line(DTK_AND,       NULL,                process_and,    iAND),
   make_op_line(DTK_ELSE,      NULL,                NULL,           iNONE),
@@ -410,6 +411,12 @@ void process_string(d_vm* vm, bool v) {
   UNUSED(v);
   put_const(vm, DS_VAL(copy_dstring(vm, parser.prev.first + 1, parser.prev.length - 2)));
 }
+
+void process_dstring(d_vm* vm, bool v) {
+  UNUSED(v);
+  put_pair(vm, OP_DSTR, DS_VAL(copy_dstring(vm, parser.prev.first + 1, parser.prev.length - 2)));
+}
+
 
 void process_variable(d_vm* vm, bool v) {
   UNUSED(v);

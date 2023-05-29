@@ -244,6 +244,35 @@ d_token next_token() {
           return dmake_symbol(DTK_BE);
         }
         return dmake_symbol(DTK_BG);
+        
+      case '\'': {
+        int is_scaped = 0;
+        while (
+          !((CURR_TOKEN() == '\'') && (!is_scaped)) &&
+          (!IS_EOF())
+        ) {
+          is_scaped = 0;
+          if (CURR_TOKEN() == '\n') clexs.line++;
+          if (CURR_TOKEN() == '\\') {
+            char sc = check_next();
+
+            if (sc == '\\') {
+              next_char();
+            } else if (sc == 't') {
+              next_char();
+            } else {
+              is_scaped = 1;
+            }
+          }
+
+          next_char();
+        }
+        
+        if (IS_EOF()) return make_error("Unterminated string.");
+
+        next_char();
+        return dmake_symbol(DTK_STRING);
+      }
 
       case '"': {
         int is_scaped = 0;
@@ -271,7 +300,7 @@ d_token next_token() {
         if (IS_EOF()) return make_error("Unterminated string.");
 
         next_char();
-        return dmake_symbol(DTK_STRING);
+        return dmake_symbol(DTK_DSTRING);
       }
 
       case '#':
