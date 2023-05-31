@@ -71,7 +71,7 @@ static int dgc_swap_locals(d_local_var_table* t) {
   return 1;
 }
 
-static int dgc_swap_global(d_generic_var_table* t) {
+static int dgc_swap_generic_table(d_generic_var_table* t) {
   DEBUG(printf("--dcgl swap\n"));
   if (t->size <= 0) return 1;
 
@@ -146,7 +146,7 @@ int dgc_swap(d_vm* vm) {
 
   dgc_swap_locals(vm->envs->local);
 
-  dgc_swap_global(vm->envs->global);
+  dgc_swap_generic_table(vm->envs->global);
 
   dgc_swap_function(vm->envs->functions);
 

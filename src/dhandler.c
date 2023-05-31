@@ -35,11 +35,11 @@ size_t fnv1a_hash(const char* key, int len) {
 d_generic_var_table* new_var_table() {
   d_generic_var_table* t = (d_generic_var_table*) malloc(sizeof(d_generic_var_table));
   t->size = HASH_VAR_TABLE_SIZE;
-    t->array = malloc(HASH_VAR_TABLE_SIZE * sizeof(struct node*));
-    int i;
-    for (i = 0; i < HASH_VAR_TABLE_SIZE; i++) {
-        t->array[i] = NULL;
-    }
+  t->array = malloc(HASH_VAR_TABLE_SIZE * sizeof(struct node*));
+  int i;
+  for (i = 0; i < HASH_VAR_TABLE_SIZE; i++) {
+    t->array[i] = NULL;
+  }
 
   return t;
 }
@@ -48,13 +48,13 @@ void free_var_table(d_vm* vm, d_generic_var_table* t) {
   UNUSED(vm);
   int i;
   for (i = 0; i < t->size; i++) {
-      struct drax_generic_var_node* current = t->array[i];
-      while (current != NULL) {
-          struct drax_generic_var_node* next = current->next;
-          /* free(current->value); */
-          free(current);
-          current = next;
-      }
+    struct drax_generic_var_node* current = t->array[i];
+    while (current != NULL) {
+      struct drax_generic_var_node* next = current->next;
+      /* free(current->value); */
+      free(current);
+      current = next;
+    }
   }
   free(t->array);
   free(t);
@@ -64,10 +64,10 @@ static drax_generic_var_node*
 get_elem_on_var_table(d_generic_var_table* t, int i, size_t k) {
   drax_generic_var_node* current = t->array[i];
   while (current != NULL) {
-      if (current->key == k) {
-          return current;
-      }
-      current = current->next;
+    if (current->key == k) {
+      return current;
+    }
+    current = current->next;
   }
 
   return NULL;
@@ -85,7 +85,6 @@ int get_var_table(d_generic_var_table* t, char* name, drax_value* value) {
 }
 
 void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
-  
   int i = generate_hash(name, t->size);
   size_t k = fnv1a_hash(name, strlen(name));
 

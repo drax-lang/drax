@@ -342,5 +342,4 @@ void create_native_modules(d_vm* vm) {
 
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(list));
-
 }
