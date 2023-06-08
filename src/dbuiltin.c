@@ -183,6 +183,15 @@ static drax_value __d_mkdir(d_vm* vm, int* stat, int permission) {
 static drax_value __d_mkdir1(d_vm* v, int* s) { return __d_mkdir(v, s, 0); }
 static drax_value __d_mkdir2(d_vm* v, int* s) { return __d_mkdir(v, s, 1); }
 
+static drax_value __d_system(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);  
+  return_if_is_not_string(a, stat);
+  int r = system(CAST_STRING(a)->chars);
+
+  DX_SUCESS_FN(stat);
+  return AS_VALUE((double) r);
+}
+
 void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
   reg(vm, "assert", 2, __d_assert);
   reg(vm, "typeof", 1, __d_typeof);
@@ -294,10 +303,11 @@ void create_native_modules(d_vm* vm) {
   /**
    * OS module
   */
-  drax_native_module* mos = new_native_module(vm, "os", 5);
+  drax_native_module* mos = new_native_module(vm, "os", 6);
   const drax_native_module_helper os_helper[] = {
     {1, "cmd", __d_cmd },
     {1, "cmd_with_status", __d_cmd_with_status },
+    {1, "system", __d_system},
     {1, "get_env", __d_get_env },
     {1, "mkdir", __d_mkdir1 },
     {2, "mkdir", __d_mkdir2 },
