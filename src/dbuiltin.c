@@ -295,6 +295,177 @@ static drax_value __d_list_length(d_vm* vm, int* stat) {
   return AS_VALUE(l->length);
 }
 
+/*
+  TCP module
+*/
+
+static drax_value __d_tcp_connect(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  int server = socket(AF_INET, SOCK_STREAM, 0);
+  char* addr = CAST_STRING(b)->chars;
+  int port = (int) CAST_NUMBER(a);
+
+  struct sockaddr_in address;
+  address.sin_family = AF_INET;
+  address.sin_addr.s_addr = inet_addr(addr);
+  address.sin_port = htons(port);
+  
+  socklen_t addressLength = sizeof(address);
+
+  connect(server,(struct sockaddr*)&address,addressLength);
+
+  drax_frame* frame = new_dframe(vm, 4);
+  put_value_dframe(frame, (char*) "port", AS_VALUE(address.sin_port));
+  put_value_dframe(frame, (char*) "host", AS_VALUE(address.sin_addr.s_addr));
+  put_value_dframe(frame, (char*) "sin_family", AS_VALUE(address.sin_family));
+  put_value_dframe(frame, (char*) "socket", AS_VALUE(server));
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(frame);
+}
+
+static drax_value __d_tcp_send(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  drax_frame* f = CAST_FRAME(a);
+
+  drax_value port;
+  drax_value host;
+  drax_value sin_family;
+  drax_value socket;
+
+  get_value_dframe(f, (char*) "port", &port);
+  get_value_dframe(f, (char*) "host", &host);
+  get_value_dframe(f, (char*) "sin_family", &sin_family);
+  get_value_dframe(f, (char*) "socket", &socket);
+
+  int server = (int) CAST_NUMBER(socket);
+
+  struct sockaddr_in serverAddress;
+  serverAddress.sin_family = (sa_family_t) (int) CAST_NUMBER(sin_family);
+  serverAddress.sin_addr.s_addr = (in_addr_t) (int) CAST_NUMBER(host);
+  serverAddress.sin_port = (in_port_t) (int) CAST_NUMBER(port);
+  
+  socklen_t addressLength = sizeof(serverAddress);
+
+  connect(server, (struct sockaddr*)&serverAddress, addressLength);
+
+  drax_string* s1 = CAST_STRING(b);
+  char buffer[1024];
+  strcpy(buffer, s1->chars);
+  buffer[s1->length + 1] = '\0';
+
+  sendto(server, buffer, s1->length + 1, 0, (struct sockaddr*)&serverAddress, addressLength);
+
+  DX_SUCESS_FN(stat);
+
+  return DRAX_NIL_VAL;
+}
+
+static drax_value __d_tcp_recive(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  drax_frame* f = CAST_FRAME(a);
+
+  drax_value port;
+  drax_value host;
+  drax_value sin_family;
+  drax_value socket;
+
+  get_value_dframe(f, (char*) "port", &port);
+  get_value_dframe(f, (char*) "host", &host);
+  get_value_dframe(f, (char*) "sin_family", &sin_family);
+  get_value_dframe(f, (char*) "socket", &socket);
+
+  int server = (int) CAST_NUMBER(socket);
+
+  struct sockaddr_in serverAddress;
+  serverAddress.sin_family = (sa_family_t) (int) CAST_NUMBER(sin_family);
+  serverAddress.sin_addr.s_addr = (in_addr_t) (int) CAST_NUMBER(host);
+  serverAddress.sin_port = (in_port_t) (int) CAST_NUMBER(port);
+  
+  socklen_t addressLength = sizeof(serverAddress);
+
+  connect(server,(struct sockaddr*)&serverAddress,addressLength);
+
+  char buffer[1024];
+
+  recvfrom(server, buffer, 1024, 0, NULL, NULL);
+
+  DX_SUCESS_FN(stat);
+
+  return DS_VAL(new_dstring(vm, buffer, strlen(buffer)));
+}
+
+static drax_value __d_tcp_listen(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  char* addr = CAST_STRING(b)->chars;
+  int port = (int) CAST_NUMBER(a);
+
+  int socketDescriptor = socket(AF_INET,SOCK_STREAM,0);
+  
+  struct sockaddr_in socketAddress;
+  socketAddress.sin_family = AF_INET;
+  socketAddress.sin_port = htons(port);
+  socketAddress.sin_addr.s_addr = inet_addr(addr);
+
+  bind(socketDescriptor, (struct sockaddr*) &socketAddress, sizeof(socketAddress));
+
+  listen(socketDescriptor, 5);
+
+  DX_SUCESS_FN(stat);
+
+  return AS_VALUE(socketDescriptor);
+}
+
+static drax_value __d_tcp_accept(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  int socket = (int) CAST_NUMBER(a);
+
+  int client = accept(socket, NULL, NULL);
+
+  DX_SUCESS_FN(stat);
+
+  return AS_VALUE(client);
+}
+
+static drax_value __d_tcp_read(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  int client = (int) CAST_NUMBER(a);
+  char buffer[1024];
+
+  recv(client, buffer, 1024, 0);
+
+  DX_SUCESS_FN(stat);
+
+  return DS_VAL(new_dstring(vm, buffer, strlen(buffer)));
+}
+
+static drax_value __d_tcp_write(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  int client = (int) CAST_NUMBER(a);
+
+  drax_string* s1 = CAST_STRING(b);
+  char buffer[1024];
+  strcpy(buffer, s1->chars);
+  buffer[s1->length + 1] = '\0';
+
+  send(client, buffer, s1->length + 1, 0);
+
+  DX_SUCESS_FN(stat);
+
+  return DRAX_NIL_VAL;
+}
+
 /**
  * Entry point for native modules
  */
@@ -315,6 +486,24 @@ void create_native_modules(d_vm* vm) {
 
   put_fun_on_module(mos, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(mos));
+
+  /*
+   * TCP module
+  */
+
+  drax_native_module* mtcp = new_native_module(vm, "tcp", 7);
+  const drax_native_module_helper tcp_helper[] = {
+    {2, "connect", __d_tcp_connect },
+    {1, "recive",  __d_tcp_recive },
+    {2, "listen",  __d_tcp_listen },
+    {1, "accept",  __d_tcp_accept },
+    {1, "read",    __d_tcp_read },
+    {2, "send",    __d_tcp_send },
+    {2, "write",    __d_tcp_write },
+  };
+
+  put_fun_on_module(mtcp, tcp_helper, sizeof(tcp_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(mtcp));
 
   /**
    * Core module
