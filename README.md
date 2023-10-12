@@ -1,6 +1,9 @@
-# Drax
+# Drax 
+![https://github.com/jeantux/drax/actions/workflows/drax-build.yml/badge.svg](https://github.com/jeantux/drax/actions/workflows/drax-build.yml/badge.svg)
 
-Drax is a lightweight, dynamically typed, functional programming language with a focus on integrations. <br/>
+**Dynamic and Rapid Abstract eXecutor**
+
+Drax is a lightweight project, dynamically typed, functional programming language with a focus on integrations. <br/>
 
 ### Documentation
 drax documentation is available in [docs](./docs/index.md)
