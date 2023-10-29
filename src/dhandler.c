@@ -51,7 +51,6 @@ void free_var_table(d_vm* vm, d_generic_var_table* t) {
     struct drax_generic_var_node* current = t->array[i];
     while (current != NULL) {
       struct drax_generic_var_node* next = current->next;
-      /* free(current->value); */
       free(current);
       current = next;
     }

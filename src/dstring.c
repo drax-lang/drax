@@ -2,7 +2,7 @@
 #include "ddefs.h"
 
 /**
- * Connvert string to number
+ * Convert string to number
  * 
  *  "123".to_number() => 123
  *  "0b1111".to_number() => 15

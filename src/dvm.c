@@ -741,6 +741,6 @@ d_vm* createVM() {
 }
 
 int __run__(d_vm* vm, int inter_mode) {
- __init__(vm);
- return __start__(vm, inter_mode);
+  __init__(vm);
+  return __start__(vm, inter_mode);
 }
