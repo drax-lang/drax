@@ -28,7 +28,7 @@ assert(0x7b == 123, "number error: hex number parsing 0x7b")
 
 assert(0x7BF == 1983, "number error: hex number parsing 0x7BF")
 
-#### def middle expression
+### def middle expression
 
 expected = 1 + 2 * 3 + 4 * 5 - 6 * 7 + 8 * 9
 
@@ -41,6 +41,20 @@ assert(expected == 15, "number error: '(' exp ')' expression")
 fix_value = 123456
 
 assert(fix_value == 123456, "number error: fix value")
+
+### process numbers without spaces
+
+result = 21+21
+assert(result == 42, "number error: 21+21")
+
+result = 21*21
+assert(result == 441, "number error: 21*21")
+
+result = 21-21
+assert(result == 0, "number error: 21-21")
+
+result = 21/3
+assert(result == 7, "number error: 21/21")
 
 print("Number done!")
 

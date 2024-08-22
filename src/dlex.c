@@ -189,7 +189,8 @@ d_token next_token() {
       }
 
       case '+': {
-        if(next_char() == '+') {
+        if(CURR_TOKEN() == '+') {
+          next_char();
           return dmake_symbol(DTK_CONCAT);
         }
         return dmake_symbol(DTK_ADD);
