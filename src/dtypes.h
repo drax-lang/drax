@@ -103,6 +103,8 @@ typedef enum d_op_code {
   OP_GET_I_ID,
   OP_GET_REF,  /* &reference */
   OP_GET_REFI, /* &reference inside */
+  OP_IMPORT,   /* import file */
+  OP_EXPORT,   /* export file */
   OP_RETURN,
   OP_EXIT,
 } d_op_code;

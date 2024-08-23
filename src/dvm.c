@@ -12,6 +12,9 @@
 #include "dstring.h"
 #include "dlist.h"
 
+#include "dparser.h"
+#include "dio.h"
+
 /* validation only number */
 #define binary_op(vm, op) \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
@@ -323,6 +326,43 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
 
   return STATUS_DCALL_SUCCESS;
 }
+static d_vm* ligth_createVM(d_vm* vm_base);
+
+static void __clean_vm_tmp__(d_vm* itvm);
+
+/**
+ * import "your/path" as lib
+ * 
+ * this function process importations.
+ */
+static int import_file(d_vm* vm, char* p, char * n) {
+  char * content = 0;
+
+  if(get_file_content(p, &content)) {
+    printf("file '%s' not found.\n", p);
+    return 1;
+  }
+
+  d_vm* itvm = ligth_createVM(vm);
+
+  int stat = 0;
+  if (__build__(itvm, content)) {
+    stat = __run__(itvm, 0);
+  } else {
+    return 1;
+  }
+
+  /**
+   * Define exported value on global
+   * 
+   * vm->exported[0] -> is used only the 
+   * first element, for now.
+   */
+    put_var_table(vm->envs->global, n, itvm->exported[0]);
+    vm->d_ls = itvm->d_ls;
+    __clean_vm_tmp__(itvm);
+    return stat;
+}
 
 static int __start__(d_vm* vm, int inter_mode) {
 
@@ -496,7 +536,7 @@ static int __start__(d_vm* vm, int inter_mode) {
           }
         }
         free(n);
-        push(vm, v);        
+        push(vm, v);
         break;
       }
       VMCase(OP_EQUAL) {
@@ -637,6 +677,17 @@ static int __start__(d_vm* vm, int inter_mode) {
         push(vm, v);
         break;
       }
+      VMCase(OP_IMPORT) {
+        drax_value p = GET_VALUE(vm);
+        drax_value n = GET_VALUE(vm);
+        import_file(vm, (char*) p, (char*) n);
+        break;
+      }
+      VMCase(OP_EXPORT) {
+        drax_value v = pop(vm);
+        vm->exported[0] = v;
+        break;
+      }
       VMCase(OP_RETURN) {
         drax_value v = vm->active_instr->instr_count == 1 ?
           DRAX_NIL_VAL :
@@ -677,12 +728,15 @@ static void initialize_builtin_functions(d_vm* vm) {
   load_callback_fn(vm, &register_builtin);
 }
 
-static dt_envs* new_environment() {
+static dt_envs* new_environment(int ignore_natives) {
   dt_envs* e = (dt_envs*) malloc(sizeof(dt_envs));
   e->global = new_var_table();
   e->functions = new_fun_table();
-  e->native = new_fun_table();
   e->local = new_local_table();
+
+  if (ignore_natives) return e;
+
+  e->native = new_fun_table();
   e->modules = new_mod_table();
   return e;
 }
@@ -715,15 +769,36 @@ void __reset__(d_vm* vm) {
   vm->ip = NULL;
 }
 
+static void __clean_vm_tmp__(d_vm* itvm) {
+  dgc_swap(itvm);
+  
+  itvm->active_instr = NULL;
+  
+  free(itvm->instructions->values);
+  free(itvm->instructions->lines);
+  free(itvm->instructions);
+  
+  itvm->call_stack->count = 0;
+  itvm->stack_count = 0;
+  itvm->ip = NULL;
+}
+
 d_vm* createVM() {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
   vm->instructions = new_instructions();
   vm->d_ls = NULL;
 
+  /**
+   * Only one item is allowed to be 
+   * exported, for now.
+   */
+  vm->exported = (drax_value*) malloc(sizeof(drax_value) * 1);
+  vm->exported[0] = DRAX_NIL_VAL;
+
   vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
-  vm->envs = new_environment();
+  vm->envs = new_environment(0);
 
   /**
    * Created on builtin definitions
@@ -731,6 +806,48 @@ d_vm* createVM() {
   create_native_modules(vm);
 
   initialize_builtin_functions(vm);
+
+  vm->call_stack = (dcall_stack*) malloc(sizeof(dcall_stack));
+  vm->call_stack->size = CALL_STACK_SIZE;
+  vm->call_stack->count = 0;
+  vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
+
+  return vm;
+}
+
+/**
+ * creates a new virtual machine without starting 
+ * the base modules and builtin functions, these 
+ * are cloned into the main VM.
+ *
+ * but creates the base environments
+ */
+static d_vm* ligth_createVM(d_vm* vm_base) {
+  d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
+  vm->instructions = new_instructions();
+
+  /**
+   * share global nested structs(d_ls)
+   */
+  vm->d_ls = vm_base->d_ls;
+
+  /**
+   * Only one item is allowed to be 
+   * exported, for now.
+   */
+  vm->exported = (drax_value*) malloc(sizeof(drax_value) * 1);
+  vm->exported[0] = DRAX_NIL_VAL;
+
+  vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
+  vm->stack_size = MAX_STACK_SIZE;
+  vm->stack_count = 0;
+  vm->envs = new_environment(1);
+
+  /**
+   * Created on builtin definitions
+  */
+  vm->envs->modules = vm_base->envs->modules;
+  vm->envs->native = vm_base->envs->native;
 
   vm->call_stack = (dcall_stack*) malloc(sizeof(dcall_stack));
   vm->call_stack->size = CALL_STACK_SIZE;

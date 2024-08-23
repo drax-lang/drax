@@ -1,0 +1,10 @@
+name = "drax language"
+
+fun calc_two(a, b) do
+    a * b
+end
+
+export {
+    calc: &calc_two/2,
+    name: name
+}
