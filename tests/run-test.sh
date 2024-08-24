@@ -19,4 +19,4 @@ export MODE=test
 
 ./bin/drax ./tests/import.dx
 
-
+./bin/drax ./tests/math.dx

@@ -43,6 +43,7 @@ WARNING= \
 		-Wdisabled-optimization \
 
 FLAGS=  -std=c99 \
+		-lm \
 		-Wall  \
 		-ansi \
 		$(WARNING) \
@@ -60,10 +61,10 @@ endif
 
 DEFAULT_BUILD = \
 		$(CC) \
-		$(FLAGS) \
 		$(FILES) \
 		$(ASM_LINKS) \
-		$(DRAX_BUILD_FULL)
+		$(DRAX_BUILD_FULL) \
+		$(FLAGS)
 
 all:
 	$(DEFAULT_BUILD)
