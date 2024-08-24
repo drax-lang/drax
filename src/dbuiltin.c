@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <sys/stat.h>
 
 #include "dbuiltin.h"
@@ -92,6 +93,287 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
 
   DX_SUCESS_FN(stat);
   MSR(vm, "none");
+}
+
+/* Module Math */
+
+static drax_value __d_cos(d_vm* vm, int* stat) { 
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(cos(num));
+}
+
+static drax_value __d_acos(d_vm* vm, int* stat) { 
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(acos(num));
+}
+
+static drax_value __d_floor(d_vm* vm, int* stat) { 
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(floor(num));
+}
+
+static drax_value __d_ceil(d_vm* vm, int* stat) { 
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(ceil(num));
+}
+
+static drax_value __d_pow(d_vm* vm, int* stat) { 
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+  return_if_is_not_number(b, stat);
+
+  double n1 = CAST_NUMBER(a);
+  double n2 = CAST_NUMBER(b);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(pow(n1, n2));
+}
+
+static drax_value __d_atan(d_vm* vm, int* stat) { 
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(atan(num));
+}
+
+static drax_value __d_atan2(d_vm* vm, int* stat) { 
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+  return_if_is_not_number(b, stat);
+
+  double n1 = CAST_NUMBER(a);
+  double n2 = CAST_NUMBER(b);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(atan2(n1, n2));
+}
+
+static drax_value __d_cosh(d_vm* vm, int* stat) { 
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(cosh(num));
+}
+
+static drax_value __d_exp(d_vm* vm, int* stat) { 
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double n = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(exp(n));
+}
+
+static drax_value __d_fabs(d_vm* vm, int* stat) { 
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(fabs(num));
+}
+
+static drax_value __d_frexp(d_vm* vm, int* stat) { 
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  int exponent;
+  double fraction = frexp(num, &exponent);
+
+  drax_list* dl = new_dlist(vm, 2);
+
+  put_value_dlist(dl, num_to_draxvalue(fraction));
+  put_value_dlist(dl, num_to_draxvalue((double) exponent));
+
+  DX_SUCESS_FN(stat);
+
+  return DS_VAL(dl);
+}
+
+static drax_value __d_ldexp(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+  return_if_is_not_number(b, stat);
+
+  double n1 = CAST_NUMBER(a);
+  double n2 = CAST_NUMBER(b);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(ldexp(n1, (int) n2));
+}
+
+static drax_value __d_log(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(log(num));
+}
+
+static drax_value __d_log10(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(log10(num));
+}
+
+static drax_value __d_modf(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  double integer_part;
+  double fraction_part = modf(num, &integer_part);
+
+  drax_list* dl = new_dlist(vm, 2);
+
+  put_value_dlist(dl, num_to_draxvalue(fraction_part));
+  put_value_dlist(dl, num_to_draxvalue(integer_part));
+
+  DX_SUCESS_FN(stat);
+
+  return DS_VAL(dl);
+}
+
+static drax_value __d_sin(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(sin(num));
+}
+
+static drax_value __d_asin(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(asin(num));
+}
+
+static drax_value __d_sinh(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(sinh(num));
+}
+
+static drax_value __d_sqrt(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(sqrt(num));
+}
+
+
+static drax_value __d_tan(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(tan(num));
+}
+
+
+static drax_value __d_tanh(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  double num = CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+
+  return num_to_draxvalue(tanh(num));
 }
 
 /* Module OS */
@@ -349,7 +631,36 @@ void create_native_modules(d_vm* vm) {
     {1, "tail", __d_list_tail},
     {1, "length", __d_list_length},
   };
-
+  
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(list));
+
+  drax_native_module* math = new_native_module(vm, "math", 22);
+    const drax_native_module_helper math_helper[] = {
+      {1, "cos", __d_cos},
+      {1, "cosh", __d_cosh},
+      {1, "acos", __d_acos},
+      {1, "floor", __d_floor},
+      {1, "ceil", __d_ceil},
+      {2, "pow", __d_pow},
+      {1, "tan", __d_tan},
+      {1, "tanh", __d_tanh},
+      {1, "sqrt", __d_sqrt},
+      {1, "atan", __d_atan},
+      {2, "atan2", __d_atan2},
+      {1, "exp", __d_exp},
+      {1, "fabs", __d_fabs}, 
+      {1, "frexp", __d_frexp},
+      {2, "ldexp", __d_ldexp},
+      {1, "log", __d_log},
+      {1, "log10", __d_log10},
+      {1, "modf", __d_modf},
+      {1, "sin", __d_sin},
+      {1, "sinh", __d_sinh},
+      {1, "asin", __d_asin},
+  };
+
+  put_fun_on_module(math, math_helper, sizeof(math_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(math));
+
 }

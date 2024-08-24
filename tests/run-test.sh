@@ -17,4 +17,4 @@ export MODE=test
 
 ./bin/drax ./tests/list.dx
 
-
+./bin/drax ./tests/math.dx
