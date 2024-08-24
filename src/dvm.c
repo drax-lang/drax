@@ -30,15 +30,18 @@
         vm->active_instr = callstack_pop(vm); \
         vm->ip = vm->active_instr->_ip;
 
-#define process_lambda_function(vm, a, n, anf) \
-    if (anf->arity != (int) a) { \
-      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
-      return 0; }\
+#define process_labda_function_no_validation(vm, anf) \
     vm->active_instr->_ip = vm->ip;\
     callstack_push(vm, vm->active_instr);\
     zero_new_local_range(vm, anf->instructions->local_range);\
     vm->active_instr = anf->instructions;\
     vm->ip = anf->instructions->values;
+
+#define process_lambda_function(vm, a, n, anf) \
+    if (anf->arity != (int) a) { \
+      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+      return 0; }\
+      process_labda_function_no_validation(vm, anf);
 
 #define STATUS_DCALL_ERROR            0
 #define STATUS_DCALL_SUCCESS          1
@@ -204,7 +207,7 @@ static int do_dcall_get_fun(d_vm* vm, char* n, int a, int global, drax_value* v 
  * STATUS_DCALL_ERROR:   an error occurred
  * STATUS_DCALL_SUCCESS: success, proceed normally
  */
-static int do_dcall_native(d_vm* vm, drax_value v) {
+int do_dcall_native(d_vm* vm, drax_value v) {
   int scs = 0;
   drax_os_native* ns = CAST_NATIVE(v);
   low_level_callback* nf = ns->function;
@@ -715,6 +718,10 @@ static int __start__(d_vm* vm, int inter_mode) {
     }
   }
   
+}
+
+void do_call_function_no_validation(d_vm* vm, drax_value f) {
+  process_labda_function_no_validation(vm, CAST_FUNCTION(f));
 }
 
 /* Constructor */

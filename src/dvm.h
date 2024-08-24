@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include "dtypes.h"
 #include "dhandler.h"
+#include "dstructs.h"
 
 #define is_call_fn(v) ((v->act != BACT_CALL_OP) && (v->act != BACT_CORE_OP))
 
@@ -92,6 +93,10 @@ void push(d_vm* vm, drax_value v);
 drax_value pop(d_vm* vm);
 
 void raise_drax_error(d_vm* vm, const char* format, ...);
+
+int do_dcall_native(d_vm* vm, drax_value v);
+
+void do_call_function_no_validation(d_vm* vm, drax_value f);
 
 void __reset__(d_vm* vm);
 
