@@ -464,13 +464,32 @@ void process_variable(d_vm* vm, bool v) {
 }
 
 void process_import(d_vm* vm, bool v) {
-  UNUSED(vm);
   UNUSED(v);
+  get_next_token();
+
+  d_token ctk = parser.prev;
+  char* path = (char*) malloc(sizeof(char) * (ctk.length));
+  strncpy(path, ctk.first +1, ctk.length -2);
+  path[ctk.length -2] = '\0';
+
+  put_pair(vm, OP_IMPORT, (drax_value) path);
+  process_token(DTK_AS, "Expect 'as' after path.");
+
+  get_next_token();
+  ctk = parser.prev;
+  char* alias = (char*) malloc(sizeof(char) * (ctk.length + 1));
+  strncpy(alias, ctk.first, ctk.length);
+  alias[ctk.length] = '\0';
+
+  put_instruction(vm, (drax_value) alias);
 }
 
 void process_export(d_vm* vm, bool v) {
   UNUSED(vm);
   UNUSED(v);
+  
+  expression(vm);
+  put_instruction(vm, (drax_value) OP_EXPORT);
 }
 
 /* end of processors functions */

@@ -75,6 +75,7 @@ typedef struct d_vm {
   dt_envs* envs;
   drax_value* ip;
   drax_value* stack;
+  drax_value* exported;
   dcall_stack* call_stack;
   int stack_count;
   int stack_size;

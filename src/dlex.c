@@ -15,6 +15,7 @@ curr_lex_state clexs;
 
 static const drax_tokens drax_t[] = {
   {"and",    DTK_AND},
+  {"as",     DTK_AS},
   {"do",     DTK_DO},
   {"else",   DTK_ELSE},
   {"end",    DTK_END},

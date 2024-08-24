@@ -1,0 +1,3 @@
+import 'tests/export.dx' as lib
+
+assert(lib.calc(5, 5) == 25, "lib.calc_two(5, 5) == 25")
