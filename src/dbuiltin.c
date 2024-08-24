@@ -642,11 +642,21 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
     }
   }
 
-  start_http_server(vm, options, callback_caller, call);
+  drax_value ctx = start_http_server(vm, options, callback_caller, call);
   DX_SUCESS_FN(stat);
-  return DRAX_NIL_VAL;
+
+  drax_tid* tid = new_dtid(vm, ctx);
+  return DS_VAL(tid);
 }
 
+static drax_value __d_stop_server(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  drax_tid* tid = CAST_TID(v);
+  stop_http_server(tid->value);
+
+  DX_SUCESS_FN(stat);
+  return DRAX_TRUE_VAL;
+}
 
 /**
  * Entry point for native modules
@@ -709,9 +719,10 @@ void create_native_modules(d_vm* vm) {
   /**
    * Http Module
    */ 
-  drax_native_module* http = new_native_module(vm, "http", 1);
+  drax_native_module* http = new_native_module(vm, "http", 2);
   const drax_native_module_helper http_helper[] = {
     {2, "start", __d_start_server },
+    {1, "stop", __d_stop_server},
   };
   
   put_fun_on_module(http, http_helper, sizeof(http_helper) / sizeof(drax_native_module_helper)); 

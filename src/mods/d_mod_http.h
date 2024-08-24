@@ -16,7 +16,9 @@
 
 #include "../dvm.h"
 
-int start_http_server(d_vm* vm, char *options[],
+drax_value start_http_server(d_vm* vm, char *options[],
     void (*callback_caller)(d_vm* vm, drax_value call), drax_value call);
+
+void stop_http_server(drax_value v);
 
 #endif

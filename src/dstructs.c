@@ -159,6 +159,12 @@ void put_value_dframe(drax_frame* l, char* k, drax_value v) {
   l->length++;
 }
 
+drax_tid* new_dtid(d_vm* vm, drax_value value) {
+  drax_tid* t = ALLOCATE_DSTRUCT(vm, drax_tid, DS_TID);
+  t->value = value;
+  return t;
+}
+
 /**
  * Module helpers
  */

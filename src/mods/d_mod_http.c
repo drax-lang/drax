@@ -11,7 +11,7 @@ static int request_handler(struct mg_connection *conn, void *cbdata) {
     return 200;
 }
 
-int start_http_server(
+drax_value start_http_server(
   d_vm* vm,
   char *options[],
   void (*callback_caller)(d_vm* vm, drax_value call),
@@ -36,16 +36,11 @@ int start_http_server(
      */
 
     callback_caller(vm, call);
-    /**
-     * Wait for user to hit enter before shutting down
-     */
-    getchar();
+    return ctx;
+}
 
-    /**
-     * Stop the server
-     */
+void stop_http_server(drax_value v) {
+    struct mg_context *ctx = (struct mg_context *) v;
     mg_stop(ctx);
-
-    return 0;
 }
 
