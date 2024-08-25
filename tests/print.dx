@@ -17,3 +17,12 @@ print("-----------")
 print("")
 
 print("Print done!")
+
+mul = lambda(value) do value * 2 end
+result =
+10
+|> inspect()
+|> mul()
+|> inspect()
+
+assert(result == 20, "inspect error: inspect(20)")

@@ -122,6 +122,39 @@ static bool values_equal(drax_value a, drax_value b) {
     return CAST_STRING(a)->hash == CAST_STRING(b)->hash;
   }
 
+  if(IS_FRAME(a) && IS_FRAME(b)) {
+    drax_frame* f1 = CAST_FRAME(a);
+    drax_frame* f2 = CAST_FRAME(b);
+
+    if(f1->length != f2->length) { return false; }
+
+    int i;
+    for(i = 0; i < f1->length; i++) {
+      if(!values_equal(f1->values[i], f2->values[i]) ||
+        strcmp(f1->literals[i], f2->literals[i]) != 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  if(IS_LIST(a) && IS_LIST(b)) {
+    drax_list* l1 = CAST_LIST(a);
+    drax_list* l2 = CAST_LIST(b);
+
+    if(l1->length != l2->length) { return false; }
+
+    int i;
+    for(i = 0; i < l1->length; i++) {
+      if(!values_equal(l1->elems[i], l2->elems[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   return a == b;
 }
 

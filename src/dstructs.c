@@ -193,3 +193,22 @@ low_level_callback* get_fun_on_module(drax_native_module* m, const char* n, int 
   }
   return 0;
 }
+
+void print_funcs_on_module(drax_native_module* m) {
+  int default_space = 10; 
+  int i, j;
+  for (i = 0; i < m->count; i++) {
+    printf("%s/%i", m->fn_names[i], m->arity[i]);
+
+    if(((i + 1) % 3) == 0) {
+      putchar('\n');
+    } else {
+      int distance = abs((int) strlen(m->fn_names[i]) - default_space);
+      for(j = 0; j < distance; j++) {
+        putchar(' ');
+      }
+    }
+  }
+
+  putchar('\n');
+}

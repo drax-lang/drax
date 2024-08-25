@@ -49,4 +49,6 @@ ff = frame.put(ff, "name2", "drax")
 assert(ff.name == "foo", "frame error: put field foo 2")
 assert(ff.name2 == "drax", "frame error: put field drax")
 
+assert(ff == { name: "foo", name2: "drax" }, "frame error: compare frame")
+
 print("Frames done!")
