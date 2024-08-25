@@ -622,6 +622,22 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
     droot_string = CAST_STRING(droot)->chars;
   }
 
+  /**
+   * get document_root as string
+   */
+  drax_value call_back_handler = DRAX_NIL_VAL;
+  drax_value gfn;
+  if(get_value_dframe(ofr, (char*) "request_handler", &gfn) != -1) {
+    return_if_is_not_function(gfn, stat);
+
+    if (CAST_FUNCTION(gfn)->arity != 1) {
+      DX_ERROR_FN(stat);
+      return DS_VAL(new_derror(vm, "Expected one argumento to 'request_handler' callback."));
+    }
+
+    call_back_handler = gfn;
+  }
+
   char *options[] = {
     (char*) "document_root", droot_string, 
     (char*) "listening_ports", port_string, 
@@ -642,7 +658,7 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
     }
   }
 
-  drax_value ctx = start_http_server(vm, options, callback_caller, call);
+  drax_value ctx = start_http_server(vm, options, callback_caller, call, call_back_handler);
   DX_SUCESS_FN(stat);
 
   drax_tid* tid = new_dtid(vm, ctx);

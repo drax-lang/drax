@@ -1,10 +1,3 @@
-/*
-    vm->active_instr->_ip = vm->ip;\
-    callstack_push(vm, vm->active_instr);\
-    zero_new_local_range(vm, anf->instructions->local_range);\
-    vm->active_instr = anf->instructions;\
-    vm->ip = anf->instructions->values;
-*/
 #include <pthread.h>
 #include "dscheduler.h"
 #include "dvm.h"
