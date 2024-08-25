@@ -32,7 +32,7 @@ drax_value start_http_server(
 
     /*
      * Add a URI handler
-    mg_set_request_handler(ctx, "/", request_handler, NULL);
+     * mg_set_request_handler(ctx, "/", request_handler, NULL);
      */
 
     callback_caller(vm, call);

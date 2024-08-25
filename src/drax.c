@@ -5,6 +5,7 @@
 #include "dvm.h"
 #include "dflags.h"
 #include "dio.h"
+#include "dscheduler.h"
 
 #ifdef _B_BUILF_FULL
   #include <editline/readline.h>
@@ -60,6 +61,7 @@ int main(int argc, char** argv) {
 
   /* create init vm */
   d_vm* gdvm = createVM();
+  init_scheduler();
   
   switch (bmode) {
     case BI_PROCESS_DEFAULT:

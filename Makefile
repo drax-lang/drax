@@ -28,6 +28,7 @@ FILES= ./src/dvm.c \
 	   ./src/dlist.c \
 	   ./src/dgc.c \
 	   ./src/deval.c \
+	   ./src/dscheduler.c \
 	   ./src/mods/d_mod_os.c \
 	   ./src/mods/d_mod_http.c
 

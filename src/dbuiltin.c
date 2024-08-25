@@ -11,6 +11,7 @@
 #include "dvm.h"
 #include "deval.h"
 #include "dgc.h"
+#include "dscheduler.h"
 
 #include "mods/d_mod_os.h"
 #include "mods/d_mod_http.h"
@@ -590,8 +591,7 @@ static void callback_caller(d_vm* vm, drax_value call) {
   }
 
   if (IS_FUNCTION(call)) {
-    drax_function* f = CAST_FUNCTION(call);
-    do_call_function_no_validation(vm, f);
+   run_instruction_on_vm_pool(call);
   }
 }
 
@@ -646,6 +646,10 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
   DX_SUCESS_FN(stat);
 
   drax_tid* tid = new_dtid(vm, ctx);
+
+  /**
+   * Fix callback execution bug
+   */
   return DS_VAL(tid);
 }
 
