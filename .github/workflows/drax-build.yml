@@ -16,7 +16,7 @@ jobs:
     - name: configure
       run: make config
     - name: build
-      run: make LIGHT=1
+      run: make all LIGHT=1
     - name: make test
       run: make test
 
