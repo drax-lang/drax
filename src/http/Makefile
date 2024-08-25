@@ -7,7 +7,22 @@
 # For help try, "make help"
 #
 
-include resources/Makefile.in-os
+ifeq ($(TARGET_OS),)
+  ifeq ($(OS),Windows_NT)
+    TARGET_OS = WIN32
+  else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Linux)
+        TARGET_OS = LINUX
+    else
+        ifeq ($(UNAME_S),Darwin)
+            TARGET_OS = OSX
+        else
+            TARGET_OS = BSD
+        endif
+    endif
+  endif
+endif
 
 CPROG = civetweb
 #CXXPROG = civetweb
