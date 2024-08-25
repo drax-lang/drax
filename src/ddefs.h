@@ -46,6 +46,12 @@ typedef uint8_t d_byte_def;
 
 #define DX_ERROR_FN(v) *v = 0;
 
+#define return_if_is_not_function(v, s) \
+  if (!IS_FUNCTION(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected function/1 as argument")); \
+  }
+
 #define return_if_is_not_string(v, s) \
   if (!IS_STRING(v)) { \
     DX_ERROR_FN(s); \

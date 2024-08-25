@@ -25,6 +25,7 @@ typedef enum dstruct_type{
   DS_FRAME,
   DS_MODULE,
   DS_ERROR,
+  DS_TID,
 } dstruct_type;
 
 typedef struct d_struct {

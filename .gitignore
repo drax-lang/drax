@@ -1,7 +1,16 @@
 src/*.o
 
+*.o
+**/*.o
+
+**/*.a
+
 bin/*
 
 .vscode/
 
 tmp/
+
+valgrind-*
+
+bugs.txt

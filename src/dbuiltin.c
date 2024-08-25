@@ -11,8 +11,10 @@
 #include "dvm.h"
 #include "deval.h"
 #include "dgc.h"
+#include "dscheduler.h"
 
 #include "mods/d_mod_os.h"
+#include "mods/d_mod_http.h"
 
 static drax_value __d_assert(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
@@ -577,6 +579,105 @@ static drax_value __d_list_length(d_vm* vm, int* stat) {
   return AS_VALUE(l->length);
 }
 
+
+/**
+ * Http calls
+ */
+static void callback_caller(d_vm* vm, drax_value call) {
+  if (IS_NIL(call)) return;
+  
+  if (IS_NATIVE(call)) { 
+    do_dcall_native(vm, call);
+  }
+
+  if (IS_FUNCTION(call)) {
+   run_instruction_on_vm_pool(call);
+  }
+}
+
+static drax_value __d_start_server(d_vm* vm, int* stat) {
+  drax_value call = pop(vm);
+  drax_value opt = pop(vm);
+
+  return_if_is_not_frame(opt, stat);
+  drax_frame* ofr = CAST_FRAME(opt);
+  
+  /**
+   * get port as string
+   */
+  char* port_string = (char*) "5000";
+  drax_value port;
+  if(get_value_dframe(ofr, (char*) "port", &port) != -1) {
+    return_if_is_not_string(port, stat);
+    port_string = CAST_STRING(port)->chars;
+  }
+
+  /**
+   * get document_root as string
+   */
+  char* droot_string = (char*) ".";
+  drax_value droot;
+  if(get_value_dframe(ofr, (char*) "document_root", &droot) != -1) {
+    return_if_is_not_string(droot, stat);
+    droot_string = CAST_STRING(droot)->chars;
+  }
+
+  /**
+   * get document_root as string
+   */
+  drax_value call_back_handler = DRAX_NIL_VAL;
+  drax_value gfn;
+  if(get_value_dframe(ofr, (char*) "request_handler", &gfn) != -1) {
+    return_if_is_not_function(gfn, stat);
+
+    if (CAST_FUNCTION(gfn)->arity != 1) {
+      DX_ERROR_FN(stat);
+      return DS_VAL(new_derror(vm, "Expected one argumento to 'request_handler' callback."));
+    }
+
+    call_back_handler = gfn;
+  }
+
+  char *options[] = {
+    (char*) "document_root", droot_string, 
+    (char*) "listening_ports", port_string, 
+    NULL
+  };
+
+  #define IVALID_ARGS_CALLB (char *) "Do not expect arguments on callback function."
+
+  if (!IS_NIL(call)) {
+    if ((IS_NATIVE(call)) && (CAST_NATIVE(call)->arity != 0)) {
+      DX_ERROR_FN(stat);
+      return DS_VAL(new_derror(vm, IVALID_ARGS_CALLB));
+    }
+
+    if ((IS_FUNCTION(call)) && (CAST_FUNCTION(call)->arity != 0)) {
+      DX_ERROR_FN(stat);
+      return DS_VAL(new_derror(vm, IVALID_ARGS_CALLB));
+    }
+  }
+
+  drax_value ctx = start_http_server(vm, options, callback_caller, call, call_back_handler);
+  DX_SUCESS_FN(stat);
+
+  drax_tid* tid = new_dtid(vm, ctx);
+
+  /**
+   * Fix callback execution bug
+   */
+  return DS_VAL(tid);
+}
+
+static drax_value __d_stop_server(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  drax_tid* tid = CAST_TID(v);
+  stop_http_server(tid->value);
+
+  DX_SUCESS_FN(stat);
+  return DRAX_TRUE_VAL;
+}
+
 /**
  * Entry point for native modules
  */
@@ -634,6 +735,18 @@ void create_native_modules(d_vm* vm) {
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(list));
+
+  /**
+   * Http Module
+   */ 
+  drax_native_module* http = new_native_module(vm, "http", 2);
+  const drax_native_module_helper http_helper[] = {
+    {2, "start", __d_start_server },
+    {1, "stop", __d_stop_server},
+  };
+  
+  put_fun_on_module(http, http_helper, sizeof(http_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(http));
 
   drax_native_module* math = new_native_module(vm, "math", 22);
     const drax_native_module_helper math_helper[] = {

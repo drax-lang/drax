@@ -30,15 +30,18 @@
         vm->active_instr = callstack_pop(vm); \
         vm->ip = vm->active_instr->_ip;
 
-#define process_lambda_function(vm, a, n, anf) \
-    if (anf->arity != (int) a) { \
-      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
-      return 0; }\
+#define process_labda_function_no_validation(vm, anf) \
     vm->active_instr->_ip = vm->ip;\
     callstack_push(vm, vm->active_instr);\
     zero_new_local_range(vm, anf->instructions->local_range);\
     vm->active_instr = anf->instructions;\
     vm->ip = anf->instructions->values;
+
+#define process_lambda_function(vm, a, n, anf) \
+    if (anf->arity != (int) a) { \
+      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+      return 0; }\
+      process_labda_function_no_validation(vm, anf);
 
 #define STATUS_DCALL_ERROR            0
 #define STATUS_DCALL_SUCCESS          1
@@ -204,7 +207,7 @@ static int do_dcall_get_fun(d_vm* vm, char* n, int a, int global, drax_value* v 
  * STATUS_DCALL_ERROR:   an error occurred
  * STATUS_DCALL_SUCCESS: success, proceed normally
  */
-static int do_dcall_native(d_vm* vm, drax_value v) {
+int do_dcall_native(d_vm* vm, drax_value v) {
   int scs = 0;
   drax_os_native* ns = CAST_NATIVE(v);
   low_level_callback* nf = ns->function;
@@ -326,9 +329,10 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
 
   return STATUS_DCALL_SUCCESS;
 }
-static d_vm* ligth_createVM(d_vm* vm_base);
 
 static void __clean_vm_tmp__(d_vm* itvm);
+
+static d_vm* ligth_based_createVM(d_vm* vm_base);
 
 /**
  * import "your/path" as lib
@@ -343,7 +347,7 @@ static int import_file(d_vm* vm, char* p, char * n) {
     return 1;
   }
 
-  d_vm* itvm = ligth_createVM(vm);
+  d_vm* itvm = ligth_based_createVM(vm);
 
   int stat = 0;
   if (__build__(itvm, content)) {
@@ -364,7 +368,7 @@ static int import_file(d_vm* vm, char* p, char * n) {
     return stat;
 }
 
-static int __start__(d_vm* vm, int inter_mode) {
+static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
 
   #define dbin_bool_op(op, v) \
       do { \
@@ -378,7 +382,10 @@ static int __start__(d_vm* vm, int inter_mode) {
       } while (false)
 
   UNUSED(inter_mode);
-  VMDispatch {
+
+  int _ops = 0;
+
+  VMDispatch(is_per_batch, _ops) {
     VMcond(vm) {
       VMCase(OP_NIL) {
         push(vm, DRAX_NIL_VAL);
@@ -689,10 +696,21 @@ static int __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_RETURN) {
-        drax_value v = vm->active_instr->instr_count == 1 ?
+        /*
+         * vm->active_instr->instr_count == 0 - check if is rigth
+         drax_value v = (vm->active_instr->instr_count == 1) || (vm->active_instr->instr_count == 0) ?
+         */
+        drax_value v = (vm->active_instr->instr_count == 1) ?
           DRAX_NIL_VAL :
           pop(vm);
-        back_scope(vm);
+
+        vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range;
+
+        vm->active_instr = callstack_pop(vm);
+        if (vm->active_instr) {
+          vm->ip = vm->active_instr->_ip;
+        }
+
         push(vm, v);
         break;
       }
@@ -715,6 +733,10 @@ static int __start__(d_vm* vm, int inter_mode) {
     }
   }
   
+}
+
+void do_call_function_no_validation(d_vm* vm, drax_value f) {
+  process_labda_function_no_validation(vm, CAST_FUNCTION(f));
 }
 
 /* Constructor */
@@ -811,7 +833,7 @@ d_vm* createVM() {
   vm->call_stack->size = CALL_STACK_SIZE;
   vm->call_stack->count = 0;
   vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
-
+  vm->pstatus = VM_STATUS_STOPED;
   return vm;
 }
 
@@ -822,7 +844,7 @@ d_vm* createVM() {
  *
  * but creates the base environments
  */
-static d_vm* ligth_createVM(d_vm* vm_base) {
+static d_vm* ligth_based_createVM(d_vm* vm_base) {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
   vm->instructions = new_instructions();
 
@@ -858,6 +880,20 @@ static d_vm* ligth_createVM(d_vm* vm_base) {
 }
 
 int __run__(d_vm* vm, int inter_mode) {
+  vm->pstatus = VM_STATUS_WORKING;
   __init__(vm);
-  return __start__(vm, inter_mode);
+  int r = __start__(vm, inter_mode, 0);
+  vm->pstatus = VM_STATUS_STOPED;
+  return r;
+}
+
+int __run_per_batch__(d_vm* vm) {
+  vm->pstatus = VM_STATUS_WORKING;
+  int r = __start__(vm, 0, 1);
+
+  if (vm->call_stack->count == 0) {
+    vm->pstatus = VM_STATUS_FINISHED;
+  }
+
+  return r;
 }
