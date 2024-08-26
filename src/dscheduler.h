@@ -8,7 +8,7 @@
 #include "dvm.h"
 #include "dtypes.h"
 
-int init_scheduler();
+int init_scheduler(d_vm * main_vm);
 
 drax_value run_instruction_on_vm_pool(drax_value fn);
 

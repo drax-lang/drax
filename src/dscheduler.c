@@ -42,12 +42,12 @@ static void start_schedule_loop(void* arg) {
  * Create the main scheduler
  * 
  */
-int init_scheduler() {
+int init_scheduler(d_vm * main_vm) {
   global_vms = (d_vm **)malloc(sizeof(d_vm *) * INITIAL_SLOTS_VM);
 
   size_t i;
   for (i = 0; i < INITIAL_SLOTS_VM; i++) {
-    global_vms[i] = createVM();
+    global_vms[i] = ligth_based_createVM(main_vm, 0);
   }
 
   pthread_t thread;

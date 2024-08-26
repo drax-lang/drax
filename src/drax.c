@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
 
   /* create init vm */
   d_vm* gdvm = createVM();
-  init_scheduler();
+  init_scheduler(gdvm);
   
   switch (bmode) {
     case BI_PROCESS_DEFAULT:

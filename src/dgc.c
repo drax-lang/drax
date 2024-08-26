@@ -139,6 +139,10 @@ static int dgc_swap_modules(d_mod_table* t) {
 }
 
 int dgc_swap(d_vm* vm) {
+  /**
+   * disabled
+   */
+  return 1;
   DEBUG(printf("[GC] swap\n"));
   d_struct *d = vm->d_ls->next;
   d_struct* u = NULL; /* Unused struct */
