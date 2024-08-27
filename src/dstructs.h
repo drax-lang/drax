@@ -130,4 +130,6 @@ void put_fun_on_module(drax_native_module* m, const drax_native_module_helper he
 
 low_level_callback* get_fun_on_module(drax_native_module* m, const char* n, int a);
 
+void print_funcs_on_module(drax_native_module* m);
+
 #endif

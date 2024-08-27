@@ -86,7 +86,9 @@ void print_drax(drax_value value, int formated) {
   } else if (IS_NIL(value)) {
     printf("nil");
   } else if (IS_NUMBER(value)) {
-    printf("%g", CAST_NUMBER(value));
+    printf("%.17g", CAST_NUMBER(value));
+  } else if(IS_MODULE(value)) {
+    printf("<module:%s>", CAST_MODULE(value)->name);
   } else if (IS_STRUCT(value)) {
     print_d_struct(value, formated);
   }

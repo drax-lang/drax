@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <math.h>
 
 #include "dstructs.h"
 #include "dhandler.h"
@@ -213,4 +216,43 @@ low_level_callback* get_fun_on_module(drax_native_module* m, const char* n, int 
     }
   }
   return 0;
+}
+
+void print_funcs_on_module(drax_native_module* m) {
+
+  struct winsize w;
+  ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+  int default_space = 10; 
+  int max_distance = 0;
+  int i, j;
+
+  for (i = 0; i < m->count; i++) {
+    int str_len = strlen(m->fn_names[i]);
+    max_distance = str_len > max_distance ? str_len : max_distance;
+  }
+  max_distance += 5;
+
+  int num_cols = (int) floor(w.ws_col / max_distance);
+  int curr_col = 0;
+
+  for (i = 0; i < m->count; i++) {
+    curr_col++;
+
+    printf("%s/%i", m->fn_names[i], m->arity[i]);
+
+    if (curr_col == num_cols) {
+      curr_col = 0;
+      putchar('\n');
+      continue;
+    }
+
+      int spaces = (max_distance -1) - strlen(m->fn_names[i]);
+      for(j = 0; j < spaces; j++) {
+        putchar(' ');
+      }
+
+  }
+
+  putchar('\n');
 }

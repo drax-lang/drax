@@ -74,6 +74,22 @@ static drax_value __d_print(d_vm* vm, int* stat) {
   return DRAX_NIL_VAL;
 }
 
+static drax_value __d_inspect(d_vm* vm, int* stat) {
+  drax_value val = pop(vm);
+  print_drax(val, 0);
+  dbreak_line();
+  DX_SUCESS_FN(stat);
+  return val;
+}
+
+static drax_value __d_help(d_vm* vm, int* stat) {
+  drax_value val = pop(vm);
+  return_if_is_not_module(val, stat);
+  print_funcs_on_module(CAST_MODULE(val));
+  DX_SUCESS_FN(stat);
+  return DRAX_NIL_VAL;
+}
+
 static drax_value __d_typeof(d_vm* vm, int* stat) {
   DX_SUCESS_FN(stat);
   drax_value val = pop(vm);
@@ -85,6 +101,7 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_LIST: MSR(vm, "list");
       case DS_FRAME: MSR(vm, "frame");
       case DS_MODULE: MSR(vm, "module");
+      case DS_TID: MSR(vm, "tid");
       default: break;
     }
   }
@@ -482,6 +499,8 @@ void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
   reg(vm, "sleep", 1, __d_sleep);
   reg(vm, "read", 1, __d_read);
   reg(vm, "print", 1, __d_print);
+  reg(vm, "inspect", 1, __d_inspect);
+  reg(vm, "help", 1, __d_help);
 }
 
 /**

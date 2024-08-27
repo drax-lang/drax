@@ -117,15 +117,61 @@ void raise_drax_error(d_vm* vm, const char* format, ...) {
 }
 
 static bool values_equal(drax_value a, drax_value b) {
-  if (IS_NUMBER(a) && IS_NUMBER(b)) {
-    return CAST_NUMBER(a) == CAST_NUMBER(b);
+  if(a == b) {
+    return true;
   }
 
-  if (IS_STRING(a) && IS_STRING(b)) {
-    return CAST_STRING(a)->hash == CAST_STRING(b)->hash;
+  if(!(IS_STRUCT(a) && IS_STRUCT(b))) {
+    return false;  
   }
 
-  return a == b;
+  if(DRAX_STYPEOF(a) != DRAX_STYPEOF(b)) {
+    return false;
+  }
+
+  int i;
+  switch(DRAX_STYPEOF(a)) {
+    case DS_STRING:
+      return CAST_STRING(a)->hash == CAST_STRING(b)->hash;
+      
+    case DS_LIST:
+      drax_list* l1 = CAST_LIST(a);
+      drax_list* l2 = CAST_LIST(b);
+
+      if(l1->length != l2->length) { return false; }
+
+      for(i = 0; i < l1->length; i++) {
+        if(!values_equal(l1->elems[i], l2->elems[i])) {
+          return false;
+        }
+      }
+      return true;
+
+    case DS_FRAME:
+      drax_frame* f1 = CAST_FRAME(a);
+      drax_frame* f2 = CAST_FRAME(b);
+
+      if(f1->length != f2->length) { return false; }
+
+      for(i = 0; i < f1->length; i++) {
+        if(!values_equal(f1->values[i], f2->values[i]) ||
+          strcmp(f1->literals[i], f2->literals[i]) != 0) {
+          return false;
+        }
+      }
+      return true;
+
+
+    case DS_FUNCTION:
+    case DS_NATIVE:
+    case DS_MODULE:
+      break;
+
+    default:
+      break;
+  }
+
+  return false;
 }
 
 /**
