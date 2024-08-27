@@ -632,7 +632,7 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
 
     if (CAST_FUNCTION(gfn)->arity != 1) {
       DX_ERROR_FN(stat);
-      return DS_VAL(new_derror(vm, "Expected one argumento to 'request_handler' callback."));
+      return DS_VAL(new_derror(vm, (char*) "Expected one argumento to 'request_handler' callback."));
     }
 
     call_back_handler = gfn;

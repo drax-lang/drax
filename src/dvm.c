@@ -345,7 +345,7 @@ static int import_file(d_vm* vm, char* p, char * n) {
     return 1;
   }
 
-  d_vm* itvm = ligth_based_createVM(vm, 1);
+  d_vm* itvm = ligth_based_createVM(vm, -2, 1);
 
   int stat = 0;
   if (__build__(itvm, content)) {
@@ -541,7 +541,8 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
             return 1;
           }
         }
-        free(n);
+        
+        /* if(vm->vid == -1) free(n); we need to copy string on parser to free*/
         push(vm, v);
         break;
       }
@@ -729,7 +730,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       }
     }
   }
-  
+  return 0;  
 }
 
 void do_call_function_no_validation(d_vm* vm, drax_value f) {
@@ -747,10 +748,13 @@ static void initialize_builtin_functions(d_vm* vm) {
   load_callback_fn(vm, &register_builtin);
 }
 
-static dt_envs* new_environment(int ignore_natives, int ignore_local) {
+static dt_envs* new_environment(int ignore_natives, int ignore_local, int ignore_global) {
   dt_envs* e = (dt_envs*) malloc(sizeof(dt_envs));
-  e->global = new_var_table();
   e->functions = new_fun_table();
+
+  if (!ignore_global) {
+    e->global = new_var_table();
+  }
 
   if (!ignore_local) {
     e->local = new_local_table();
@@ -762,6 +766,7 @@ static dt_envs* new_environment(int ignore_natives, int ignore_local) {
   e->modules = new_mod_table();
   return e;
 }
+
 
 /**
  * Create a new drax vm
@@ -803,8 +808,9 @@ static void __clean_vm_tmp__(d_vm* itvm) {
   itvm->ip = NULL;
 }
 
-d_vm* createVM() {
+d_vm* createMainVM() {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
+  vm->vid = -1;
   vm->instructions = new_instructions();
   vm->d_ls = NULL;
 
@@ -818,7 +824,7 @@ d_vm* createVM() {
   vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
-  vm->envs = new_environment(0, 0);
+  vm->envs = new_environment(0, 0, 0);
 
   /**
    * Created on builtin definitions
@@ -842,8 +848,9 @@ d_vm* createVM() {
  *
  * but creates the base environments
  */
-d_vm* ligth_based_createVM(d_vm* vm_base, int clone_gc) {
+d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc) {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
+  vm->vid = vid;
   vm->instructions = new_instructions();
 
   /**
@@ -861,11 +868,12 @@ d_vm* ligth_based_createVM(d_vm* vm_base, int clone_gc) {
   vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
-  vm->envs = new_environment(1, 1);
+  vm->envs = new_environment(1, 1, 1);
 
   /**
    * Created on builtin definitions
   */
+  vm->envs->global = vm_base->envs->global;
   vm->envs->local = vm_base->envs->local;
   vm->envs->modules = vm_base->envs->modules;
   vm->envs->native = vm_base->envs->native;

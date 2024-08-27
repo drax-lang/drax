@@ -77,6 +77,15 @@ typedef struct  dcall_stack {
 } dcall_stack;
 
 typedef struct d_vm {
+  /**
+   * vid: VM Id
+   * 
+   * -2     import
+   * -1     main vm
+   * other  import 
+   */
+  int vid;
+
   dt_envs* envs;
   drax_value* ip;
   drax_value* stack;
@@ -92,9 +101,9 @@ typedef struct d_vm {
 } d_vm;
 
 /* VM */
-d_vm* createVM();
+d_vm* createMainVM();
 
-d_vm* ligth_based_createVM(d_vm* vm_base, int clone_gc);
+d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc);
 
 void push(d_vm* vm, drax_value v);
 
