@@ -144,7 +144,7 @@ static bool values_equal(drax_value a, drax_value b) {
  *  local->count    =>  (10)
  * 
  */
-static void zero_new_local_range(d_vm* vm, int range) {
+void zero_new_local_range(d_vm* vm, int range) {
   vm->envs->local->count += range;
   memset(&vm->envs->local->array[vm->envs->local->count - range], 0, sizeof(drax_value) * range);
 }
@@ -695,10 +695,6 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_RETURN) {
-        /*
-         * vm->active_instr->instr_count == 0 - check if is rigth
-         * drax_value v = (vm->active_instr->instr_count == 1) || (vm->active_instr->instr_count == 0) ?
-         */
         drax_value v = (vm->active_instr->instr_count == 1) ?
           DRAX_NIL_VAL :
           pop(vm);
@@ -894,7 +890,7 @@ int __run_per_batch__(d_vm* vm) {
   vm->pstatus = VM_STATUS_WORKING;
   int r = __start__(vm, 0, 1);
 
-  if (vm->call_stack->count == 0) {
+  if (!vm->active_instr) {
     vm->pstatus = VM_STATUS_FINISHED;
   }
 

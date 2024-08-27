@@ -177,6 +177,10 @@ d_local_var_table* new_local_table() {
   return t;
 }
 
+/**
+ * The table size (count) is not incremented normally.
+ * it is based on the slots of each function
+ */
 void put_local_table(d_local_var_table* t, char* name, drax_value value) {
   if (t->count >= t->limit) {
     t->limit = t->limit + MAX_LOCAL_INSTRUCTIONS;
@@ -197,10 +201,10 @@ void put_local_table(d_local_var_table* t, char* name, drax_value value) {
    * t->array    =>  |x|x|x|x|x|x|0|0|0|x|
    * next_index  =>  (10 -1)
    * 
-   * while verification will stop at the first 0
+   * while loop will stop at the first 0
    * next_index  =>  (8)
    */
-  while (next_index >= 0 && t->array[next_index] != 0) {
+  while (next_index > 0 && t->array[next_index] != 0) {
     next_index--;
   }
 

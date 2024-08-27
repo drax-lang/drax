@@ -25,8 +25,8 @@ static int request_handler(struct mg_connection* conn, void* cbdata) {
       if(get_value_dframe(ofr, (char*) "status_code", &status) != -1) {
         if (IS_STRING(status)) {
           status_code = CAST_STRING(status)->chars;
-          double dres = atoi(status_code);
-          status_code_int = status_code_int == 0 ? 200 : status_code_int;
+          status_code_int = atoi(status_code);
+          status_code_int = status_code_int <= 0 ? 200 : status_code_int;
         }
       }
 
@@ -75,7 +75,7 @@ drax_value start_http_server(
     }
 
   callback_caller(vm, call);
-  return ctx;
+  return (drax_value) ctx;
 }
 
 void stop_http_server(drax_value v) {

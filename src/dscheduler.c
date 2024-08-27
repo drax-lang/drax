@@ -1,6 +1,8 @@
 #include <pthread.h>
+#include <stdlib.h>
 #include "dscheduler.h"
 #include "dvm.h"
+#include "dtime.h"
 
 d_vm **global_vms;
 
@@ -35,6 +37,7 @@ static void start_schedule_loop(void* arg) {
         }
       }
     }
+    dx_sleep(100);
   }
 }
 
@@ -82,6 +85,19 @@ static void init_process_on_vm(drax_value val, int fd_result) {
         drax_function* fn = CAST_FUNCTION(val);
         el_v->ip = fn->instructions->values;
         el_v->active_instr = el_v->instructions;
+
+        /**
+         * initial slots to local range
+         */
+        el_v->active_instr->local_range = fn->instructions->local_range;
+
+        /**
+         * The process need to be initialized by
+         * do_call_function_no_validation, because this
+         * function incement the local->count.
+         */
+        zero_new_local_range(el_v, fn->instructions->local_range);
+
         el_v->pstatus = VM_STATUS_WORKING;
         break;
         /*do_call_function_no_validation(el_v, fn);*/
