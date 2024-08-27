@@ -101,6 +101,7 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_LIST: MSR(vm, "list");
       case DS_FRAME: MSR(vm, "frame");
       case DS_MODULE: MSR(vm, "module");
+      case DS_TID: MSR(vm, "tid");
       default: break;
     }
   }

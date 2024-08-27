@@ -5,7 +5,6 @@
 #include "../dstring.h"
 #include "../http/include/civetweb.h"
 
-
 static int request_handler(struct mg_connection* cconn, void* cbdata) {
 
   /**
