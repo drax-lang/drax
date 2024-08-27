@@ -6,13 +6,37 @@
 #include "../http/include/civetweb.h"
 
 static int request_handler(struct mg_connection* conn, void* cbdata) {
+  const struct mg_request_info *ri = mg_get_request_info(conn);
   mg_printf(conn, "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n");
+  const char *request_method = ri->request_method;
+  const char *local_uri = ri->local_uri;
+
+  const char *local_uri_raw = ri->local_uri_raw;
+  const char *http_version = ri->http_version;
+  const char *query_string = ri->query_string;
+  const char *remote_user = ri->remote_user;
 
   drax_value v = (drax_value) cbdata;
   int status_code_int = 200;
   
   if (IS_FUNCTION(v)) {
-    drax_value f = run_instruction_on_vm_pool(v, DRAX_TRUE_VAL);
+
+    /**
+     * the orphans frame only accept char*
+     */
+    drax_frame* request_info = new_dframe_orphan(12);
+    put_value_dframe(request_info, (char*) "local_uri", local_uri);
+    put_value_dframe(request_info, (char*) "request_method", request_method);
+
+    put_value_dframe(request_info, (char*) "local_uri_raw", local_uri_raw);
+    put_value_dframe(request_info, (char*) "http_version", http_version);
+    put_value_dframe(request_info, (char*) "query_string", query_string);
+    put_value_dframe(request_info, (char*) "remote_user", remote_user);
+    
+    drax_frame* conn = new_dframe_orphan(4);
+    put_value_dframe(conn, (char*) "request_info", DS_VAL(request_info));
+
+    drax_value f = run_instruction_on_vm_pool(v, DS_VAL(conn));
 
     if (IS_FRAME(f)) {
       drax_frame* ofr = CAST_FRAME(f);
@@ -39,6 +63,7 @@ static int request_handler(struct mg_connection* conn, void* cbdata) {
         data_string = CAST_STRING(data)->chars;
         mg_printf(conn, "%s", (const char*) data_string);
       }
+      
 
     }
   }

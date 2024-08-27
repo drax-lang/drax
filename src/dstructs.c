@@ -9,14 +9,19 @@
 #include "dvm.h"
 
 #define ALLOCATE_DSTRUCT(b, type, d_struct_type) \
-    (type*) allocate_struct(b, sizeof(type), d_struct_type)
+    (type*) allocate_struct(b, sizeof(type), d_struct_type, 0)
 
-static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type) {
+#define ALLOCATE_DSTRUCT_ORPHAN(b, type, d_struct_type) \
+    (type*) allocate_struct(b, sizeof(type), d_struct_type, 1)
+
+static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type, int is_orphan) {
   d_struct* d = (d_struct*) malloc(sizeof(d_struct) * size);
   d->type = type;
   d->checked = 0;
-  d->next = vm->d_ls;
-  vm->d_ls = d;
+  if (!is_orphan) {
+    d->next = vm->d_ls;
+    vm->d_ls = d;
+  }
 
   return d;
 }
@@ -112,6 +117,16 @@ drax_string* copy_dstring(d_vm* vm, const char* chars, int length) {
 
 drax_frame* new_dframe(d_vm* vm, int cap) {
   drax_frame* l = ALLOCATE_DSTRUCT(vm, drax_frame, DS_FRAME);
+  l->length = 0;
+  l->cap = cap == 0 ? 8 : cap;
+  l->values = (drax_value*) malloc(sizeof(drax_value) * l->cap);
+  l->literals = (char**) malloc(sizeof(char*) * l->cap);
+  l->keys = (int*) malloc(sizeof(int) * l->cap);
+  return l;
+}
+
+drax_frame* new_dframe_orphan(int cap) {
+  drax_frame* l = ALLOCATE_DSTRUCT_ORPHAN(NULL, drax_frame, DS_FRAME);
   l->length = 0;
   l->cap = cap == 0 ? 8 : cap;
   l->values = (drax_value*) malloc(sizeof(drax_value) * l->cap);

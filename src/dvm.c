@@ -874,6 +874,7 @@ d_vm* ligth_based_createVM(d_vm* vm_base, int clone_gc) {
   vm->call_stack->size = CALL_STACK_SIZE;
   vm->call_stack->count = 0;
   vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
+  vm->pstatus = VM_STATUS_STOPED;
 
   return vm;
 }

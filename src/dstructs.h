@@ -116,6 +116,8 @@ drax_string* copy_dstring(d_vm* vm, const char* chars, int length);
 
 drax_frame* new_dframe(d_vm* vm, int cap);
 
+drax_frame* new_dframe_orphan(int cap);
+
 drax_tid* new_dtid(d_vm* vm, drax_value value);
 
 int get_value_dframe(drax_frame* l, char* name, drax_value* value);
