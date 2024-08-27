@@ -418,7 +418,6 @@ void process_dstring(d_vm* vm, bool v) {
   put_pair(vm, OP_DSTR, DS_VAL(copy_dstring(vm, parser.prev.first + 1, parser.prev.length - 2)));
 }
 
-
 void process_variable(d_vm* vm, bool v) {
   UNUSED(v);
   d_token ctk = parser.prev;

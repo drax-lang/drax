@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include "dtypes.h"
 #include "dhandler.h"
+#include "dstructs.h"
 
 #define is_call_fn(v) ((v->act != BACT_CALL_OP) && (v->act != BACT_CORE_OP))
 
@@ -19,7 +20,7 @@
 #endif
 
 
-#define VMDispatch while(true)
+#define VMDispatch(is_per_batch, ops) while(!is_per_batch || ops++ < 10)
 
 #define VMcond(f) \
      switch (*(f->ip++))
@@ -44,6 +45,10 @@
 #define MSG_NAME_IS_NOT_DEFINED    "'%s' is not defined."
 #define MSG_NUMBER_OF_INVALID_ARGS "Number of invalid arguments, expected %d arguments."
 #define MSG_BAD_AGR_ARITH_OP       "Bad argument in arithmetic expression."
+
+#define VM_STATUS_STOPED   0 /* prepared to work */
+#define VM_STATUS_WORKING  1 /* working */
+#define VM_STATUS_FINISHED 2 /* finished, prepared to get result */
 
 /**
  * Validators for arguments
@@ -72,6 +77,15 @@ typedef struct  dcall_stack {
 } dcall_stack;
 
 typedef struct d_vm {
+  /**
+   * vid: VM Id
+   * 
+   * -2     import
+   * -1     main vm
+   * other  import 
+   */
+  int vid;
+
   dt_envs* envs;
   drax_value* ip;
   drax_value* stack;
@@ -82,10 +96,14 @@ typedef struct d_vm {
   d_instructions* instructions; /* global instructions */
   d_instructions* active_instr; /* active instructions */
   d_struct* d_ls;
+  int pstatus;
+  int pipeID;
 } d_vm;
 
 /* VM */
-d_vm* createVM();
+d_vm* createMainVM();
+
+d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc);
 
 void push(d_vm* vm, drax_value v);
 
@@ -93,8 +111,16 @@ drax_value pop(d_vm* vm);
 
 void raise_drax_error(d_vm* vm, const char* format, ...);
 
+void zero_new_local_range(d_vm* vm, int range);
+
+int do_dcall_native(d_vm* vm, drax_value v);
+
+void do_call_function_no_validation(d_vm* vm, drax_value f);
+
 void __reset__(d_vm* vm);
 
 int __run__(d_vm* curr, int inter_mode);
+
+int __run_per_batch__(d_vm* vm);
 
 #endif

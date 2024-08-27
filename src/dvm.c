@@ -30,15 +30,18 @@
         vm->active_instr = callstack_pop(vm); \
         vm->ip = vm->active_instr->_ip;
 
-#define process_lambda_function(vm, a, n, anf) \
-    if (anf->arity != (int) a) { \
-      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
-      return 0; }\
+#define process_labda_function_no_validation(vm, anf) \
     vm->active_instr->_ip = vm->ip;\
     callstack_push(vm, vm->active_instr);\
     zero_new_local_range(vm, anf->instructions->local_range);\
     vm->active_instr = anf->instructions;\
     vm->ip = anf->instructions->values;
+
+#define process_lambda_function(vm, a, n, anf) \
+    if (anf->arity != (int) a) { \
+      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+      return 0; }\
+      process_labda_function_no_validation(vm, anf);
 
 #define STATUS_DCALL_ERROR            0
 #define STATUS_DCALL_SUCCESS          1
@@ -187,7 +190,7 @@ static bool values_equal(drax_value a, drax_value b) {
  *  local->count    =>  (10)
  * 
  */
-static void zero_new_local_range(d_vm* vm, int range) {
+void zero_new_local_range(d_vm* vm, int range) {
   vm->envs->local->count += range;
   memset(&vm->envs->local->array[vm->envs->local->count - range], 0, sizeof(drax_value) * range);
 }
@@ -250,7 +253,7 @@ static int do_dcall_get_fun(d_vm* vm, char* n, int a, int global, drax_value* v 
  * STATUS_DCALL_ERROR:   an error occurred
  * STATUS_DCALL_SUCCESS: success, proceed normally
  */
-static int do_dcall_native(d_vm* vm, drax_value v) {
+int do_dcall_native(d_vm* vm, drax_value v) {
   int scs = 0;
   drax_os_native* ns = CAST_NATIVE(v);
   low_level_callback* nf = ns->function;
@@ -372,7 +375,6 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
 
   return STATUS_DCALL_SUCCESS;
 }
-static d_vm* ligth_createVM(d_vm* vm_base);
 
 static void __clean_vm_tmp__(d_vm* itvm);
 
@@ -389,7 +391,7 @@ static int import_file(d_vm* vm, char* p, char * n) {
     return 1;
   }
 
-  d_vm* itvm = ligth_createVM(vm);
+  d_vm* itvm = ligth_based_createVM(vm, -2, 1);
 
   int stat = 0;
   if (__build__(itvm, content)) {
@@ -407,10 +409,11 @@ static int import_file(d_vm* vm, char* p, char * n) {
     put_var_table(vm->envs->global, n, itvm->exported[0]);
     vm->d_ls = itvm->d_ls;
     __clean_vm_tmp__(itvm);
+    dgc_swap(vm);
     return stat;
 }
 
-static int __start__(d_vm* vm, int inter_mode) {
+static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
 
   #define dbin_bool_op(op, v) \
       do { \
@@ -424,7 +427,10 @@ static int __start__(d_vm* vm, int inter_mode) {
       } while (false)
 
   UNUSED(inter_mode);
-  VMDispatch {
+
+  int _ops = 0;
+
+  VMDispatch(is_per_batch, _ops) {
     VMcond(vm) {
       VMCase(OP_NIL) {
         push(vm, DRAX_NIL_VAL);
@@ -581,7 +587,8 @@ static int __start__(d_vm* vm, int inter_mode) {
             return 1;
           }
         }
-        free(n);
+        
+        /* if(vm->vid == -1) free(n); we need to copy string on parser to free*/
         push(vm, v);
         break;
       }
@@ -735,11 +742,21 @@ static int __start__(d_vm* vm, int inter_mode) {
         break;
       }
       VMCase(OP_RETURN) {
-        drax_value v = vm->active_instr->instr_count == 1 ?
+        drax_value v = (vm->active_instr->instr_count == 1) ?
           DRAX_NIL_VAL :
           pop(vm);
-        back_scope(vm);
+
+        vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range;
+
+        vm->active_instr = callstack_pop(vm);
+        if (vm->active_instr) {
+          vm->ip = vm->active_instr->_ip;
+        }
+
         push(vm, v);
+
+        if (!vm->active_instr) return 0;
+
         break;
       }
       VMCase(OP_EXIT) {
@@ -751,7 +768,6 @@ static int __start__(d_vm* vm, int inter_mode) {
           print_drax(pop(vm), inter_mode);
           dbreak_line();
         }
-        dgc_swap(vm);
         return 0;
       }
       default: {
@@ -760,7 +776,11 @@ static int __start__(d_vm* vm, int inter_mode) {
       }
     }
   }
-  
+  return 0;  
+}
+
+void do_call_function_no_validation(d_vm* vm, drax_value f) {
+  process_labda_function_no_validation(vm, CAST_FUNCTION(f));
 }
 
 /* Constructor */
@@ -774,11 +794,17 @@ static void initialize_builtin_functions(d_vm* vm) {
   load_callback_fn(vm, &register_builtin);
 }
 
-static dt_envs* new_environment(int ignore_natives) {
+static dt_envs* new_environment(int ignore_natives, int ignore_local, int ignore_global) {
   dt_envs* e = (dt_envs*) malloc(sizeof(dt_envs));
-  e->global = new_var_table();
   e->functions = new_fun_table();
-  e->local = new_local_table();
+
+  if (!ignore_global) {
+    e->global = new_var_table();
+  }
+
+  if (!ignore_local) {
+    e->local = new_local_table();
+  }
 
   if (ignore_natives) return e;
 
@@ -786,6 +812,7 @@ static dt_envs* new_environment(int ignore_natives) {
   e->modules = new_mod_table();
   return e;
 }
+
 
 /**
  * Create a new drax vm
@@ -815,9 +842,7 @@ void __reset__(d_vm* vm) {
   vm->ip = NULL;
 }
 
-static void __clean_vm_tmp__(d_vm* itvm) {
-  dgc_swap(itvm);
-  
+static void __clean_vm_tmp__(d_vm* itvm) { 
   itvm->active_instr = NULL;
   
   free(itvm->instructions->values);
@@ -829,8 +854,9 @@ static void __clean_vm_tmp__(d_vm* itvm) {
   itvm->ip = NULL;
 }
 
-d_vm* createVM() {
+d_vm* createMainVM() {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
+  vm->vid = -1;
   vm->instructions = new_instructions();
   vm->d_ls = NULL;
 
@@ -844,7 +870,7 @@ d_vm* createVM() {
   vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
-  vm->envs = new_environment(0);
+  vm->envs = new_environment(0, 0, 0);
 
   /**
    * Created on builtin definitions
@@ -857,7 +883,7 @@ d_vm* createVM() {
   vm->call_stack->size = CALL_STACK_SIZE;
   vm->call_stack->count = 0;
   vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
-
+  vm->pstatus = VM_STATUS_STOPED;
   return vm;
 }
 
@@ -868,14 +894,15 @@ d_vm* createVM() {
  *
  * but creates the base environments
  */
-static d_vm* ligth_createVM(d_vm* vm_base) {
+d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc) {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
+  vm->vid = vid;
   vm->instructions = new_instructions();
 
   /**
    * share global nested structs(d_ls)
    */
-  vm->d_ls = vm_base->d_ls;
+    vm->d_ls = clone_gc ? vm_base->d_ls : NULL;
 
   /**
    * Only one item is allowed to be 
@@ -887,11 +914,13 @@ static d_vm* ligth_createVM(d_vm* vm_base) {
   vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
-  vm->envs = new_environment(1);
+  vm->envs = new_environment(1, 1, 1);
 
   /**
    * Created on builtin definitions
   */
+  vm->envs->global = vm_base->envs->global;
+  vm->envs->local = vm_base->envs->local;
   vm->envs->modules = vm_base->envs->modules;
   vm->envs->native = vm_base->envs->native;
 
@@ -899,11 +928,26 @@ static d_vm* ligth_createVM(d_vm* vm_base) {
   vm->call_stack->size = CALL_STACK_SIZE;
   vm->call_stack->count = 0;
   vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
+  vm->pstatus = VM_STATUS_STOPED;
 
   return vm;
 }
 
 int __run__(d_vm* vm, int inter_mode) {
+  vm->pstatus = VM_STATUS_WORKING;
   __init__(vm);
-  return __start__(vm, inter_mode);
+  int r = __start__(vm, inter_mode, 0);
+  vm->pstatus = VM_STATUS_STOPED;
+  return r;
+}
+
+int __run_per_batch__(d_vm* vm) {
+  vm->pstatus = VM_STATUS_WORKING;
+  int r = __start__(vm, 0, 1);
+
+  if (!vm->active_instr) {
+    vm->pstatus = VM_STATUS_FINISHED;
+  }
+
+  return r;
 }

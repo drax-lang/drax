@@ -61,7 +61,11 @@ char* str_format_output(const char* str) {
       if (tstr[i+1] == 'n') {
         tstr[j] = '\n';
         i++;
-      } else if (tstr[i+1] == '\\') {
+      } else if (tstr[i+1] == 'r') {
+        tstr[j] = '\r';
+        i++;
+      }
+       else if (tstr[i+1] == '\\') {
         tstr[j] = '\\';
         i++;
       } else {

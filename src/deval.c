@@ -69,6 +69,10 @@ static void print_d_struct(drax_value value, int formated) {
     case DS_ERROR:
       printf("error");
       break;
+
+    case DS_TID:
+      printf("<tid::%ld>", CAST_TID(value)->value);
+      break;
   }
 }
 
