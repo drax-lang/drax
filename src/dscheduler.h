@@ -10,6 +10,6 @@
 
 int init_scheduler(d_vm * main_vm);
 
-drax_value run_instruction_on_vm_pool(drax_value fn);
+drax_value run_instruction_on_vm_pool(drax_value fn, drax_value v);
 
 #endif

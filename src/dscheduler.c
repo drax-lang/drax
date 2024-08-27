@@ -69,7 +69,7 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
  * 
  * change only vm with status VM_STATUS_STOPED
  */
-static void init_process_on_vm(drax_value val, int fd_result) {
+static void init_process_on_vm(drax_value val, int fd_result, drax_value value2push) {
   pthread_mutex_lock(&lock);
   d_vm *v = NULL;
 
@@ -97,6 +97,7 @@ static void init_process_on_vm(drax_value val, int fd_result) {
          * function incement the local->count.
          */
         zero_new_local_range(el_v, fn->instructions->local_range);
+        push(el_v, value2push);
 
         el_v->pstatus = VM_STATUS_WORKING;
         break;
@@ -112,13 +113,13 @@ static void init_process_on_vm(drax_value val, int fd_result) {
  * queues the routine to be executed and
  * waits for the return.
  */
-drax_value run_instruction_on_vm_pool(drax_value fn) {
+drax_value run_instruction_on_vm_pool(drax_value fn, drax_value v) {
   int fd[2];
   if (pipe(fd) == -1) {
     return DRAX_NIL_VAL; /* return a error */
   }
 
-  init_process_on_vm(fn, fd[1]);
+  init_process_on_vm(fn, fd[1], v);
 
   drax_value value;
   read(fd[0], &value, sizeof(value));

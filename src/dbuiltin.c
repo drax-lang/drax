@@ -591,7 +591,7 @@ static void callback_caller(d_vm* vm, drax_value call) {
   }
 
   if (IS_FUNCTION(call)) {
-   run_instruction_on_vm_pool(call);
+   run_instruction_on_vm_pool(call, 0);
   }
 }
 

@@ -6,5 +6,9 @@ end
 
 export {
     calc: &calc_two/2,
-    name: name
+    name: name,
+    key1: "str value",
+    key2: 123,
+    key3: [123, 456],
+    key4: { k: 'v' }
 }

@@ -12,7 +12,7 @@ static int request_handler(struct mg_connection* conn, void* cbdata) {
   int status_code_int = 200;
   
   if (IS_FUNCTION(v)) {
-    drax_value f = run_instruction_on_vm_pool(v);
+    drax_value f = run_instruction_on_vm_pool(v, DRAX_TRUE_VAL);
 
     if (IS_FRAME(f)) {
       drax_frame* ofr = CAST_FRAME(f);
