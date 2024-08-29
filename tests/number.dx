@@ -56,5 +56,8 @@ assert(result == 0, "number error: 21-21")
 result = 21/3
 assert(result == 7, "number error: 21/21")
 
-print("Number done!")
+assert(Number.to_string(11.7) == "11.7", "number error: Number.to_string(11.7)")
+assert(Number.to_string(-11.7) == "-11.7", "number error: Number.to_string(-11.7)")
+assert(Number.to_string(-0.17) == "-0.17", "number error: Number.to_string(-0.17)")
 
+print("Number done!")

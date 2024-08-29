@@ -21,6 +21,6 @@ drax_value start_http_server(d_vm* vm, char *options[],
     void (*callback_caller)(d_vm* vm, drax_value call),
     drax_value call, drax_value callback_req_handler);
 
-void stop_http_server(drax_value v);
+int stop_http_server(drax_value v);
 
 #endif

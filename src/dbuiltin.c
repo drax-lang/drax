@@ -521,6 +521,26 @@ static drax_value __d_gc_swap(d_vm* vm, int* stat) {
 }
 
 /**
+  * Number module
+*/
+
+static drax_value __d_number_to_string(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_number(a, stat);
+
+  char s[50];
+  double num = CAST_NUMBER(a);
+  
+  snprintf(s, sizeof(s), "%g", num);
+
+  drax_string* str = new_dstring(vm, s, strlen(s));
+  str->chars[strlen(s)] = '\0';
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(str);
+}
+
+/**
  * Frame module
  */
 
@@ -545,6 +565,235 @@ static drax_value __d_frame_put(d_vm* vm, int* stat) {
   DX_SUCESS_FN(stat);
   return DS_VAL(n);
 }
+
+static drax_value __d_frame_merge(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  return_if_is_not_frame(b, stat);
+  
+  drax_frame* f1 = CAST_FRAME(a);
+  drax_frame* f2 = CAST_FRAME(b);
+
+  drax_frame* nf1 = new_dframe(vm, f1->length);
+  nf1->length = f1->length;
+  memcpy(nf1->keys, f1->keys, f1->length * sizeof(int));
+  memcpy(nf1->literals, f1->literals, f1->length * sizeof(char*));
+  memcpy(nf1->values, f1->values, f1->length * sizeof(drax_value));
+
+  int i;
+  for(i = 0; i < f2->length; i++) {
+    if(strcmp(f2->literals[i], nf1->literals[i]) == 0) {
+      memcpy(&nf1->keys[i], &f2->keys[i], sizeof(int));
+      memcpy(&nf1->values[i], &f2->values[i], sizeof(drax_value));
+    } else {
+      put_value_dframe(nf1, f2->literals[i], f2->values[i]);
+    }
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nf1);
+}
+
+static drax_value __d_frame_to_list(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  
+  drax_frame* f = CAST_FRAME(a);
+  drax_list* l = new_dlist(vm, f->length);
+
+  int i;
+  for(i = 0; i < f->length; i++) {
+    if(f->literals[i]) {
+      drax_list* fl = new_dlist(vm, 2);
+      put_value_dlist(fl, DS_VAL(new_dstring(vm, f->literals[i], strlen(f->literals[i]))));
+      put_value_dlist(fl, f->values[i]);
+      put_value_dlist(l, DS_VAL(fl));
+    }
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l);
+}
+
+static drax_value __d_frame_keys(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  
+  drax_frame* f = CAST_FRAME(a);
+  drax_list* l = new_dlist(vm, f->length);
+
+  int i;
+  for(i = 0; i < f->length; i++) {
+    if(f->literals[i]) {
+      put_value_dlist(l, DS_VAL(new_dstring(vm, f->literals[i], strlen(f->literals[i]))));
+    }
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l);
+}
+
+static drax_value __d_frame_values(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  
+  drax_frame* f = CAST_FRAME(a);
+  drax_list* l = new_dlist(vm, f->length);
+
+  int i;
+  for(i = 0; i < f->length; i++) {
+    if(f->literals[i]) {
+      put_value_dlist(l, f->values[i]);
+    }
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l);
+}
+
+static drax_value __d_frame_has_key(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  return_if_is_not_string(b, stat);
+  
+  drax_frame* f = CAST_FRAME(a);
+  drax_string* key = CAST_STRING(b);
+  
+  drax_value v;
+  int idx = get_value_dframe(f, key->chars, &v);
+
+  DX_SUCESS_FN(stat);
+  return idx != -1 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
+}
+
+static drax_value __d_frame_remove(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  return_if_is_not_string(b, stat);
+  
+  drax_frame* f = CAST_FRAME(a);
+  drax_string* key = CAST_STRING(b);
+
+
+  drax_value v;
+  int idx = get_value_dframe(f, key->chars, &v);
+  if(idx < 0) {
+    DX_SUCESS_FN(stat);
+    return a;
+  }
+
+  drax_frame* nf = new_dframe(vm, f->length - 1);
+  nf->length = f->length - 1;
+  
+  memcpy(nf->keys, f->keys, idx * sizeof(int));
+  memcpy(nf->literals, f->literals, idx * sizeof(char*));
+  memcpy(nf->values, f->values, idx * sizeof(drax_value));
+
+  int bf = (nf->length - idx);
+  memcpy(nf->keys + idx, f->keys + idx + 1, bf * sizeof(int));
+  memcpy(nf->literals + idx, f->literals + idx + 1, bf * sizeof(char*));
+  memcpy(nf->values + idx, f->values + idx + 1, bf * sizeof(drax_value));
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nf);
+}
+
+static drax_value __d_frame_get(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  return_if_is_not_string(b, stat);
+  
+  drax_frame* f = CAST_FRAME(a);
+  drax_string* key = CAST_STRING(b);
+  
+  drax_value v;
+  int idx = get_value_dframe(f, key->chars, &v);
+
+  DX_SUCESS_FN(stat);
+  return idx != -1 ? f->values[idx] : DRAX_NIL_VAL;
+}
+
+static drax_value __d_frame_get_or_else(d_vm* vm, int* stat) {
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  return_if_is_not_string(b, stat);
+  
+  drax_frame* f = CAST_FRAME(a);
+  drax_string* key = CAST_STRING(b);
+  
+  drax_value v;
+  int idx = get_value_dframe(f, key->chars, &v);
+
+  DX_SUCESS_FN(stat);
+  return idx != -1 ? f->values[idx] : c;
+}
+
+static drax_value __d_frame_is_empty(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  
+  drax_frame* f = CAST_FRAME(a);
+
+  DX_SUCESS_FN(stat);
+  return f->length ? DRAX_FALSE_VAL : DRAX_TRUE_VAL;
+}
+
+static drax_value __d_frame_is_present(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_frame(a, stat);
+  
+  drax_frame* f = CAST_FRAME(a);
+
+  DX_SUCESS_FN(stat);
+  return f->length ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
+}
+
+static drax_value __d_frame_new(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+  drax_list* l = CAST_LIST(a);
+  drax_frame* f = new_dframe(vm, l->length);
+
+  int i;
+  for(i = 0; i < l->length; i++) {
+    return_if_is_not_list(l->elems[i], stat);
+
+    drax_list* l1 = CAST_LIST(l->elems[i]);
+
+    return_if_is_not_string(l1->elems[0], stat);
+    put_value_dframe(f, CAST_STRING(l1->elems[0])->chars, l1->elems[1]);
+  }
+  
+  DX_SUCESS_FN(stat);
+  return DS_VAL(f);
+}
+
+static drax_value __d_frame_new_empty(d_vm* vm, int* stat) {
+  drax_frame* f = new_dframe(vm, 0);
+  
+  DX_SUCESS_FN(stat);
+  return DS_VAL(f);
+}
+
+/**
+ * List Module
+ */
 
 static drax_value __d_list_concat(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
@@ -598,6 +847,23 @@ static drax_value __d_list_length(d_vm* vm, int* stat) {
   return AS_VALUE(l->length);
 }
 
+static drax_value __d_list_is_empty(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+  drax_list* l = CAST_LIST(a);
+
+  DX_SUCESS_FN(stat);
+  return l->length ? DRAX_FALSE_VAL : DRAX_TRUE_VAL;
+}
+
+static drax_value __d_list_is_present(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+  drax_list* l = CAST_LIST(a);
+
+  DX_SUCESS_FN(stat);
+  return l->length ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
+}
 
 /**
  * Http calls
@@ -690,11 +956,14 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
 
 static drax_value __d_stop_server(d_vm* vm, int* stat) {
   drax_value v = pop(vm);
+  return_if_is_not_tid(v, stat);
   drax_tid* tid = CAST_TID(v);
-  stop_http_server(tid->value);
+  int status = stop_http_server(tid->value);
+  
+  tid->value = 0;
 
   DX_SUCESS_FN(stat);
-  return DRAX_TRUE_VAL;
+  return status ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
 }
 
 /**
@@ -705,7 +974,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * OS module
   */
-  drax_native_module* mos = new_native_module(vm, "os", 6);
+  drax_native_module* mos = new_native_module(vm, "Os", 6);
   const drax_native_module_helper os_helper[] = {
     {1, "cmd", __d_cmd },
     {1, "cmd_with_status", __d_cmd_with_status },
@@ -721,7 +990,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * Core module
   */
-  drax_native_module* mcore = new_native_module(vm, "core", 2);
+  drax_native_module* mcore = new_native_module(vm, "Core", 2);
   const drax_native_module_helper core_helper[] = {
     {0, "gc_swap", __d_gc_swap },
     {1, "exit", __d_exit },
@@ -731,11 +1000,34 @@ void create_native_modules(d_vm* vm) {
   put_mod_table(vm->envs->modules, DS_VAL(mcore));
 
   /**
+   * Number module
+   */
+  drax_native_module* number = new_native_module(vm, "Number", 2);
+  const drax_native_module_helper number_helper[] = {
+    {1, "to_string", __d_number_to_string }
+  };
+
+  put_fun_on_module(number, number_helper, sizeof(number_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(number));
+
+  /**
    * Frame Module
    */ 
-  drax_native_module* frame = new_native_module(vm, "frame", 1);
+  drax_native_module* frame = new_native_module(vm, "Frame", 13);
   const drax_native_module_helper frame_helper[] = {
     {3, "put", __d_frame_put },
+    {2, "merge", __d_frame_merge },
+    {1, "to_list", __d_frame_to_list },
+    {1, "keys", __d_frame_keys },
+    {1, "values", __d_frame_values },
+    {2, "has_key", __d_frame_has_key },
+    {2, "remove", __d_frame_remove },
+    {2, "get", __d_frame_get },
+    {3, "get", __d_frame_get_or_else },
+    {1, "is_empty", __d_frame_is_empty },
+    {1, "is_present", __d_frame_is_present },
+    {0, "new", __d_frame_new_empty },
+    {1, "new", __d_frame_new },
   };
 
   put_fun_on_module(frame, frame_helper, sizeof(frame_helper) / sizeof(drax_native_module_helper)); 
@@ -744,12 +1036,14 @@ void create_native_modules(d_vm* vm) {
   /**
    * List Module
    */ 
-  drax_native_module* list = new_native_module(vm, "list", 4);
+  drax_native_module* list = new_native_module(vm, "List", 6);
   const drax_native_module_helper list_helper[] = {
     {2, "concat", __d_list_concat },
     {1, "head", __d_list_head},
     {1, "tail", __d_list_tail},
     {1, "length", __d_list_length},
+    {1, "is_empty", __d_list_is_empty},
+    {1, "is_present", __d_list_is_present},
   };
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
@@ -758,7 +1052,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * Http Module
    */ 
-  drax_native_module* http = new_native_module(vm, "http", 2);
+  drax_native_module* http = new_native_module(vm, "Http", 2);
   const drax_native_module_helper http_helper[] = {
     {2, "start", __d_start_server },
     {1, "stop", __d_stop_server},
@@ -767,7 +1061,7 @@ void create_native_modules(d_vm* vm) {
   put_fun_on_module(http, http_helper, sizeof(http_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(http));
 
-  drax_native_module* math = new_native_module(vm, "math", 22);
+  drax_native_module* math = new_native_module(vm, "Math", 22);
     const drax_native_module_helper math_helper[] = {
       {1, "cos", __d_cos},
       {1, "cosh", __d_cosh},

@@ -82,4 +82,10 @@ typedef uint8_t d_byte_def;
     return DS_VAL(new_derror(vm, (char *) "Expected module as argument")); \
   }
 
+#define return_if_is_not_tid(v, s) \
+  if (!IS_TID(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected tid as argument")); \
+  }  
+
 #endif

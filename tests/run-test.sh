@@ -13,6 +13,8 @@ export MODE=test
 
 ./bin/drax ./tests/frames.dx
 
+./bin/drax ./tests/large_frames.dx
+
 ./bin/drax ./tests/os.dx
 
 ./bin/drax ./tests/list.dx

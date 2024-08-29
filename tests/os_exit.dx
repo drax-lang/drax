@@ -1,1 +1,1 @@
-core.exit(42)
+Core.exit(42)

@@ -1,61 +1,61 @@
-assert(math.cos(0) == 1, "math error: cos(0)")
-assert(math.cos(1) == 0.5403023058681398, "math error: cos(1)")
+assert(Math.cos(0) == 1, "math error: cos(0)")
+assert(Math.cos(1) == 0.5403023058681398, "math error: cos(1)")
 
-assert(math.cosh(0) == 1, "math error: cosh(0)")
-assert(math.cosh(1) == 1.5430806348152437, "math error: cosh(1)")
+assert(Math.cosh(0) == 1, "math error: cosh(0)")
+assert(Math.cosh(1) == 1.5430806348152437, "math error: cosh(1)")
 
-assert(math.acos(0) == 1.5707963267948966, "math error: acos(0)")
-assert(math.acos(1) == 0, "math error: acos(1)")
+assert(Math.acos(0) == 1.5707963267948966, "math error: acos(0)")
+assert(Math.acos(1) == 0, "math error: acos(1)")
 
-assert(math.floor(5.6) == 5, "math error: floor(5.6)")
-assert(math.floor(0.7) == 0, "math error: floor(0.7)")
+assert(Math.floor(5.6) == 5, "math error: floor(5.6)")
+assert(Math.floor(0.7) == 0, "math error: floor(0.7)")
 
-assert(math.ceil(5.6) == 6, "math error: ceil(5.6)")
-assert(math.ceil(0.7) == 1, "math error: ceil(0.7)")
+assert(Math.ceil(5.6) == 6, "math error: ceil(5.6)")
+assert(Math.ceil(0.7) == 1, "math error: ceil(0.7)")
 
-assert(math.pow(2, 5) == 32, "math error: pow(2, 5)")
-assert(math.pow(16, 0.5) == 4, "math error: pow(16, 5)")
+assert(Math.pow(2, 5) == 32, "math error: pow(2, 5)")
+assert(Math.pow(16, 0.5) == 4, "math error: pow(16, 5)")
 
-assert(math.tan(1) == 1.5574077246549023, "math error: tan(1)")
-assert(math.tan(0) == 0, "math error: tan(0)")
+assert(Math.tan(1) == 1.5574077246549023, "math error: tan(1)")
+assert(Math.tan(0) == 0, "math error: tan(0)")
 
-assert(math.tanh(1) == 0.7615941559557649, "math error: tanh(1)")
-assert(math.tanh(0) == 0, "math error: tanh(0)")
+assert(Math.tanh(1) == 0.7615941559557649, "math error: tanh(1)")
+assert(Math.tanh(0) == 0, "math error: tanh(0)")
 
-assert(math.atan2(1, 1) == 0.7853981633974483, "math error: atan2(1, 1)")
-assert(math.atan2(8, 5) == 1.0121970114513341, "math error: atan2(8, 5)")
+assert(Math.atan2(1, 1) == 0.7853981633974483, "math error: atan2(1, 1)")
+assert(Math.atan2(8, 5) == 1.0121970114513341, "math error: atan2(8, 5)")
 
-assert(math.sqrt(4) == 2, "math error: sqrt(4)")
-assert(math.sqrt(144) == 12, "math error: sqrt(144)")
+assert(Math.sqrt(4) == 2, "math error: sqrt(4)")
+assert(Math.sqrt(144) == 12, "math error: sqrt(144)")
 
-assert(math.fabs(-4) == 4, "math error: fabs(-4)")
-assert(math.fabs(10.5) == 10.5, "math error: fabs(10.5)")
+assert(Math.fabs(-4) == 4, "math error: fabs(-4)")
+assert(Math.fabs(10.5) == 10.5, "math error: fabs(10.5)")
 
-assert(math.exp(1) == 2.718281828459045, "math error: exp(1)")
-assert(math.exp(-2) == 0.1353352832366127, "math error: exp(-2)")
+assert(Math.exp(1) == 2.718281828459045, "math error: exp(1)")
+assert(Math.exp(-2) == 0.1353352832366127, "math error: exp(-2)")
 
-assert(math.frexp(5.5) == [0.6875, 3], "math error: frexp(5.5)")
-assert(math.frexp(-5) == [-0.625, 3], "math error: frexp(-5)")
+assert(Math.frexp(5.5) == [0.6875, 3], "math error: frexp(5.5)")
+assert(Math.frexp(-5) == [-0.625, 3], "math error: frexp(-5)")
 
-assert(math.ldexp(5, 3) == 40, "math error: ldexp(5, 3)")
-assert(math.ldexp(0.2, 5) == 6.4, "math error: ldexp(0.2, 5)")
+assert(Math.ldexp(5, 3) == 40, "math error: ldexp(5, 3)")
+assert(Math.ldexp(0.2, 5) == 6.4, "math error: ldexp(0.2, 5)")
 
-assert(math.log(2) == 0.6931471805599453, "math error: log(2)")
-assert(math.log(10) == 2.302585092994046, "math error: log(10)")
+assert(Math.log(2) == 0.6931471805599453, "math error: log(2)")
+assert(Math.log(10) == 2.302585092994046, "math error: log(10)")
 
-assert(math.log10(100) == 2, "math error: log10(100)")
-assert(math.log10(1000) == 3, "math error: log(1000)")
+assert(Math.log10(100) == 2, "math error: log10(100)")
+assert(Math.log10(1000) == 3, "math error: log(1000)")
 
-assert(math.modf(5.5) == [0.5, 5], "math error: modf(5.5)")
-assert(math.modf(-5.5) == [-0.5, -5], "math error: modf(-5.2)")
+assert(Math.modf(5.5) == [0.5, 5], "math error: modf(5.5)")
+assert(Math.modf(-5.5) == [-0.5, -5], "math error: modf(-5.2)")
 
-assert(math.sin(1) == 0.8414709848078965, "math error: sin(1)")
-assert(math.sin(0) == 0, "math error: sin(0)")
+assert(Math.sin(1) == 0.8414709848078965, "math error: sin(1)")
+assert(Math.sin(0) == 0, "math error: sin(0)")
 
-assert(math.sinh(1) == 1.1752011936438014, "math error: sinh(1)")
-assert(math.sinh(0) == 0, "math error: sinh(0)")
+assert(Math.sinh(1) == 1.1752011936438014, "math error: sinh(1)")
+assert(Math.sinh(0) == 0, "math error: sinh(0)")
 
-assert(math.asin(1) == 1.5707963267948966, "math error: asin(1)")
-assert(math.asin(0) == 0, "math error: asin(0)")
+assert(Math.asin(1) == 1.5707963267948966, "math error: asin(1)")
+assert(Math.asin(0) == 0, "math error: asin(0)")
 
 print("Math done!")

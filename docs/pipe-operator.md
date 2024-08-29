@@ -10,7 +10,7 @@ We forward the value on the left to the right and this value is forwarded as the
 for example:
 
 ```drax
-   [1,2,3,4,5] |> list.concat([6])
+   [1,2,3,4,5] |> List.concat([6])
    # => [1, 2, 3, 4, 5, 6]
 ```
 

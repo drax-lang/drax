@@ -16,7 +16,7 @@ If the command fails, an error is generated.
 
 Example:
 ```drax
-  > os.cmd("ls /")
+  > Os.cmd("ls /")
   "bin\nboot\ndev\ntmp\nusr\nvar\n"
 ```
 
@@ -27,10 +27,10 @@ Example:
 
 Example:
 ```drax
-  > os.cmd_with_status("ls /")
+  > Os.cmd_with_status("ls /")
   [0, "bin\nboot\ndev\ntmp\nusr\nvar\n"]
   
-  > os.cmd_with_status("foo_bar")
+  > Os.cmd_with_status("foo_bar")
   [127, ""]
 ```
 
@@ -38,7 +38,7 @@ Example:
 
 Example:
 ```drax
-  > os.get_env("HOME")
+  > Os.get_env("HOME")
   "/home/drax"
 ```
 
@@ -46,7 +46,7 @@ Example:
 
 Example:
 ```drax
-  > os.mkdir("folder")
+  > Os.mkdir("folder")
   true
 ```
 You can pass a second argument that indicates the permission of the folder.
@@ -55,7 +55,7 @@ the second argument must be an octal number.
 
 Example:
 ```drax
-  > os.mkdir("folder", 0o777)
+  > Os.mkdir("folder", 0o777)
   true
 ```
 
@@ -66,7 +66,7 @@ the core module offers functions that allow you to manipulate the drax virtual m
 
 Example:
 ```drax
-  > core.exit(1)
+  > Core.exit(1)
 ```
 ### frame
 All functions that manipulate the frame always return a new element, never changing the source element
@@ -76,7 +76,7 @@ All functions that manipulate the frame always return a new element, never chang
 Example:
 ```drax
   > f = {name: "drax"}
-  > frame.put(f, "value", 123)
+  > Frame.put(f, "value", 123)
   {name: "drax", value: 123}
   > f
   {name: "drax"}
