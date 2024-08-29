@@ -634,4 +634,4 @@ end
 
 assert(Frame.is_empty(remove_all_items(large_frame, 0)), "frame error: the result of remove_all_items is not empty")
 
-print("Large Frame Done")
+print("Large Frame done!")

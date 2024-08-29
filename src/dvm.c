@@ -434,7 +434,10 @@ static int buid_self_dep_fn(d_vm* vm, drax_value v) {
       
         drax_value rv;
 
-        if (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &rv) == 0) {
+        if (
+          (get_mod_table(vm->envs->modules, k, &rv) == 0) &&
+          (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &rv) == 0)
+        ) {
           if(get_var_table(vm->envs->global, k, &rv) == 0) {
             raise_drax_error(vm, _L_MSG_NOT_DEF, k);
             return 0;
