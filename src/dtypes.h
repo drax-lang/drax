@@ -133,6 +133,12 @@ typedef struct d_instructions {
   int local_range; /* used by local definitions */
 
   /**
+   * uextrn_ref: sed by lambda to check if there are external 
+   * references (local variables outside the lambda 
+   * or global variables).
+   */
+  bool extrn_ref;
+  /**
    * _ip: Used to log current statement when 
    * added/removed from call_stack
    */

@@ -22,3 +22,9 @@ export MODE=test
 ./bin/drax ./tests/import.dx
 
 ./bin/drax ./tests/math.dx
+
+./bin/drax ./tests/lambdas.dx
+
+./bin/drax ./tests/http/http-only-response-json.dx
+
+./bin/drax ./tests/http/http-only-response-text-plain.dx

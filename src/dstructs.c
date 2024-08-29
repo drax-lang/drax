@@ -223,7 +223,6 @@ void print_funcs_on_module(drax_native_module* m) {
   struct winsize w;
   ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
 
-  int default_space = 10; 
   int max_distance = 0;
   int i, j;
 

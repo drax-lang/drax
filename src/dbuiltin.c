@@ -908,6 +908,16 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
   }
 
   /**
+   * get request_timeout_ms as string
+   */
+  char* req_timeout_string = (char*) "10000";
+  drax_value drt;
+  if(get_value_dframe(ofr, (char*) "request_timeout_ms", &drt) != -1) {
+    return_if_is_not_string(drt, stat);
+    req_timeout_string = CAST_STRING(drt)->chars;
+  }
+
+  /**
    * get document_root as string
    */
   drax_value call_back_handler = DRAX_NIL_VAL;
@@ -926,6 +936,7 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
   char *options[] = {
     (char*) "document_root", droot_string, 
     (char*) "listening_ports", port_string, 
+    (char*) "request_timeout_ms", req_timeout_string,
     NULL
   };
 

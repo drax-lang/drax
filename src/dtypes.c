@@ -27,6 +27,7 @@ d_instructions* new_instructions() {
   i->lines = (int*) malloc(sizeof(int) * MAX_INSTRUCTIONS);
   i->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
   i->local_range = 0;
+  i->extrn_ref = false;
   return i;
 }
 

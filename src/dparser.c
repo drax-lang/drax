@@ -8,7 +8,7 @@
 #include "dparser.h"
 #include "dlex.h"
 
-#define LOCAL_SIZE_FACTOR 30
+#define LOCAL_SIZE_FACTOR 10
 
 #define DISABLE_PIPE_PROCESS() parser.is_pipe = 0
 #define ENABLE_PIPE_PROCESS()  parser.is_pipe = 1
@@ -19,7 +19,7 @@
 parser_state parser;
 parser_builder* current = NULL;
 
-static d_local_registers* new_locals() {
+static d_local_registers* create_local_registers() {
   d_local_registers* l = (d_local_registers*) malloc(sizeof(d_local_registers));
   l->length = 0;
   l->capacity = LOCAL_SIZE_FACTOR;
@@ -27,24 +27,33 @@ static d_local_registers* new_locals() {
   return l;
 }
 
-static void reset_locals() {
-  int i;
-  for (i = 0; i < parser.locals->length; i++) {
-    free(parser.locals->vars[i]);
-  }
+static void init_locals(parser_state* psr) {
+  psr->locals_length = 1;
+  psr->locals_capacity = 10;
+  psr->locals = (d_local_registers**) malloc(sizeof(d_local_registers*) * psr->locals_capacity);
 
-  free(parser.locals->vars);
-  free(parser.locals);
-
-  parser.locals = new_locals();
-  DISABLE_PIPE_PROCESS();
-  DISABLE_REFR_PROCESS();
+  psr->locals[0] = create_local_registers();
 }
 
-static void put_local(char* name) {
-  if (parser.locals->length >= parser.locals->capacity) {
-    parser.locals->capacity = parser.locals->capacity + LOCAL_SIZE_FACTOR;
-    parser.locals->vars = (char**) realloc(parser.locals->vars, sizeof(char*) * parser.locals->capacity);
+/**
+ * when a new function is created
+ * we need the locals to manager definitions
+ */
+static void new_locals_register(parser_state* psr) {
+  if (psr->locals_length >= psr->locals_capacity) {
+    psr->locals_capacity = psr->locals_capacity + 4;
+    psr->locals = (d_local_registers**) realloc(psr->locals, sizeof(d_local_registers*) * psr->locals_capacity);
+  }
+
+  psr->locals[psr->locals_length++] = create_local_registers();
+}
+
+static void put_local(parser_state* psr, char* name) {
+  d_local_registers* lc = psr->locals[psr->locals_length -1];
+  
+  if (lc->length >= lc->capacity) {
+    lc->capacity = lc->capacity + LOCAL_SIZE_FACTOR;
+    lc->vars = (char**) realloc(lc->vars, sizeof(char*) * lc->capacity);
   }
 
   size_t size = strlen(name);
@@ -52,13 +61,14 @@ static void put_local(char* name) {
   strcpy(new_name, name);
   new_name[size] = '\0';
 
-  parser.locals->vars[parser.locals->length++] = new_name;
+  lc->vars[lc->length++] = new_name;
 }
 
-static int get_local(char* name) {
+static int get_local(parser_state* psr, char* name) {
   int i;
-  for (i = parser.locals->length - 1; i >= 0; i--) {
-    if (strcmp(parser.locals->vars[i], name) == 0) {
+  d_local_registers* lc = psr->locals[psr->locals_length -1];
+  for (i = lc->length - 1; i >= 0; i--) {
+    if (strcmp(lc->vars[i], name) == 0) {
       return i;
     }
   }
@@ -66,10 +76,32 @@ static int get_local(char* name) {
   return -1;
 }
 
+static void remove_locals_registers(parser_state* psr) {
+  int i;
+  d_local_registers* lc = psr->locals[psr->locals_length -1];
+  for (i = 0; i < lc->length; i++) {
+    free(lc->vars[i]);
+  }
+
+  free(lc->vars);
+  free(lc);
+
+  if (psr->locals_length > 1) {
+    psr->locals_length--;
+  }
+
+  if (psr->locals_length == 1) {
+    psr->locals[0] = create_local_registers(psr);
+  }
+
+  DISABLE_PIPE_PROCESS();
+  DISABLE_REFR_PROCESS();
+}
+
 static void init_parser(d_vm* vm) {
   vm->active_instr = vm->instructions;
   DISABLE_PIPE_PROCESS();
-  parser.locals = new_locals();
+  init_locals(&parser);
 }
 
 static operation_line op_lines[] = {
@@ -443,7 +475,7 @@ void process_variable(d_vm* vm, bool v) {
     put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
     
     if (!is_global) {
-      put_local(name);
+      put_local(&parser, name);
       vm->active_instr->local_range++;
     }
     return;
@@ -454,8 +486,9 @@ void process_variable(d_vm* vm, bool v) {
     return;
   }
 
-  if (is_global || get_local(name) == -1) {
+  if (is_global || get_local(&parser, name) == -1) {
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
+    vm->active_instr->extrn_ref = true;
     return;
   }
 
@@ -539,6 +572,7 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
   vm->active_instr = f->instructions;
+  new_locals_register(&parser);
 
   if (is_anonymous) {
     f->name = NULL;
@@ -582,7 +616,7 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
     strcpy(s, stack_args[i - 1]);
     s[sz] = '\0';
     put_pair(vm, OP_SET_L_ID, (drax_value) s);
-    put_local(stack_args[i - 1]);
+    put_local(&parser, stack_args[i - 1]);
   }
   vm->active_instr->local_range = f->arity;
 
@@ -597,8 +631,13 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
   block(vm);
   put_instruction(vm, OP_RETURN);
   vm->active_instr = gi;
+
   put_pair(vm, is_anonymous ? OP_AFUN : OP_FUN, DS_VAL(f));
-  reset_locals();
+  /**
+   * replace to parser state
+   */
+  put_instruction(vm, f->instructions->extrn_ref ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
+  remove_locals_registers(&parser);
 }
 
 void process_lambda(d_vm* vm, bool v) {

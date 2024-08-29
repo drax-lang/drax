@@ -47,6 +47,8 @@
 #define STATUS_DCALL_SUCCESS          1
 #define STATUS_DCALL_SUCCESS_NO_CLEAR 2
 
+#define _L_MSG_NOT_DEF "error: variable '%s' is not defined\n"
+
 /* VM stack. */
 
 void push(d_vm* vm, drax_value v) {
@@ -196,7 +198,6 @@ void zero_new_local_range(d_vm* vm, int range) {
 }
 
 static int get_definition(d_vm* vm, int is_local) { 
-  #define _L_MSG_NOT_DEF "error: variable '%s' is not defined\n"
   char* k = (char*) GET_VALUE(vm);
   drax_value v;
 
@@ -411,6 +412,48 @@ static int import_file(d_vm* vm, char* p, char * n) {
     __clean_vm_tmp__(itvm);
     dgc_swap(vm);
     return stat;
+}
+
+/**
+ * build self-dependent lambda
+ * 
+ * replace external references on function.
+ */
+static int buid_self_dep_fn(d_vm* vm, drax_value v) {
+  drax_function* f = CAST_FUNCTION(v);
+
+  drax_value* ip = f->instructions->values;
+  while (true) {
+    switch (*(ip++)) {
+      case OP_GET_G_ID:
+        /**
+         * replace global call to real value
+         */
+        drax_value gv = *(ip);
+        char* k = (char*) gv;
+      
+        drax_value rv;
+
+        if (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &rv) == 0) {
+          if(get_var_table(vm->envs->global, k, &rv) == 0) {
+            raise_drax_error(vm, _L_MSG_NOT_DEF, k);
+            return 0;
+          }
+        }
+
+        *(ip - 1) = OP_PUSH;
+        *(ip++) = rv;
+
+        break;
+      case OP_RETURN:
+        return 1;
+      default:
+        break;
+    }  
+  }
+  
+
+  return 1;
 }
 
 static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
@@ -722,11 +765,31 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       }
       VMCase(OP_FUN) {
         drax_value v = GET_VALUE(vm);
+        drax_value extern_ref = GET_VALUE(vm);
+        UNUSED(extern_ref); /* discart extern_ref */
         put_fun_table(vm->envs->functions, v);
         break;
       }
       VMCase(OP_AFUN) {
+        /**
+         * Check if is factory
+         * 
+         * go through all the instructions, if any are global, 
+         * try to solve it (locally and then global) by replacing 
+         * the values ​​in the instruction itself.
+         * 
+         * but perhaps these instructions need to be cloned somehow
+         */
+
         drax_value v = GET_VALUE(vm);
+        drax_value extern_ref = GET_VALUE(vm);
+        if (extern_ref == DRAX_TRUE_VAL) {
+          /**
+           * This routine will replace the external
+           * references on lambda.
+           */
+          if(buid_self_dep_fn(vm, v) == 0) { return 1; }
+        }
         push(vm, v);
         break;
       }
