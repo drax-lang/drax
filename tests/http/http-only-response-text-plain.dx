@@ -6,7 +6,7 @@ fun handle(a) do
     }
 end
 
-tid = http.start({
+tid = Http.start({
         port: '8080',
         request_timeout_ms: '10000',
         request_handler: &handle/1
@@ -14,8 +14,8 @@ tid = http.start({
 
 sleep(1000)
 
-res = os.cmd("curl -s http://localhost:8080")
+res = Os.cmd("curl -s http://localhost:8080")
 assert(res == "drax-lang", "http request localhost:8080")
 
-http.stop(tid)
+Http.stop(tid)
 print("Http text/plain done!")
