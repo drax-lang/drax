@@ -1,0 +1,38 @@
+fun get_handle(first) do
+    lambda (last) do
+        first ++ ' ' ++ last
+    end
+end
+
+afn = get_handle('drax')
+res = afn('lang')
+
+assert(res == 'drax lang', 'fail to make lambda')
+
+fun exec_fn(call) do
+    call("lambda function")
+end
+
+ff = exec_fn(lambda (val) do
+    'my drax ' ++ val
+end)
+
+assert(ff == 'my drax lambda function', 'fail to pass lambda as argument')
+
+## pass lambda to lambda factory
+## nested lambdas and lamda factory
+fun exec_fn2(fixed_arg) do
+    lambda (call) do
+        call(fixed_arg)
+    end
+end
+
+ff2 = exec_fn2('fixed argument!')
+
+resff2 = ff2(lambda (myArg) do
+    'my ' ++ myArg
+end)
+
+assert(resff2 == 'my fixed argument!', 'fail to pass labda to function created by function')
+
+print("lambda's done!")
