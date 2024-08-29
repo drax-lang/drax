@@ -149,8 +149,14 @@ drax_value start_http_server(
   return (drax_value) ctx;
 }
 
-void stop_http_server(drax_value v) {
+int stop_http_server(drax_value v) {
+  if(!v) {
+    return 0;
+  }
+
   struct mg_context *ctx = (struct mg_context *) v;
   mg_stop(ctx);
+
+  return 1;
 }
 

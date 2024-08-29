@@ -40,15 +40,138 @@ test_handle_frame()
 ### test module frame
 
 ff = {name: "drax"}
-ff = frame.put(ff, "name", "foo")
+ff = Frame.put(ff, "name", "foo")
 
 assert(ff.name == "foo", "frame error: put field foo 1")
 
-ff = frame.put(ff, "name2", "drax")
+ff = Frame.put(ff, "name2", "drax")
 
 assert(ff.name == "foo", "frame error: put field foo 2")
 assert(ff.name2 == "drax", "frame error: put field drax")
 
 assert(ff == { name: "foo", name2: "drax" }, "frame error: compare frame")
+
+# Has key
+ff = { a: 10, b: 15, c: 20, d: 25 }
+assert(Frame.has_key(ff, "a"), "frame error: has_key(ff, a)")
+assert(Frame.has_key(ff, "b"), "frame error: has_key(ff, b)")
+assert(Frame.has_key(ff, "c"), "frame error: has_key(ff, c)")
+assert(Frame.has_key(ff, "d"), "frame error: has_key(ff, d)")
+
+# Merge
+ff2 = { a: 15, c: 11, e: 12 }
+
+expected = { a: 15, b: 15, c: 11, d: 25, e: 12 }
+assert(Frame.merge(ff, ff2) == expected, "frame error: merge(ff, ff2)")
+
+expected = { a: 22, b: 15, c: 20, d: 25 }
+assert(Frame.merge(ff, { a: 22 }) == expected, "frame error: merge(ff, { a: 22 })")
+
+expected = { a: 10, b: 15, c: 20, d: 25, e: 0 }
+assert(Frame.merge(ff, { e: 0 }) == expected, "frame error: merge(ff, { e: 0 })")
+
+expected = { a: 10, b: 15, c: 20, d: 25, e: 0 }
+assert(Frame.merge(ff, { a: 10 }) == ff, "frame error: merge(ff, { a: 10 })")
+
+# To list
+expected = [["a", 10], ["b", 15], ["c", 20], ["d", 25]]
+assert(Frame.to_list(ff) == expected, "frame error: to_list(ff)")
+
+expected = [["a", 15], ["c", 11], ["e", 12]]
+assert(Frame.to_list(ff2) == expected, "frame error: to_list(ff2)")
+
+expected = [["a", 15], ["b", 15], ["c", 11], ["d", 25], ["e", 12]]
+assert(Frame.to_list(Frame.merge(ff, ff2)) == expected, "frame error: to_list(merge(ff, ff2))")
+
+expected = [["name", "jhon"]]
+assert(Frame.to_list({ name: "jhon" }) == expected, "frame error: to_list({ name: 'jhon' })")
+
+expected = []
+assert(Frame.to_list({}) == expected, "frame error: to_list({})")
+
+# Keys
+expected = ["a", "b", "c", "d"]
+assert(Frame.keys(ff) == expected, "frame error: keys(ff)")
+
+expected = ["a", "c", "e"]
+assert(Frame.keys(ff2) == expected, "frame error: keys(ff2)")
+
+expected = ["a", "b", "c", "d", "e"]
+assert(Frame.keys(Frame.merge(ff, ff2)) == expected, "frame error: keys(merge(ff, ff2))")
+
+expected = ["name"]
+assert(Frame.keys({ name: "jhon" }) == expected, "frame error: keys({ name: 'jhon' })")
+
+expected = []
+assert(Frame.keys({}) == expected, "frame error: keys({})")
+
+# Values
+expected = [10, 15, 20, 25]
+assert(Frame.values(ff) == expected, "frame error: values(ff)")
+
+expected = [15, 11, 12]
+assert(Frame.values(ff2) == expected, "frame error: values(ff2)")
+
+expected = [15, 15, 11, 25, 12]
+assert(Frame.values(Frame.merge(ff, ff2)) == expected, "frame error: values(merge(ff, ff2))")
+
+expected = ["jhon"]
+assert(Frame.values({ name: "jhon" }) == expected, "frame error: values({ name: 'jhon' })")
+
+expected = []
+assert(Frame.values({}) == expected, "frame error: values({})")
+
+# Is Empty and Is Presen
+assert(Frame.is_present(ff), "frame error: ff is empty")
+assert(!Frame.is_present({}), "frame error: {} is present")
+
+assert(!Frame.is_empty(ff), "frame error: ff is empty")
+assert(Frame.is_empty({}), "frame error: {} is present")
+
+# Remove
+ff = { a: 10, b: 15, c: 20, d: 25, e: 15 }
+
+expected = { a: 10, b: 15, c: 20, e: 15 }
+assert(Frame.remove(ff, "d") == expected, "frame error: remove(ff, d)")
+expected = { a: 10, b: 15, c: 20, d: 25, e: 15 }
+assert(ff == expected, "frame error: ff was changed in the remove(ff, d)")
+
+expected = { a: 10, c: 20, d: 25, e: 15 }
+assert(Frame.remove(ff, "b") == expected, "frame error: remove(ff, b)")
+expected = { a: 10, b: 15, c: 20, d: 25, e: 15 }
+assert(ff == expected, "frame error: ff was changed in the remove(ff, 'b')")
+
+expected = { a: 10, b: 15, c: 20, d: 25 }
+assert(Frame.remove(ff, "e") == expected, "frame error: remove(ff, e)")
+expected = { a: 10, b: 15, c: 20, d: 25, e: 15 }
+assert(ff == expected, "frame error: ff was changed in the remove(ff, e)")
+
+expected = { b: 15, c: 20, d: 25, e: 15 }
+assert(Frame.remove(ff, "a") == expected, "frame error: remove(ff, e)")
+expected = { a: 10, b: 15, c: 20, d: 25, e: 15 }
+assert(ff == expected, "frame error: ff was changed in the remove(ff, a)")
+
+assert(Frame.is_empty(
+    Frame.remove(
+        Frame.remove(
+            Frame.remove(
+                Frame.remove(
+                    Frame.remove(ff, "a"), "e"),
+                "b"),
+            "d"),
+        "c")), 
+"frame error: exepected empty frame")
+assert(Frame.is_empty(Frame.remove({}, "a")), "frame error: expected ampty frame")
+
+# Get
+assert(Frame.get(ff, "a"), "frame error: the property 'a' not exists")
+assert(Frame.get(ff, "ampty", 15) == 15, "frame error: the get(ff, empty) function did not return 15 as default")
+assert(Frame.get(ff, "ampty", []) == [], "frame error: the get(ff, empty) function did not return [] as default")
+
+# New
+assert(Frame.is_empty(Frame.new()), "frame error: the new/0 function not returned an empty frame")
+
+assert(Frame.new(Frame.to_list(ff)), "frame error: error to convert list in frame")
+assert(Frame.new([]), "frame error: the new({}) function not returned an empty frame")
 
 print("Frames done!")

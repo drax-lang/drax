@@ -13,4 +13,3 @@ assert(lib.key3[0] == 123, "lib.key3[0] == 123")
 assert(lib.key3[1] == 456, "lib.key3[1] == 456")
 
 assert(lib.key4.k == 'v', "lib.key4.k == 'v'")
-    

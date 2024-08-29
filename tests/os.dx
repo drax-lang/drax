@@ -1,18 +1,18 @@
 ### cmd test
 
-r = os.cmd("echo Hello Drax")
+r = Os.cmd("echo Hello Drax")
 
 assert(r == "Hello Drax\n", "os error: invalid return")
 
 ### cmd with status test
 
-r = os.cmd_with_status("echo Hello Drax")
+r = Os.cmd_with_status("echo Hello Drax")
 
 assert(r[0] == 0, "os error: invalid return")
 
 assert(r[1] == "Hello Drax\n", "os error: invalid return")
 
-r = os.cmd_with_status("foo_bar")
+r = Os.cmd_with_status("foo_bar")
 
 assert(r[0] == 127, "os error: invalid return (foo_bar)")
 
@@ -20,24 +20,24 @@ assert(r[1] == "", "os error: invalid return (foo_bar)")
 
 ### env var test
 
-r = os.get_env("MODE")
+r = Os.get_env("MODE")
 
 assert(r == "test", "os error: fail to get MODE env")
 
-r = os.get_env("_NOME_TEST")
+r = Os.get_env("_NOME_TEST")
 
 assert(r == nil, "os error: unspected env val on os")
 
 ### exit
 
-expect = os.cmd_with_status("./bin/drax ./tests/os_exit.dx")
+expect = Os.cmd_with_status("./bin/drax ./tests/os_exit.dx")
 
 assert(expect[0] == 42, "os error: invalid return (exit)")
 
 ### call module inside function
 
 fun get_env_in_fn() do
-    v = os.get_env("MODE")
+    v = Os.get_env("MODE")
     assert(v == "test", "os error: fail to get MODE env inside wrapper")
 end
 

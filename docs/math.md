@@ -6,7 +6,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the cosine of an angle in radians.
 - **Examples**:
   ```drax
-  > math.cos(0)
+  > Math.cos(0)
   1
   ```
 
@@ -14,7 +14,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the hyperbolic cosine of a number.
 - **Examples**:
   ```drax
-  > math.cosh(0)
+  > Math.cosh(0)
   1.0
   ```
 
@@ -22,7 +22,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the arc cosine of a number in radians.
 - **Examples**:
   ```drax
-  > math.acos(0)
+  > Math.acos(0)
   1.5708
   ```
 
@@ -30,7 +30,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the largest integer less than or equal to a given number.
 - **Examples**:
   ```drax
-  > math.floor(2.5)
+  > Math.floor(2.5)
   2.0
   ```
 
@@ -38,7 +38,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the smallest integer greater than or equal to a given number.
 - **Examples**:
   ```drax
-  > math.ceil(2.5)
+  > Math.ceil(2.5)
   3.0
   ```
 
@@ -46,7 +46,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the result of raising a base to a given exponent.
 - **Examples**:
   ```drax
-  > math.pow(2, 5)
+  > Math.pow(2, 5)
   32
   ```
 
@@ -54,7 +54,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the tangent of an angle in radians.
 - **Examples**:
   ```drax
-  > math.tan(1)
+  > Math.tan(1)
   1.55741
   ```
 
@@ -62,7 +62,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the hyperbolic tangent of a number.
 - **Examples**:
   ```drax
-  > math.tanh(1)
+  > Math.tanh(1)
   0.761594
   ```
 
@@ -70,7 +70,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the square root of a number.
 - **Examples**:
   ```drax
-  > math.sqrt(4)
+  > Math.sqrt(4)
   2
   ```
 
@@ -78,7 +78,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the arc tangent of a number in radians.
 - **Examples**:
   ```drax
-  > math.atan(1)
+  > Math.atan(1)
   0.785398 // Equivalent to π/4 in radians
   ```
 
@@ -86,7 +86,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the arc tangent of the quotient of its two arguments, with the correct quadrant in radians.
 - **Examples**:
   ```drax
-  > math.atan2(1, 1)
+  > Math.atan2(1, 1)
   0.785398  // Equivalent to π/4 in radians
   ```
 
@@ -94,7 +94,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns e raised to the power of a given number.
 - **Examples**:
   ```drax
-  > math.exp(1)
+  > Math.exp(1)
   2.71828  // The value of e
   ```
 
@@ -102,7 +102,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the absolute value of a number.
 - **Examples**:
   ```drax
-  > math.fabs(-5.5)
+  > Math.fabs(-5.5)
   5.5
   ```
 
@@ -110,7 +110,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Decomposes a number into a normalized fraction and an exponent. Returns a list with the fraction and the exponent.
 - **Examples**:
   ```drax
-  > math.frexp(8.5)
+  > Math.frexp(8.5)
   [0.53125, 4]
   ```
 
@@ -118,7 +118,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns `x * (2^exp)`, effectively combining a fraction and an exponent.
 - **Examples**:
   ```drax
-  > math.ldexp(0.5, 3)
+  > Math.ldexp(0.5, 3)
   4.0
   ```
 
@@ -126,7 +126,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the natural logarithm (base e) of a number.
 - **Examples**:
   ```drax
-  > math.log(2)
+  > Math.log(2)
   0.693147
   ```
 
@@ -134,7 +134,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the base-10 logarithm of a number.
 - **Examples**:
   ```drax
-  > math.log10(100)
+  > Math.log10(100)
   2
   ```
 
@@ -142,7 +142,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Decomposes a number into its fractional and integral parts. Returns a list with the fractional part and the integral part.
 - **Examples**:
   ```drax
-  > math.modf(5.5)
+  > Math.modf(5.5)
   [0.5, 5]
   ```
 
@@ -150,7 +150,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the sine of an angle in radians.
 - **Examples**:
   ```drax
-  > math.sin(1)
+  > Math.sin(1)
   0.841471
   ```
 
@@ -158,7 +158,7 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the hyperbolic sine of a number.
 - **Examples**:
   ```drax
-  > math.sinh(1)
+  > Math.sinh(1)
   1.1752
   ```
 
@@ -166,6 +166,6 @@ The `math` module in Drax provides a set of essential mathematical functions for
 - **Description**: Returns the arc sine of a number in radians.
 - **Examples**:
   ```drax
-  > math.asin(1)
+  > Math.asin(1)
   1.5708
   ```

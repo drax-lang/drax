@@ -118,7 +118,7 @@ This structure is not limited to a single data type, for example:
   ["foo", 123, nil, true, { name: "drax" }, ["sublist"]]
 ```
 
-**length**: returns the length of the list.
+**length**: returns the length of the List.
 
 Examples: 
 ```drax
