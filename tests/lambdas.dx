@@ -19,6 +19,27 @@ end)
 
 assert(ff == 'my drax lambda function', 'fail to pass lambda as argument')
 
+## mount two+ lambdas and after execute
+
+fun get_handle(first) do
+    lambda (last) do
+        first ++ ' ' ++ last
+    end
+end
+
+afn = get_handle('drax')
+afn2 = get_handle('drax 2')
+afn3 = get_handle('drax 3')
+afn4 = get_handle('drax 4')
+afn5 = get_handle('drax 5')
+
+assert(afn('lang') == 'drax lang', 'fail to pass lambda as argument')
+assert(afn2('lang') == 'drax 2 lang', 'fail to pass lambda as argument')
+assert(afn3('lang') == 'drax 3 lang', 'fail to pass lambda as argument')
+assert(afn4('lang') == 'drax 4 lang', 'fail to pass lambda as argument')
+assert(afn5('lang') == 'drax 5 lang', 'fail to pass lambda as argument')
+
+
 ## pass lambda to lambda factory
 ## nested lambdas and lamda factory
 fun exec_fn2(fixed_arg) do
@@ -46,43 +67,5 @@ end
 afn = get_handle('val')
 res = afn('myk')
 assert(res == {myk: "val"}, 'fail to make lambda')
-
-
-## pass lambda to factory function
-## 1. first problem
-# fun exec_fn3(call) do
-#     lambda (val) do
-#         call(val) + " working on main function!"
-#     end
-# end
-
-# ff3 = exec_fn3(lambda (arg) do
-#      "pass lambda 1," ++ arg
-# end)
-
-# resff3 = ff3('receiving arg 1')
-# print(resff3)
-# assert(resff3 == 'my fixed argument!', 'fail to pass labda to function created by function')
-
-
-## problem 2
-# fun get_handle(name1) do
-#     lambda (name2) do
-#         lambda (name3) do
-#             lambda (name4) do
-#                 name1 ++ ' ' ++ name2 ++ ' ' name3 ++ ' ' name4
-#             end
-#         end
-#     end
-# end
-
-# a = get_handle('one')
-# b = a('two')
-# c = b('two')
-# d = c('three')
-# print(d)
-# assert(d == 'drax lang', 'fail to make lambda')
-
-
 
 print("lambda's done!")

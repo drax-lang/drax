@@ -419,10 +419,27 @@ static int import_file(d_vm* vm, char* p, char * n) {
  * 
  * replace external references on function.
  */
-static int buid_self_dep_fn(d_vm* vm, drax_value v) {
-  drax_function* f = CAST_FUNCTION(v);
+static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
+  drax_function* f = CAST_FUNCTION(*v);
+  drax_function* new_fn = new_function(vm);
 
-  drax_value* ip = f->instructions->values;
+  new_fn->name = f->name;
+  new_fn->arity = f->arity;
+
+  new_fn->instructions->instr_count = f->instructions->instr_count;
+  new_fn->instructions->instr_size = f->instructions->instr_size;
+  new_fn->instructions->lines = f->instructions->lines;
+  new_fn->instructions->local_range = f->instructions->local_range;
+  new_fn->instructions->extrn_ref = f->instructions->extrn_ref;
+  new_fn->instructions->_ip = f->instructions->_ip;
+
+  memcpy(
+    new_fn->instructions->values,
+    f->instructions->values,
+    sizeof(drax_value) * f->instructions->instr_count
+  );
+  *v = DS_VAL(new_fn);
+  drax_value* ip = new_fn->instructions->values;
   while (true) {
     switch (*(ip++)) {
       case OP_GET_G_ID:
@@ -454,7 +471,6 @@ static int buid_self_dep_fn(d_vm* vm, drax_value v) {
         break;
     }  
   }
-  
 
   return 1;
 }
@@ -791,7 +807,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
            * This routine will replace the external
            * references on lambda.
            */
-          if(buid_self_dep_fn(vm, v) == 0) { return 1; }
+          if(buid_self_dep_fn(vm, &v) == 0) { return 1; }
         }
         push(vm, v);
         break;
