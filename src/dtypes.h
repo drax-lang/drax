@@ -137,7 +137,9 @@ typedef struct d_instructions {
    * references (local variables outside the lambda 
    * or global variables).
    */
-  bool extrn_ref;
+  int extrn_ref_count;
+  int extrn_ref_capacity;
+  drax_value** extrn_ref;
   /**
    * _ip: Used to log current statement when 
    * added/removed from call_stack

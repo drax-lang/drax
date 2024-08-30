@@ -417,7 +417,8 @@ static int import_file(d_vm* vm, char* p, char * n) {
 /**
  * build self-dependent lambda
  * 
- * replace external references on function.
+ * generates a new function, solving variables 
+ * outside the scope.
  */
 static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
   drax_function* f = CAST_FUNCTION(*v);
@@ -426,50 +427,76 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
   new_fn->name = f->name;
   new_fn->arity = f->arity;
 
-  new_fn->instructions->instr_count = f->instructions->instr_count;
-  new_fn->instructions->instr_size = f->instructions->instr_size;
   new_fn->instructions->lines = f->instructions->lines;
-  new_fn->instructions->local_range = f->instructions->local_range;
-  new_fn->instructions->extrn_ref = f->instructions->extrn_ref;
+  new_fn->instructions->local_range = f->instructions->local_range + f->instructions->extrn_ref_count;
+  new_fn->instructions->extrn_ref_count = 0;
   new_fn->instructions->_ip = f->instructions->_ip;
 
-  memcpy(
-    new_fn->instructions->values,
-    f->instructions->values,
-    sizeof(drax_value) * f->instructions->instr_count
-  );
+  /**
+   * For each "OP_GET_G_ID" operation, two more slots are
+   * generated for commands.
+   * 
+   * Primarily we expect to receive "OP_GET_G_ID" 
+   * and generate a local variable definition within
+   * the lambda.
+   * 
+   * instructions before:
+   * [ OP_GET_G_ID | drax_value ] 
+   * [ OP_GET_G_ID | drax_value ]
+   * 
+   * instructions after:
+   * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value ]
+   * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value ]
+   */
+  new_fn->instructions->instr_count = 
+    f->instructions->instr_count + (f->instructions->extrn_ref_count * 6) - f->instructions->extrn_ref_count;
+  new_fn->instructions->instr_size = new_fn->instructions->instr_count;
+
   *v = DS_VAL(new_fn);
-  drax_value* ip = new_fn->instructions->values;
-  while (true) {
-    switch (*(ip++)) {
-      case OP_GET_G_ID:
-        /**
-         * replace global call to real value
-         */
-        drax_value gv = *(ip);
-        char* k = (char*) gv;
-      
-        drax_value rv;
 
-        if (
-          (get_mod_table(vm->envs->modules, k, &rv) == 0) &&
-          (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &rv) == 0)
-        ) {
-          if(get_var_table(vm->envs->global, k, &rv) == 0) {
-            raise_drax_error(vm, _L_MSG_NOT_DEF, k);
-            return 0;
-          }
+  int i, i_new = 0, ex_idx = 0;
+  for (i = 0; i < f->instructions->instr_count; i++, i_new++) {
+    drax_value* ip = &f->instructions->values[i];
+    if (&f->instructions->values[i] != f->instructions->extrn_ref[ex_idx]) {
+      new_fn->instructions->values[i_new] = f->instructions->values[i];
+      continue;
+    }
+
+    if (*(ip) == OP_GET_G_ID) {
+      ex_idx++;
+      drax_value gv = *(ip + 1);
+      char* k = (char*) gv;
+    
+      drax_value rv;
+
+      if (
+        (get_mod_table(vm->envs->modules, k, &rv) == 0) &&
+        (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &rv) == 0)
+      ) {
+        if(get_var_table(vm->envs->global, k, &rv) == 0) {
+          raise_drax_error(vm, _L_MSG_NOT_DEF, k);
+          return 0;
         }
+      }
 
-        *(ip - 1) = OP_PUSH;
-        *(ip++) = rv;
+      /**
+       * the instruction below is the new local definition.
+       */
+      i++;
+      new_fn->instructions->values[i_new++] = OP_PUSH;
+      new_fn->instructions->values[i_new++] = rv;
+      new_fn->instructions->values[i_new++] = OP_SET_L_ID;
+      new_fn->instructions->values[i_new++] = (drax_value) k;
 
-        break;
-      case OP_RETURN:
-        return 1;
-      default:
-        break;
-    }  
+      /**
+       * the instruction below is to replace the value.
+       */
+      new_fn->instructions->values[i_new++] = OP_PUSH;
+      new_fn->instructions->values[i_new] = rv;
+    } else {
+      raise_drax_error(vm, "runtime error: unspected OP on factory");
+      return 0;
+    }
   }
 
   return 1;

@@ -488,7 +488,19 @@ void process_variable(d_vm* vm, bool v) {
 
   if (is_global || get_local(&parser, name) == -1) {
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
-    vm->active_instr->extrn_ref = true;
+
+    if (vm->active_instr->extrn_ref_count >= vm->active_instr->extrn_ref_capacity) {
+      vm->active_instr->extrn_ref_capacity += vm->active_instr->extrn_ref_capacity + 4;
+      vm->active_instr->extrn_ref = (drax_value**) realloc(vm->active_instr->extrn_ref, sizeof(drax_value*) * vm->active_instr->extrn_ref_capacity);
+    }
+
+    /**
+     * records references to variables outside of lambda, but which 
+     * are not global, to be resolved at factory time
+     */
+    drax_value* ip = &vm->active_instr->values[vm->active_instr->instr_count -2];
+    vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
+
     return;
   }
 
@@ -636,7 +648,7 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
   /**
    * replace to parser state
    */
-  put_instruction(vm, f->instructions->extrn_ref ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
+  put_instruction(vm, f->instructions->extrn_ref_count ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
   remove_locals_registers(&parser);
 }
 
