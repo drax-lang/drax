@@ -433,7 +433,7 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
   new_fn->instructions->_ip = f->instructions->_ip;
 
   /**
-   * For each "OP_GET_G_ID" operation, two more slots are
+   * For each "OP_GET_G_ID" operation, four more slots are
    * generated for commands.
    * 
    * Primarily we expect to receive "OP_GET_G_ID" 
@@ -449,21 +449,24 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
    * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value ]
    */
   new_fn->instructions->instr_count = 
-    f->instructions->instr_count + (f->instructions->extrn_ref_count * 6) - f->instructions->extrn_ref_count;
+    f->instructions->instr_count + (f->instructions->extrn_ref_count * 4);
   new_fn->instructions->instr_size = new_fn->instructions->instr_count;
 
   *v = DS_VAL(new_fn);
 
-  int i, i_new = 0, ex_idx = 0;
-  for (i = 0; i < f->instructions->instr_count; i++, i_new++) {
-    drax_value* ip = &f->instructions->values[i];
-    if (&f->instructions->values[i] != f->instructions->extrn_ref[ex_idx]) {
-      new_fn->instructions->values[i_new] = f->instructions->values[i];
-      continue;
-    }
+  int i_new = f->instructions->local_range * 2;
+
+  memcpy(
+    new_fn->instructions->values,
+    f->instructions->values,
+    (f->instructions->local_range * 2) * sizeof(drax_value)
+  );
+
+  int i;
+  for (i = 0; i < f->instructions->extrn_ref_count; i++) {
+    drax_value* ip = f->instructions->extrn_ref[i];
 
     if (*(ip) == OP_GET_G_ID) {
-      ex_idx++;
       drax_value gv = *(ip + 1);
       char* k = (char*) gv;
     
@@ -482,20 +485,34 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
       /**
        * the instruction below is the new local definition.
        */
-      i++;
       new_fn->instructions->values[i_new++] = OP_PUSH;
       new_fn->instructions->values[i_new++] = rv;
       new_fn->instructions->values[i_new++] = OP_SET_L_ID;
       new_fn->instructions->values[i_new++] = (drax_value) k;
 
-      /**
-       * the instruction below is to replace the value.
-       */
-      new_fn->instructions->values[i_new++] = OP_PUSH;
-      new_fn->instructions->values[i_new] = rv;
     } else {
       raise_drax_error(vm, "runtime error: unspected OP on factory");
       return 0;
+    }
+  }
+
+  memcpy(
+    new_fn->instructions->values + i_new,
+    f->instructions->values + (f->instructions->local_range * 2),
+    (f->instructions->instr_count - (f->instructions->local_range * 2)) * sizeof(drax_value)
+  );
+
+  /**
+   * Updated OP_GET_G_ID to OP_GET_L_ID
+   */
+  int j;
+  for (i = 0; i < f->instructions->extrn_ref_count; i++) {
+    drax_value* ip = f->instructions->extrn_ref[i];
+
+    for (j = 0; j < new_fn->instructions->instr_count; j++) {
+      if (&f->instructions->values[j] == ip) {
+        new_fn->instructions->values[j + (f->instructions->extrn_ref_count * 4)] = OP_GET_L_ID;
+      }
     }
   }
 

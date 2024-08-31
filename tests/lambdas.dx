@@ -34,6 +34,9 @@ afn4 = get_handle('drax 4')
 afn5 = get_handle('drax 5')
 
 assert(afn('lang') == 'drax lang', 'fail to pass lambda as argument')
+
+print(afn2('lang'))
+
 assert(afn2('lang') == 'drax 2 lang', 'fail to pass lambda as argument')
 assert(afn3('lang') == 'drax 3 lang', 'fail to pass lambda as argument')
 assert(afn4('lang') == 'drax 4 lang', 'fail to pass lambda as argument')
@@ -67,5 +70,23 @@ end
 afn = get_handle('val')
 res = afn('myk')
 assert(res == {myk: "val"}, 'fail to make lambda')
+
+# 1. nested lambdas
+fun get_nested_lambda(one) do
+    lambda (two) do
+        lambda (three) do
+            lambda (four) do
+                one ++ ' ' ++ two ++ ' ' ++ three ++ ' ' ++ four
+            end
+        end
+    end
+end
+
+l_a = get_nested_lambda('drax')
+l_b = l_a('lang')
+l_c = l_b('is')
+res = l_c('nice!')
+
+assert(res == 'drax lang is nice!', 'fail to make nested lambda')
 
 print("lambda's done!")

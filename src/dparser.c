@@ -643,13 +643,44 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
   block(vm);
   put_instruction(vm, OP_RETURN);
   vm->active_instr = gi;
+  remove_locals_registers(&parser);
+
+  /**
+   * Copy the external references
+   */
+  if (f->instructions->extrn_ref_count > 0) {
+    int new_cap = f->instructions->extrn_ref_count + vm->active_instr->extrn_ref_capacity;
+
+    if (new_cap > vm->active_instr->instr_size) {
+      vm->active_instr->extrn_ref = (drax_value**) realloc(
+        vm->active_instr->extrn_ref,
+        sizeof(drax_value*) * (new_cap)
+      );
+    }
+
+    /**
+     * If the variable is not present in the
+     * local definitions, it means it is an 
+     * external reference.
+     */
+    for (i = 0; i < f->instructions->extrn_ref_count; i++) {
+      drax_value* ip = f->instructions->extrn_ref[i];
+      drax_value gv = *(ip + 1);
+      char* k = (char*) gv;
+      if (get_local(&parser, k) == -1) {
+        vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
+      }
+    }
+
+  }
 
   put_pair(vm, is_anonymous ? OP_AFUN : OP_FUN, DS_VAL(f));
+  
   /**
-   * replace to parser state
+   * used to identify if the lambda factory 
+   * has external references.
    */
   put_instruction(vm, f->instructions->extrn_ref_count ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
-  remove_locals_registers(&parser);
 }
 
 void process_lambda(d_vm* vm, bool v) {
