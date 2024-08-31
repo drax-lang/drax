@@ -85,12 +85,10 @@ static void remove_locals_registers(parser_state* psr) {
 
   free(lc->vars);
   free(lc);
+  psr->locals_length--;
 
-  if (psr->locals_length > 1) {
-    psr->locals_length--;
-  }
-
-  if (psr->locals_length == 1) {
+  if (psr->locals_length == 0) {
+    psr->locals_length++;
     psr->locals[0] = create_local_registers(psr);
   }
 
@@ -500,7 +498,7 @@ void process_variable(d_vm* vm, bool v) {
      */
     drax_value* ip = &vm->active_instr->values[vm->active_instr->instr_count -2];
     vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
-
+    
     return;
   }
 
@@ -651,11 +649,13 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
   if (f->instructions->extrn_ref_count > 0) {
     int new_cap = f->instructions->extrn_ref_count + vm->active_instr->extrn_ref_capacity;
 
-    if (new_cap > vm->active_instr->instr_size) {
+    if (new_cap > vm->active_instr->extrn_ref_count) {
       vm->active_instr->extrn_ref = (drax_value**) realloc(
         vm->active_instr->extrn_ref,
         sizeof(drax_value*) * (new_cap)
       );
+
+      vm->active_instr->extrn_ref_capacity = vm->active_instr->extrn_ref_count;
     }
 
     /**
@@ -666,6 +666,7 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
     for (i = 0; i < f->instructions->extrn_ref_count; i++) {
       drax_value* ip = f->instructions->extrn_ref[i];
       drax_value gv = *(ip + 1);
+
       char* k = (char*) gv;
       if (get_local(&parser, k) == -1) {
         vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
@@ -680,7 +681,7 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
    * used to identify if the lambda factory 
    * has external references.
    */
-  put_instruction(vm, f->instructions->extrn_ref_count ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
+  put_instruction(vm, f->instructions->extrn_ref_count > 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
 }
 
 void process_lambda(d_vm* vm, bool v) {

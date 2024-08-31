@@ -974,6 +974,7 @@ static void __clean_vm_tmp__(d_vm* itvm) {
   free(itvm->instructions->values);
   free(itvm->instructions->lines);
   free(itvm->instructions);
+  free(itvm->exported);
   
   itvm->call_stack->count = 0;
   itvm->stack_count = 0;
