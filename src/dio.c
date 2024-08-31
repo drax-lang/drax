@@ -60,6 +60,7 @@ int get_file_content(char* name, char** content) {
     fclose (f);
   }
 
+  /*free(filename);*/
   if (buffer) {
     buffer[length] = 0;
     *content = buffer;

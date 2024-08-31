@@ -410,7 +410,7 @@ static int import_file(d_vm* vm, char* p, char * n) {
     put_var_table(vm->envs->global, n, itvm->exported[0]);
     vm->d_ls = itvm->d_ls;
     __clean_vm_tmp__(itvm);
-    dgc_swap(vm);
+    /*dgc_swap(vm);*/
     return stat;
 }
 
@@ -611,7 +611,6 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       VMCase(OP_SET_L_ID) {
         drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
-        /* dgc_swap_locals(vm->envs->local); */
         put_local_table(vm->envs->local, k, v);
         break;
       }
@@ -1065,6 +1064,9 @@ int __run__(d_vm* vm, int inter_mode) {
   __init__(vm);
   int r = __start__(vm, inter_mode, 0);
   vm->pstatus = VM_STATUS_STOPED;
+
+  if (-1 == vm->vid) dgc_swap(vm);
+
   return r;
 }
 

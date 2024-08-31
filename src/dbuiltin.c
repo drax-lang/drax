@@ -528,11 +528,10 @@ static drax_value __d_number_to_string(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
   return_if_is_not_number(a, stat);
 
-  char s[50];
+  char *s = (char *) malloc(50 * sizeof(char));
   double num = CAST_NUMBER(a);
   
   snprintf(s, sizeof(s), "%g", num);
-
   drax_string* str = new_dstring(vm, s, strlen(s));
   str->chars[strlen(s)] = '\0';
 
@@ -608,7 +607,10 @@ static drax_value __d_frame_to_list(d_vm* vm, int* stat) {
   for(i = 0; i < f->length; i++) {
     if(f->literals[i]) {
       drax_list* fl = new_dlist(vm, 2);
-      put_value_dlist(fl, DS_VAL(new_dstring(vm, f->literals[i], strlen(f->literals[i]))));
+      int sz = strlen(f->literals[i]) + 1;
+      char *s = (char *) malloc(sz * sizeof(char));
+      strcpy(s, f->literals[i]);
+      put_value_dlist(fl, DS_VAL(new_dstring(vm, s, strlen(f->literals[i]))));
       put_value_dlist(fl, f->values[i]);
       put_value_dlist(l, DS_VAL(fl));
     }
@@ -629,7 +631,10 @@ static drax_value __d_frame_keys(d_vm* vm, int* stat) {
   int i;
   for(i = 0; i < f->length; i++) {
     if(f->literals[i]) {
-      put_value_dlist(l, DS_VAL(new_dstring(vm, f->literals[i], strlen(f->literals[i]))));
+      int sz = strlen(f->literals[i]) + 1;
+      char *s = (char *) malloc(sz * sizeof(char));
+      strcpy(s, f->literals[i]);
+      put_value_dlist(l, DS_VAL(new_dstring(vm, s, strlen(f->literals[i]))));
     }
   }
 

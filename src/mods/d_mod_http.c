@@ -20,16 +20,16 @@ static int request_handler(struct mg_connection* cconn, void* cbdata) {
   const char *remote_user = ri->remote_user;
   const char* remote_addr = ri->remote_addr;
 
-  char content_length[20];
+  char *content_length = (char *) malloc(20 * sizeof(char));
   snprintf(content_length, sizeof(content_length), "%lld", ri->content_length);
 
-  char remote_port[12];
+  char *remote_port = (char *) malloc(12 * sizeof(char));
   snprintf(remote_port, sizeof(remote_port), "%d", ri->remote_port);
 
-  char server_port[12];
+  char *server_port = (char *) malloc(12 * sizeof(char));
   snprintf(server_port, sizeof(server_port), "%d", ri->server_port);
 
-  char is_ssl[12];
+  char *is_ssl = (char *) malloc(12 * sizeof(char));
   snprintf(is_ssl, sizeof(is_ssl), "%d", ri->is_ssl);
 
   drax_value v = (drax_value) cbdata;

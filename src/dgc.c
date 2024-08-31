@@ -22,10 +22,25 @@ static void dgc_safe_free(drax_value v) {
 
     DEBUG(printf("  -- dgc free\n"));
     if (IS_STRING(v)) {
+      DEBUG(printf("    -- dgc string free\n"));
       drax_string* s = CAST_STRING(v);
-      free(s->chars);
+      
+      if (NULL != s->chars) {
+        free(s->chars);
+        s->chars = NULL;
+      }
     }
+
+    if (IS_FUNCTION(v)) {
+      DEBUG(printf("    -- dgc function free\n"));
+
+      drax_function* ff = CAST_FUNCTION(v);
+      free(ff->instructions->values);
+      free(ff->instructions);
+    }
+
     free(sct);
+    sct = NULL;
   }
 }
 
@@ -48,6 +63,12 @@ static void dgc_mark(drax_value v) {
       int i;
       for (i = 0; i < f->length; i++) {
         dgc_mark(f->values[i]);
+      }
+    } else if (IS_FUNCTION(v)) {
+      drax_function* f = CAST_FUNCTION(v);
+      int i;
+      for (i = 0; i < f->instructions->instr_count; i++) {
+        dgc_mark(f->instructions->values[i]);
       }
     }
   }
@@ -141,8 +162,8 @@ static int dgc_swap_modules(d_mod_table* t) {
 int dgc_swap(d_vm* vm) {
   /**
    * disabled
-   */
   return 1;
+   */
   DEBUG(printf("[GC] swap\n"));
   d_struct *d = vm->d_ls->next;
   d_struct* u = NULL; /* Unused struct */
