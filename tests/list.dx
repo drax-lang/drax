@@ -26,4 +26,77 @@ assert(List.tail(ll) == [2, 3, 4, 5, 6], "list error: tail")
 
 assert([{ a: 1 }] != [{ b: 1 }], "list error: list comparison")
 
+ll = [1, 2, 3, 4, 5]
+
+# Delete at
+expected = [2, 3, 4, 5]
+assert(List.remove_at(ll, 0) == expected, "list error: list remove_at(ll, 0)")
+
+expected = [1, 2, 4, 5]
+assert(List.remove_at(ll, 2) == expected, "list error: list remove_at(ll, 2)")
+
+expected = [1, 2, 3, 4]
+assert(List.remove_at(ll, 4) == expected, "list error: list remove_at(ll, 4)")
+
+expected = [1, 3, 4, 5]
+assert(List.remove_at(ll, 1) == expected, "list error: list remove_at(ll, 1)")
+
+result = List.remove_at(ll, 0)
+|> List.remove_at(0)
+|> List.remove_at(0)
+|> List.remove_at(0)
+|> List.remove_at(0)
+assert(List.is_empty(result), "list error: expected empty list")
+
+# Insert at
+expected = [101, 1, 2, 3, 4, 5]
+assert(List.insert_at(ll, 0, 101) == expected, "list error: list insert_at(ll, 0, 101)")
+
+expected = [1, 2, "101", 3, 4, 5]
+assert(List.insert_at(ll, 2, "101") == expected, "list error: list insert_at(ll, 2, '101')")
+
+expected = [1, 2, 3, 4, [1, 0, 1], 5]
+assert(List.insert_at(ll, 4, [1, 0, 1]) == expected, "list error: list insert_at(ll, 4, [1, 0, 1])")
+
+expected = [1, { a: "101" }, 2, 3, 4, 5]
+assert(List.insert_at(ll, 1, { a: "101" }) == expected, "list error: list insert_at(ll, 1, { a: '101' })")
+
+# Replace at
+expected = [101, 2, 3, 4, 5]
+assert(List.replace_at(ll, 0, 101) == expected, "list error: list replace_at(ll, 0, 101)")
+
+expected = [1, 2, "101", 4, 5]
+assert(List.replace_at(ll, 2, "101") == expected, "list error: list replace_at(ll, 2, '101')")
+
+expected = [1, 2, 3, 4, [1, 0, 1]]
+assert(List.replace_at(ll, 4, [1, 0, 1]) == expected, "list error: list replace_at(ll, 4, [1, 0, 1])")
+
+expected = [1, { a: "101" }, 3, 4, 5]
+assert(List.replace_at(ll, 1, { a: "101" }) == expected, "list error: list replace_at(ll, 1, { a: '101' })")
+
+# Slice
+expected = [1, 2]
+assert(List.slice(ll, 0, 2) == expected, "list error: slice(ll, 0, 2)")
+
+expected = [2]
+assert(List.slice(ll, 1, 2) == expected, "list error: replace_at(ll, 1, 2)")
+
+expected = [1, 2, 3, 4, 5]
+assert(List.slice(ll, 0, 5) == expected, "list error: slice(ll, 0, 5)")
+
+expected = [2, 3]
+assert(List.slice(ll, -4, -2) == expected, "list error: slice(ll, -4, -2)")
+
+assert(List.is_empty(List.slice(ll, 0, 0)), "list error: replace_at(ll, 1, { a: '101' }) expected empty list")
+
+# Sum
+expected = 15
+assert(List.sum(ll) == expected, "list error: sum(ll) is different of 15")
+
+expected = 0
+assert(List.sum([]) == expected, "list error: sum([]) is different of 0")
+
+expected = -15
+assert(List.sum([-1, -2, -3, -4, -5]) == expected, "list error: sum([-1, -2, -3, -4, -5]) is different of -15")
+
 print("List done!")
