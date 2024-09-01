@@ -450,7 +450,15 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
    */
   new_fn->instructions->instr_count = 
     f->instructions->instr_count + (f->instructions->extrn_ref_count * 4);
-  new_fn->instructions->instr_size = new_fn->instructions->instr_count;
+  
+  if (new_fn->instructions->instr_size < new_fn->instructions->instr_count) {
+    new_fn->instructions->instr_size = new_fn->instructions->instr_count + 1;
+
+    new_fn->instructions->values = (drax_value*) realloc(
+      new_fn->instructions->values,
+      sizeof(drax_value) * (new_fn->instructions->instr_size + 1)
+    );
+  }
 
   *v = DS_VAL(new_fn);
 

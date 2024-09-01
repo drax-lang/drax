@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -41,7 +40,7 @@ static void init_locals(parser_state* psr) {
  */
 static void new_locals_register(parser_state* psr) {
   if (psr->locals_length >= psr->locals_capacity) {
-    psr->locals_capacity = psr->locals_capacity + 4;
+    psr->locals_capacity += 4;
     psr->locals = (d_local_registers**) realloc(psr->locals, sizeof(d_local_registers*) * psr->locals_capacity);
   }
 
@@ -52,7 +51,7 @@ static void put_local(parser_state* psr, char* name) {
   d_local_registers* lc = psr->locals[psr->locals_length -1];
   
   if (lc->length >= lc->capacity) {
-    lc->capacity = lc->capacity + LOCAL_SIZE_FACTOR;
+    lc->capacity += LOCAL_SIZE_FACTOR;
     lc->vars = (char**) realloc(lc->vars, sizeof(char*) * lc->capacity);
   }
 
@@ -503,7 +502,7 @@ void process_variable(d_vm* vm, bool v) {
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
 
     if (vm->active_instr->extrn_ref_count >= vm->active_instr->extrn_ref_capacity) {
-      vm->active_instr->extrn_ref_capacity += vm->active_instr->extrn_ref_capacity + 4;
+      vm->active_instr->extrn_ref_capacity += 4;
       vm->active_instr->extrn_ref = (drax_value**) realloc(vm->active_instr->extrn_ref, sizeof(drax_value*) * vm->active_instr->extrn_ref_capacity);
     }
 
@@ -630,7 +629,9 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
         }
       }
 
-      stack_args[f->arity -1] = s->chars;
+      char* ts = (char*) malloc(sizeof(char) * s->length + 1);
+      strcpy(ts, s->chars);
+      stack_args[f->arity -1] = ts;
     } while (eq_and_next(DTK_COMMA));
   }
 
@@ -639,13 +640,16 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
     size_t sz = strlen(stack_args[i - 1]);
     char* s = (char*) malloc(sizeof(char) * (sz + 1));
     strcpy(s, stack_args[i - 1]);
-    s[sz] = '\0';
     put_pair(vm, OP_SET_L_ID, (drax_value) s);
-    put_local(&parser, stack_args[i - 1]);
+    put_local(&parser, s);
   }
   vm->active_instr->local_range = f->arity;
 
-  free(stack_args);
+  for (i = 0; i < f->arity ; i++) {
+    if (NULL != stack_args[i]) {
+      free(stack_args[i]);
+    }
+  }
 
   process_token(DTK_PAR_CLOSE, "Expect ')' after parameters.");
 
@@ -663,14 +667,13 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
    */
   if (f->instructions->extrn_ref_count > 0) {
     int new_cap = f->instructions->extrn_ref_count + vm->active_instr->extrn_ref_capacity;
-
-    if (new_cap > vm->active_instr->extrn_ref_count) {
+    if (new_cap > vm->active_instr->extrn_ref_capacity) {
       vm->active_instr->extrn_ref = (drax_value**) realloc(
         vm->active_instr->extrn_ref,
         sizeof(drax_value*) * (new_cap)
       );
 
-      vm->active_instr->extrn_ref_capacity = vm->active_instr->extrn_ref_count;
+      vm->active_instr->extrn_ref_capacity = new_cap;
     }
 
     /**
