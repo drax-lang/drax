@@ -166,9 +166,24 @@ static void put_instruction(d_vm* vm, drax_value o) {
   vm->active_instr->instr_count++;
 
   if (vm->active_instr->instr_count >= vm->active_instr->instr_size) {
+    drax_value* f_before = &vm->active_instr->values[0];
+  
     vm->active_instr->instr_size = vm->active_instr->instr_size + MAX_INSTRUCTIONS;
     vm->active_instr->values = (drax_value*) realloc(vm->active_instr->values, sizeof(drax_value) * vm->active_instr->instr_size);
     vm->active_instr->lines = (int*) realloc(vm->active_instr->lines, sizeof(int) * vm->active_instr->instr_size);
+
+    /**
+     * Update external ref references after realloc
+     * 
+     * This change will affect all nested lambdas, 
+     * as they share references.
+     */
+    drax_value* f_after = &vm->active_instr->values[0];
+    int i;
+    for (i = 0; i < vm->active_instr->extrn_ref_count; i++) {
+      int offset = vm->active_instr->extrn_ref[i] - f_before;
+      vm->active_instr->extrn_ref[i] = f_after + offset;
+    }
   }
 
   vm->active_instr->lines[vm->active_instr->instr_count -1] = parser.prev.line;
