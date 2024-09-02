@@ -1,16 +1,16 @@
 ## 10 nested lamdas with same var
 
 fun get_nested_lambda() do
-    lambda (a1) do
-        lambda (a2) do
-            lambda (a3) do
-                lambda (a4) do
-                    lambda (a5) do
-                        lambda (a6) do
-                            lambda (a7) do
-                                lambda (a8) do
-                                    lambda (a9) do
-                                        lambda (a10) do
+    fun (a1) do
+        fun (a2) do
+            fun (a3) do
+                fun (a4) do
+                    fun (a5) do
+                        fun (a6) do
+                            fun (a7) do
+                                fun (a8) do
+                                    fun (a9) do
+                                        fun (a10) do
                                             a1 ++ ' ' ++ a2 ++ ' ' ++ a3 ++ ' ' ++ a4 ++ ' ' ++ a5 ++ ' ' ++ a6 ++ ' ' ++ a7 ++ ' ' ++ a8 ++ ' ' ++ a9 ++ ' ' ++ a10
                                         end
                                     end
@@ -41,56 +41,56 @@ assert(res == 'Nested Lambdas in a chain of functions that return !!', 'fail to 
 ## 50 nested lambdas test
 
 fun get_nested_lambda() do
-    lambda (a1) do
-        lambda (a2) do
-            lambda (a3) do
-                lambda (a4) do
-                    lambda (a5) do
-                        lambda (a6) do
-                            lambda (a7) do
-                                lambda (a8) do
-                                    lambda (a9) do
-                                        lambda (a10) do
-                                            lambda (a11) do
-                                                lambda (a12) do
-                                                    lambda (a13) do
-                                                        lambda (a14) do
-                                                            lambda (a15) do
-                                                                lambda (a16) do
-                                                                    lambda (a17) do
-                                                                        lambda (a18) do
-                                                                            lambda (a19) do
-                                                                                lambda (a20) do
-                                                                                    lambda (a21) do
-                                                                                        lambda (a22) do
-                                                                                            lambda (a23) do
-                                                                                                lambda (a24) do
-                                                                                                    lambda (a25) do
-                                                                                                        lambda (a26) do
-                                                                                                            lambda (a27) do
-                                                                                                                lambda (a28) do
-                                                                                                                    lambda (a29) do
-                                                                                                                        lambda (a30) do
-                                                                                                                            lambda (a31) do
-                                                                                                                                lambda (a32) do
-                                                                                                                                    lambda (a33) do
-                                                                                                                                        lambda (a34) do
-                                                                                                                                            lambda (a35) do
-                                                                                                                                                lambda (a36) do
-                                                                                                                                                    lambda (a37) do
-                                                                                                                                                        lambda (a38) do
-                                                                                                                                                            lambda (a39) do
-                                                                                                                                                                lambda (a40) do
-                                                                                                                                                                    lambda (a41) do
-                                                                                                                                                                        lambda (a42) do
-                                                                                                                                                                            lambda (a43) do
-                                                                                                                                                                                lambda (a44) do
-                                                                                                                                                                                    lambda (a45) do
-                                                                                                                                                                                        lambda (a46) do
-                                                                                                                                                                                            lambda (a47) do
-                                                                                                                                                                                                lambda (a48) do
-                                                                                                                                                                                                    lambda (a49) do
-                                                                                                                                                                                                        lambda (a50) do
+    fun (a1) do
+        fun (a2) do
+            fun (a3) do
+                fun (a4) do
+                    fun (a5) do
+                        fun (a6) do
+                            fun (a7) do
+                                fun (a8) do
+                                    fun (a9) do
+                                        fun (a10) do
+                                            fun (a11) do
+                                                fun (a12) do
+                                                    fun (a13) do
+                                                        fun (a14) do
+                                                            fun (a15) do
+                                                                fun (a16) do
+                                                                    fun (a17) do
+                                                                        fun (a18) do
+                                                                            fun (a19) do
+                                                                                fun (a20) do
+                                                                                    fun (a21) do
+                                                                                        fun (a22) do
+                                                                                            fun (a23) do
+                                                                                                fun (a24) do
+                                                                                                    fun (a25) do
+                                                                                                        fun (a26) do
+                                                                                                            fun (a27) do
+                                                                                                                fun (a28) do
+                                                                                                                    fun (a29) do
+                                                                                                                        fun (a30) do
+                                                                                                                            fun (a31) do
+                                                                                                                                fun (a32) do
+                                                                                                                                    fun (a33) do
+                                                                                                                                        fun (a34) do
+                                                                                                                                            fun (a35) do
+                                                                                                                                                fun (a36) do
+                                                                                                                                                    fun (a37) do
+                                                                                                                                                        fun (a38) do
+                                                                                                                                                            fun (a39) do
+                                                                                                                                                                fun (a40) do
+                                                                                                                                                                    fun (a41) do
+                                                                                                                                                                        fun (a42) do
+                                                                                                                                                                            fun (a43) do
+                                                                                                                                                                                fun (a44) do
+                                                                                                                                                                                    fun (a45) do
+                                                                                                                                                                                        fun (a46) do
+                                                                                                                                                                                            fun (a47) do
+                                                                                                                                                                                                fun (a48) do
+                                                                                                                                                                                                    fun (a49) do
+                                                                                                                                                                                                        fun (a50) do
                                                                                                                                                                                                             a1 ++ ' ' ++ a2 ++ ' ' ++ a3 ++ ' ' ++ a4 ++ ' ' ++ a5 ++ ' ' ++ a6 ++ ' ' ++ a7 ++ ' ' ++ a8 ++ ' ' ++ a9 ++ ' ' ++ a10 ++ ' ' ++ a11 ++ ' ' ++ a12 ++ ' ' ++ a13 ++ ' ' ++ a14 ++ ' ' ++ a15 ++ ' ' ++ a16 ++ ' ' ++ a17 ++ ' ' ++ a18 ++ ' ' ++ a19 ++ ' ' ++ a20 ++ ' ' ++ a21 ++ ' ' ++ a22 ++ ' ' ++ a23 ++ ' ' ++ a24 ++ ' ' ++ a25 ++ ' ' ++ a26 ++ ' ' ++ a27 ++ ' ' ++ a28 ++ ' ' ++ a29 ++ ' ' ++ a30 ++ ' ' ++ a31 ++ ' ' ++ a32 ++ ' ' ++ a33 ++ ' ' ++ a34 ++ ' ' ++ a35 ++ ' ' ++ a36 ++ ' ' ++ a37 ++ ' ' ++ a38 ++ ' ' ++ a39 ++ ' ' ++ a40 ++ ' ' ++ a41 ++ ' ' ++ a42 ++ ' ' ++ a43 ++ ' ' ++ a44 ++ ' ' ++ a45 ++ ' ' ++ a46 ++ ' ' ++ a47 ++ ' ' ++ a48 ++ ' ' ++ a49 ++ ' ' ++ a50
                                                                                                                                                                                                         end
                                                                                                                                                                                                     end
@@ -201,4 +201,4 @@ expected = "Nested Lambdas in a chain of functions that return other lambdas unt
 
 assert(a50 == expected, 'fail to mount nested lamdas!')
 
-print("nested lambda's done!")
+print("nested fun's done!")

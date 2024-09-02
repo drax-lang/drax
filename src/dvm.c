@@ -364,17 +364,20 @@ static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
 
   if (IS_NATIVE(v)) { return do_dcall_native(vm, v); }
 
-  drax_function* f = CAST_FUNCTION(v);
+  if (IS_FUNCTION(v)) {
+    drax_function* f = CAST_FUNCTION(v);
+    process_lambda_function(vm, a, n, f);
 
-  process_lambda_function(vm, a, n, f);
+    /**
+     * In this case, the function name is 
+     * only removed from the stack during the return,
+     * because we can have nested calls.
+     */
 
-  /**
-   * In this case, the function name is 
-   * only removed from the stack during the return,
-   * because we can have nested calls.
-   */
+    return STATUS_DCALL_SUCCESS;
+  }
 
-  return STATUS_DCALL_SUCCESS;
+  return_if_not_found_error(vm, 0, n, a);
 }
 
 static void __clean_vm_tmp__(d_vm* itvm);
@@ -635,7 +638,6 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
          */
 
         raise_drax_error(vm, "error: invalid assigment\nuse helper functions to change values of structures\n");
-
         return 1;
       }
       VMCase(OP_GET_I_ID) {

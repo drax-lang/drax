@@ -1,5 +1,5 @@
 fun get_handle(first) do
-    lambda (last) do
+    fun (last) do
         first ++ ' ' ++ last
     end
 end
@@ -7,22 +7,22 @@ end
 afn = get_handle('drax')
 res = afn('lang')
 
-assert(res == 'drax lang', 'fail to make lambda')
+assert(res == 'drax lang', 'fail to make fun')
 
 fun exec_fn(call) do
-    call("lambda function")
+    call("fun function")
 end
 
-ff = exec_fn(lambda (val) do
+ff = exec_fn(fun (val) do
     'my drax ' ++ val
 end)
 
-assert(ff == 'my drax lambda function', 'fail to pass lambda as argument')
+assert(ff == 'my drax fun function', 'fail to pass fun as argument')
 
 ## mount two+ lambdas and after execute
 
 fun get_handle(first) do
-    lambda (last) do
+    fun (last) do
         first ++ ' ' ++ last
     end
 end
@@ -33,27 +33,27 @@ afn3 = get_handle('drax 3')
 afn4 = get_handle('drax 4')
 afn5 = get_handle('drax 5')
 
-assert(afn('lang') == 'drax lang', 'fail to pass lambda as argument')
+assert(afn('lang') == 'drax lang', 'fail to pass fun as argument')
 
 print(afn2('lang'))
 
-assert(afn2('lang') == 'drax 2 lang', 'fail to pass lambda as argument')
-assert(afn3('lang') == 'drax 3 lang', 'fail to pass lambda as argument')
-assert(afn4('lang') == 'drax 4 lang', 'fail to pass lambda as argument')
-assert(afn5('lang') == 'drax 5 lang', 'fail to pass lambda as argument')
+assert(afn2('lang') == 'drax 2 lang', 'fail to pass fun as argument')
+assert(afn3('lang') == 'drax 3 lang', 'fail to pass fun as argument')
+assert(afn4('lang') == 'drax 4 lang', 'fail to pass fun as argument')
+assert(afn5('lang') == 'drax 5 lang', 'fail to pass fun as argument')
 
 
-## pass lambda to lambda factory
+## pass fun to fun factory
 ## nested lambdas and lamda factory
 fun exec_fn2(fixed_arg) do
-    lambda (call) do
+    fun (call) do
         call(fixed_arg)
     end
 end
 
 ff2 = exec_fn2('fixed argument!')
 
-resff2 = ff2(lambda (myArg) do
+resff2 = ff2(fun (myArg) do
     'my ' ++ myArg
 end)
 
@@ -62,20 +62,20 @@ assert(resff2 == 'my fixed argument!', 'fail to pass labda to function created b
 ## call native function inside factory
 
 fun get_handle(value) do
-    lambda (key) do
+    fun (key) do
         Frame.put({}, key, value)
     end
 end
 
 afn = get_handle('val')
 res = afn('myk')
-assert(res == {myk: "val"}, 'fail to make lambda')
+assert(res == {myk: "val"}, 'fail to make fun')
 
 # 1. nested lambdas
 fun get_nested_lambda(one) do
-    lambda (two) do
-        lambda (three) do
-            lambda (four) do
+    fun (two) do
+        fun (three) do
+            fun (four) do
                 one ++ ' ' ++ two ++ ' ' ++ three ++ ' ' ++ four
             end
         end
@@ -87,6 +87,6 @@ l_b = l_a('lang')
 l_c = l_b('is')
 res = l_c('nice!')
 
-assert(res == 'drax lang is nice!', 'fail to make nested lambda')
+assert(res == 'drax lang is nice!', 'fail to make nested fun')
 
-print("lambda's done!")
+print("fun's done!")

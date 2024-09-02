@@ -69,7 +69,7 @@ typedef struct parser_builder {
 
 int __build__(d_vm* vm, const char* input);
 
-void process_call(d_vm* vm, char* name);
+drax_value process_arguments(d_vm* vm);
 
 callback_table(process_grouping);
 callback_table(process_list);
@@ -86,10 +86,11 @@ callback_table(process_export);
 callback_table(process_struct);
 callback_table(process_dot);
 callback_table(process_index);
-callback_table(process_lambda);
+callback_table(process_function);
 callback_table(literal_translation);
 callback_table(process_amper);
 callback_table(process_pipe);
+callback_table(process_call);
 
 void dfatal(d_token* token, const char* message);
 

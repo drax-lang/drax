@@ -102,7 +102,7 @@ static void init_parser(d_vm* vm) {
 }
 
 static operation_line op_lines[] = {
-  make_op_line(DTK_PAR_OPEN,  process_grouping,    NULL,           iCALL),
+  make_op_line(DTK_PAR_OPEN,  process_grouping,    process_call,   iCALL),
   make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_BKT_OPEN,  process_list,        process_index,  iCALL),
   make_op_line(DTK_BKT_CLOSE, NULL,                NULL,           iNONE),
@@ -134,7 +134,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_FALSE,     literal_translation, NULL,           iNONE),
   make_op_line(DTK_NIL,       literal_translation, NULL,           iNONE),
   make_op_line(DTK_TRUE,      literal_translation, NULL,           iNONE),
-  make_op_line(DTK_LAMBDA,    process_lambda,      NULL,           iNONE),
+  make_op_line(DTK_FUN,       process_function,     NULL,           iNONE),
   make_op_line(DTK_IF,        NULL,                NULL,           iNONE),
   make_op_line(DTK_OR,        NULL,                process_or,     iOR),
   make_op_line(DTK_ERROR,     NULL,                NULL,           iNONE),
@@ -494,7 +494,10 @@ void process_variable(d_vm* vm, bool v) {
   }
 
   if (eq_and_next(DTK_PAR_OPEN)) {
-    process_call(vm, name);
+    drax_value arg_count = process_arguments(vm) + parser.is_pipe;
+    DISABLE_PIPE_PROCESS();
+    put_pair(vm, OP_PUSH, (drax_value) name);
+    put_pair(vm, is_global ? OP_CALL_G : OP_CALL_L, arg_count);
     return;
   }
 
@@ -591,12 +594,15 @@ static void block(d_vm* vm) {
   process_token(DTK_END, "Expect 'end' after block.");
 }
 
-static void fun_declaration(d_vm* vm, int is_anonymous) {
+void process_function(d_vm* vm, bool v) {
+  UNUSED(v);
   const int max_arity = 255;
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
   vm->active_instr = f->instructions;
   new_locals_register(&parser);
+
+  int is_anonymous = (parser.current.type == DTK_PAR_OPEN);
 
   if (is_anonymous) {
     f->name = NULL;
@@ -702,12 +708,7 @@ static void fun_declaration(d_vm* vm, int is_anonymous) {
   put_instruction(vm, f->instructions->extrn_ref_count > 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
 }
 
-void process_lambda(d_vm* vm, bool v) {
-  UNUSED(v);
-  fun_declaration(vm, 1);
-}
-
-static drax_value process_arguments(d_vm* vm) {
+drax_value process_arguments(d_vm* vm) {
   drax_value arg_count = 0;
   if (get_current_token() != DTK_PAR_CLOSE) {
     do {
@@ -722,12 +723,9 @@ static drax_value process_arguments(d_vm* vm) {
   return arg_count;
 }
 
-void process_call(d_vm* vm, char* name) {
-  int is_global = IS_GLOBAL_SCOPE(vm);
-  drax_value arg_count = process_arguments(vm) + parser.is_pipe;
-  DISABLE_PIPE_PROCESS();
-  put_pair(vm, OP_PUSH, (drax_value) name);
-  put_pair(vm, is_global ? OP_CALL_G : OP_CALL_L, arg_count);
+void process_call(d_vm* vm, bool v) {
+  UNUSED(vm);
+  UNUSED(v);
 }
 
 void process_dot(d_vm* vm, bool v) {
@@ -806,12 +804,6 @@ static void if_definition(d_vm* vm) {
 
 static void process(d_vm* vm) {
   switch (get_current_token()) {
-    case DTK_FUN: {
-      get_next_token();
-      fun_declaration(vm, 0);
-      break;
-    }
-
     case DTK_IF: {
       get_next_token();
       if_definition(vm);

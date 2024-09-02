@@ -43,30 +43,30 @@ assert(
 
 ### process anonimous Functions
 
-af = lambda (name, last) name ++ "->" ++ last end
+af = fun (name, last) name ++ "->" ++ last end
 assert(af("drax", "dev") == "drax->dev", "function error: anonimous function")
 
 fun get_lambda() do
-    lambda (name) name ++ "." end
+    fun (name) name ++ "." end
 end
 
 gl = get_lambda()
 assert(gl("drax") == "drax.", "function error: anonimous function")
 
-### lambda returning lambda
+### fun returning fun
 
 fun get_nested_lambda() do
-    lambda (name) lambda (last) name ++ "." ++ last end end
+    fun (name) fun (last) name ++ "." ++ last end end
 end
 
 nl = get_nested_lambda()
 
 assert(typeof(nl) == "function", "function error: typeof to anonimous function")
 
-### lambda in local scope
+### fun in local scope
 
 fun local_scope_2_tst_lambda() do
-    df = lambda (num) num + 50 end
+    df = fun (num) num + 50 end
     assert(df(50) == 100, "function error: local scope")
 end
 
@@ -145,7 +145,7 @@ fun cat_test_tmp(name) do
     name ++ ":cat:"
 end
 
-fr = {sub: {sub: { fn: lambda (a) a ++ "--by_lambda" end } } }
+fr = {sub: {sub: { fn: fun (a) a ++ "--by_lambda" end } } }
 
 gg = "drax"
     |> cat_test_tmp()

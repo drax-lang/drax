@@ -27,7 +27,6 @@ static const drax_tokens drax_t[] = {
   {"true",   DTK_TRUE},
   {"import", DTK_IMPORT},
   {"export", DTK_EXPORT},
-  {"lambda", DTK_LAMBDA},
  };
 
 /* Helpers */

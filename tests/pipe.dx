@@ -1,0 +1,5 @@
+fun calc(a, b, c) do
+    [a, b, c]
+end
+
+print(1 |> calc(5, 6))
