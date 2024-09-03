@@ -167,4 +167,43 @@ end
 
 assign_error(5)
 
+## call directly
+fun sub_function(a, b) do
+    fun () do
+        fun () do
+            fun () do
+                fun () do
+                    fun () do
+                        fun () do
+                            a + b
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+assert(sub_function(5, 15)()()()()()() == 20, "sub_function(5, 15)()()()()()() == 20")
+
+fun sub_function(a, b) do
+    fun () do
+        fun () do
+            fun () do
+                fun () do
+                    fun () do
+                        fun () do
+                            fun (c, d, e) do
+                                a + b + c + d + e
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+assert(sub_function(5, 15)()()()()()()(5, 6, 8) == 39, "sub_function(5, 15)()()()()()()(5, 6, 8) == 39")
+
 print("Functions done!")

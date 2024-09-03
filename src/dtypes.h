@@ -90,6 +90,7 @@ typedef enum d_op_code {
   OP_JMP,
   OP_JMF,
   OP_LOOP,
+  OP_D_CALL,   /* direct call */
   OP_CALL_G,   /* global*/
   OP_CALL_L,   /* local*/
   OP_CALL_I,   /* inside */

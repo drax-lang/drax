@@ -89,4 +89,4 @@ res = l_c('nice!')
 
 assert(res == 'drax lang is nice!', 'fail to make nested fun')
 
-print("fun's done!")
+print("lambda's done!")

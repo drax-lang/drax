@@ -201,4 +201,4 @@ expected = "Nested Lambdas in a chain of functions that return other lambdas unt
 
 assert(a50 == expected, 'fail to mount nested lamdas!')
 
-print("nested fun's done!")
+print("nested lambda's done!")

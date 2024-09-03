@@ -30,7 +30,7 @@
         vm->active_instr = callstack_pop(vm); \
         vm->ip = vm->active_instr->_ip;
 
-#define process_labda_function_no_validation(vm, anf) \
+#define process_lambda_function_no_validation(vm, anf) \
     vm->active_instr->_ip = vm->ip;\
     callstack_push(vm, vm->active_instr);\
     zero_new_local_range(vm, anf->instructions->local_range);\
@@ -41,7 +41,7 @@
     if (anf->arity != (int) a) { \
       raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
       return 0; }\
-      process_labda_function_no_validation(vm, anf);
+      process_lambda_function_no_validation(vm, anf);
 
 #define STATUS_DCALL_ERROR            0
 #define STATUS_DCALL_SUCCESS          1
@@ -795,6 +795,17 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       VMCase(OP_LOOP) {
         break;
       }
+      VMCase(OP_D_CALL) {
+        /**
+         * Direct call
+         * when the function is on stack
+         */
+        drax_value a = GET_VALUE(vm);
+        drax_value v = peek(vm, a);
+        drax_function* f = CAST_FUNCTION(v);
+        process_lambda_function(vm, a, "<function>", f);
+        break;
+      }
       VMCase(OP_CALL_L) {
         if (do_dcall(vm, 0, 0, 0) == STATUS_DCALL_ERROR) return 1;
         break;
@@ -915,7 +926,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
 }
 
 void do_call_function_no_validation(d_vm* vm, drax_value f) {
-  process_labda_function_no_validation(vm, CAST_FUNCTION(f));
+  process_lambda_function_no_validation(vm, CAST_FUNCTION(f));
 }
 
 /* Constructor */

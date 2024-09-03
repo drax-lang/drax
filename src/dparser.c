@@ -483,7 +483,6 @@ void process_variable(d_vm* vm, bool v) {
 
   if (eq_and_next(DTK_EQ)) {
     expression(vm);
-
     put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
     
     if (!is_global) {
@@ -735,8 +734,10 @@ drax_value process_arguments(d_vm* vm) {
 }
 
 void process_call(d_vm* vm, bool v) {
-  UNUSED(vm);
   UNUSED(v);
+  drax_value arg_count = process_arguments(vm) + parser.is_pipe;
+  DISABLE_PIPE_PROCESS();
+  put_pair(vm, OP_D_CALL, arg_count);
 }
 
 void process_dot(d_vm* vm, bool v) {
