@@ -1,8 +1,11 @@
 name = "drax language"
 
+test_val = 0
+
 fun calc_two(a, b) do
-    a * b
+    a * b + test_val
 end
+
 
 export {
     calc: &calc_two/2,

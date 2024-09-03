@@ -71,6 +71,7 @@ drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* f, const char* nam
 drax_function* new_function(d_vm* vm) {
   drax_function* f = ALLOCATE_DSTRUCT(vm, drax_function, DS_FUNCTION);
   f->arity = 0;
+  f->name = NULL;
   f->instructions = new_instructions();
 
   return f;

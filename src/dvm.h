@@ -109,7 +109,7 @@ typedef struct d_vm {
 /* VM */
 d_vm* createMainVM();
 
-d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc);
+d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc, int new_global_scope);
 
 void push(d_vm* vm, drax_value v);
 

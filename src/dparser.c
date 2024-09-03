@@ -108,7 +108,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_BKT_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_CBR_OPEN,  process_struct,      NULL,           iNONE),
   make_op_line(DTK_CBR_CLOSE, NULL,                NULL,           iNONE),
-  make_op_line(DTK_DO,        NULL,                NULL,           iNONE),
+  make_op_line(DTK_DO,        process_do,          NULL,           iNONE),
   make_op_line(DTK_END,       NULL,                NULL,           iNONE),
   make_op_line(DTK_COMMA,     NULL,                NULL,           iNONE),
   make_op_line(DTK_DOT,       NULL,                process_dot,    iCALL),
@@ -134,8 +134,8 @@ static operation_line op_lines[] = {
   make_op_line(DTK_FALSE,     literal_translation, NULL,           iNONE),
   make_op_line(DTK_NIL,       literal_translation, NULL,           iNONE),
   make_op_line(DTK_TRUE,      literal_translation, NULL,           iNONE),
-  make_op_line(DTK_FUN,       process_function,     NULL,           iNONE),
-  make_op_line(DTK_IF,        NULL,                NULL,           iNONE),
+  make_op_line(DTK_FUN,       process_function,    NULL,           iNONE),
+  make_op_line(DTK_IF,        process_if,          NULL,           iNONE),
   make_op_line(DTK_OR,        NULL,                process_or,     iOR),
   make_op_line(DTK_ERROR,     NULL,                NULL,           iNONE),
   make_op_line(DTK_EOF,       NULL,                NULL,           iNONE),
@@ -187,6 +187,20 @@ static void put_instruction(d_vm* vm, drax_value o) {
 
   vm->active_instr->lines[vm->active_instr->instr_count -1] = parser.prev.line;
   vm->active_instr->values[vm->active_instr->instr_count -1] = o;
+}
+
+static void process_external_ref(d_vm* vm) {
+  if (vm->active_instr->extrn_ref_count >= vm->active_instr->extrn_ref_capacity) {
+    vm->active_instr->extrn_ref_capacity += 4;
+    vm->active_instr->extrn_ref = (drax_value**) realloc(vm->active_instr->extrn_ref, sizeof(drax_value*) * vm->active_instr->extrn_ref_capacity);
+  }
+
+  /**
+   * records references to variables outside of lambda, but which 
+   * are not global, to be resolved at factory time
+   */
+  drax_value* ip = &vm->active_instr->values[vm->active_instr->instr_count -2];
+  vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
 }
 
 static void put_pair(d_vm* vm, d_op_code o, drax_value v) {
@@ -260,8 +274,6 @@ static void patch_jump(d_vm* vm, int offset) {
  */
 
 static void expression(d_vm* vm);
-
-static void process(d_vm* vm);
 
 static void parse_priorities(d_vm* vm, priorities priorities);
 
@@ -474,9 +486,13 @@ void process_variable(d_vm* vm, bool v) {
   if (parser.is_refr == 1 && get_current_token() == DTK_DIV) {
     process_token(DTK_DIV, "Expect '/' after identifier.");
     process_token(DTK_NUMBER, "Expect 'number' after '/'.");
-    process_number(vm, false);
+    
+    char* endptr = (char*) parser.prev.first + parser.prev.length;
+    double value = strtod(parser.prev.first, &endptr);
 
     put_pair(vm, OP_GET_REF, (drax_value) name);
+    /*process_external_ref(vm); // get last - 2 */
+    put_instruction(vm, num_to_draxvalue(value));
     DISABLE_REFR_PROCESS();
     return;
   }
@@ -502,18 +518,7 @@ void process_variable(d_vm* vm, bool v) {
 
   if (is_global || get_local(&parser, name) == -1) {
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
-
-    if (vm->active_instr->extrn_ref_count >= vm->active_instr->extrn_ref_capacity) {
-      vm->active_instr->extrn_ref_capacity += 4;
-      vm->active_instr->extrn_ref = (drax_value**) realloc(vm->active_instr->extrn_ref, sizeof(drax_value*) * vm->active_instr->extrn_ref_capacity);
-    }
-
-    /**
-     * records references to variables outside of lambda, but which 
-     * are not global, to be resolved at factory time
-     */
-    drax_value* ip = &vm->active_instr->values[vm->active_instr->instr_count -2];
-    vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
+    process_external_ref(vm);
     
     return;
   }
@@ -543,10 +548,10 @@ void process_import(d_vm* vm, bool v) {
 }
 
 void process_export(d_vm* vm, bool v) {
-  UNUSED(vm);
   UNUSED(v);
   
-  expression(vm);
+  create_function(vm, true, true);
+  put_pair(vm, OP_D_CALL, 0);
   put_instruction(vm, (drax_value) OP_EXPORT);
 }
 
@@ -587,26 +592,25 @@ static void expression(d_vm* vm) {
 
 static void block(d_vm* vm) {
   while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
-    process(vm);
+    expression(vm);
   }
 
   process_token(DTK_END, "Expect 'end' after block.");
 }
 
-void process_function(d_vm* vm, bool v) {
-  UNUSED(v);
+void create_function(d_vm* vm, bool is_internal, bool is_single_line) {
   int is_global = IS_GLOBAL_SCOPE(vm);
   const int max_arity = 255;
+  int i;
+
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
   vm->active_instr = f->instructions;
   new_locals_register(&parser);
 
-  int is_anonymous = (parser.current.type == DTK_PAR_OPEN);
+  bool is_anonymous = (parser.current.type == DTK_PAR_OPEN) || is_internal;
 
-  if (is_anonymous) {
-    f->name = NULL;
-  } else {
+  if (!is_anonymous) {
     get_next_token();
     d_token ctk = parser.prev;
     f->name = (char*) malloc(sizeof(char) * (ctk.length + 1));
@@ -624,56 +628,60 @@ void process_function(d_vm* vm, bool v) {
     f->name, f->name);
   }
 
-  process_token(DTK_PAR_OPEN, "Expect '(' after function name.");
+  if (!is_internal) {
+    process_token(DTK_PAR_OPEN, "Expect '(' after function name.");
 
-  char** stack_args = (char**) malloc(sizeof(char*) * max_arity);
+    char** stack_args = (char**) malloc(sizeof(char*) * max_arity);
 
-  if (get_current_token() != DTK_PAR_CLOSE) {
-    do {
-      f->arity++;
-      if (f->arity > max_arity) {
-        FATAL_CURR("Can't have more than 255 parameters.");
-      }
-
-      drax_value constant = parse_variable(vm, "Expect parameter name.");
-      drax_string* s = CAST_STRING(constant);
-
-      int i;
-      for(i = 0; i < f->arity -1; i++) {
-        if(strcmp(s->chars, stack_args[i]) == 0) {
-          FATAL("duplicate argument in function definition");
+    if (get_current_token() != DTK_PAR_CLOSE) {
+      do {
+        f->arity++;
+        if (f->arity > max_arity) {
+          FATAL_CURR("Can't have more than 255 parameters.");
         }
+
+        drax_value constant = parse_variable(vm, "Expect parameter name.");
+        drax_string* s = CAST_STRING(constant);
+
+        for(i = 0; i < f->arity -1; i++) {
+          if(strcmp(s->chars, stack_args[i]) == 0) {
+            FATAL("duplicate argument in function definition");
+          }
+        }
+
+        char* ts = (char*) malloc(sizeof(char) * s->length + 1);
+        strcpy(ts, s->chars);
+        stack_args[f->arity -1] = ts;
+      } while (eq_and_next(DTK_COMMA));
+    }
+
+    for (i = f->arity; i > 0 ; i--) {
+      size_t sz = strlen(stack_args[i - 1]);
+      char* s = (char*) malloc(sizeof(char) * (sz + 1));
+      strcpy(s, stack_args[i - 1]);
+      put_pair(vm, OP_SET_L_ID, (drax_value) s);
+      put_local(&parser, s);
+    }
+    vm->active_instr->local_range = f->arity;
+
+    for (i = 0; i < f->arity ; i++) {
+      if (NULL != stack_args[i]) {
+        free(stack_args[i]);
       }
+    }
 
-      char* ts = (char*) malloc(sizeof(char) * s->length + 1);
-      strcpy(ts, s->chars);
-      stack_args[f->arity -1] = ts;
-    } while (eq_and_next(DTK_COMMA));
-  }
+    process_token(DTK_PAR_CLOSE, "Expect ')' after parameters.");
 
-  int i;
-  for (i = f->arity; i > 0 ; i--) {
-    size_t sz = strlen(stack_args[i - 1]);
-    char* s = (char*) malloc(sizeof(char) * (sz + 1));
-    strcpy(s, stack_args[i - 1]);
-    put_pair(vm, OP_SET_L_ID, (drax_value) s);
-    put_local(&parser, s);
-  }
-  vm->active_instr->local_range = f->arity;
-
-  for (i = 0; i < f->arity ; i++) {
-    if (NULL != stack_args[i]) {
-      free(stack_args[i]);
+    if (!is_anonymous) {
+      process_token(DTK_DO, "Expect 'do' before function body.");
     }
   }
 
-  process_token(DTK_PAR_CLOSE, "Expect ')' after parameters.");
-
-  if (!is_anonymous) {
-    process_token(DTK_DO, "Expect 'do' before function body.");
+  if (is_single_line) {
+    expression(vm);
+  } else {
+    block(vm);
   }
-
-  block(vm);
   put_instruction(vm, OP_RETURN);
   vm->active_instr = gi;
   remove_locals_registers(&parser);
@@ -716,6 +724,11 @@ void process_function(d_vm* vm, bool v) {
    * has external references.
    */
   put_instruction(vm, f->instructions->extrn_ref_count > 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
+}
+
+void process_function(d_vm* vm, bool v) {
+  UNUSED(v);
+  create_function(vm, false, false);
 }
 
 drax_value process_arguments(d_vm* vm) {
@@ -778,7 +791,15 @@ void process_dot(d_vm* vm, bool v) {
   }
 }
 
-static void if_definition(d_vm* vm) {
+void process_do(d_vm* vm, bool v) {
+  UNUSED(v);
+  while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
+    expression(vm);
+  }
+}
+
+void process_if(d_vm* vm, bool v) {
+  UNUSED(v);
   process_token(DTK_PAR_OPEN, "Expect '(' after 'if'.");
   expression(vm);
   process_token(DTK_PAR_CLOSE, "Expect ')' after condition.");
@@ -792,7 +813,7 @@ static void if_definition(d_vm* vm) {
     (get_current_token() != DTK_END) &&
     (get_current_token() != DTK_ELSE)) 
   {
-    process(vm);
+    expression(vm);
   }
 
   int else_jump = put_jmp(vm, OP_JMP);
@@ -805,38 +826,13 @@ static void if_definition(d_vm* vm) {
       (get_current_token() != DTK_EOF) &&
       (get_current_token() != DTK_END))
     {
-      process(vm);
+      expression(vm);
     }
   }
 
   patch_jump(vm, else_jump);
 
   process_token(DTK_END, "Expect 'end' after if definition.");
-}
-
-static void process(d_vm* vm) {
-  switch (get_current_token()) {
-    case DTK_IF: {
-      get_next_token();
-      if_definition(vm);
-      break;
-    }
-
-    case DTK_DO: {
-      get_next_token();
-
-      while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
-        process(vm);
-      }
-
-      break;
-    }
-
-    default: {
-      expression(vm);
-      break;
-    }
-  }
 }
 
 int __build__(d_vm* vm, const char* input) {
@@ -849,7 +845,7 @@ int __build__(d_vm* vm, const char* input) {
   get_next_token();
 
   while (get_current_token() != DTK_EOF) {
-    process(vm);
+    expression(vm);
   }
 
   if (parser.has_error) {

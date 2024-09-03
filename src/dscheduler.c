@@ -89,7 +89,7 @@ int init_scheduler(d_vm * main_vm) {
 
   size_t i;
   for (i = 0; i < INITIAL_SLOTS_VM; i++) {
-    global_vms[i] = ligth_based_createVM(main_vm, i, 0);
+    global_vms[i] = ligth_based_createVM(main_vm, i, 0, 0);
   }
 
   pthread_t thread;

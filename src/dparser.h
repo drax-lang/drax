@@ -71,6 +71,8 @@ int __build__(d_vm* vm, const char* input);
 
 drax_value process_arguments(d_vm* vm);
 
+void create_function(d_vm* vm, bool is_internal, bool is_single_line);
+
 callback_table(process_grouping);
 callback_table(process_list);
 callback_table(process_unary);
@@ -91,6 +93,8 @@ callback_table(literal_translation);
 callback_table(process_amper);
 callback_table(process_pipe);
 callback_table(process_call);
+callback_table(process_if);
+callback_table(process_do);
 
 void dfatal(d_token* token, const char* message);
 

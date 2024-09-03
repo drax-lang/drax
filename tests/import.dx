@@ -1,4 +1,8 @@
+test_val = 10
+
 import 'tests/export.dx' as lib
+
+assert(test_val == 10, "the global scope is being changed")
 
 assert(lib.calc(5, 5) == 25, "lib.calc_two(5, 5) == 25")
 

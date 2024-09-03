@@ -397,7 +397,7 @@ static int import_file(d_vm* vm, char* p, char * n) {
     return 1;
   }
 
-  d_vm* itvm = ligth_based_createVM(vm, -2, 1);
+  d_vm* itvm = ligth_based_createVM(vm, -2, 1, 1);
 
   int stat = 0;
   if (__build__(itvm, content)) {
@@ -482,7 +482,7 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
     if (*(ip) == OP_GET_G_ID) {
       drax_value gv = *(ip + 1);
       char* k = (char*) gv;
-    
+
       drax_value rv;
 
       if (
@@ -493,15 +493,15 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
           raise_drax_error(vm, _L_MSG_NOT_DEF, k);
           return 0;
         }
-      }
+    }
 
-      /**
-       * the instruction below is the new local definition.
-       */
-      new_fn->instructions->values[i_new++] = OP_PUSH;
-      new_fn->instructions->values[i_new++] = rv;
-      new_fn->instructions->values[i_new++] = OP_SET_L_ID;
-      new_fn->instructions->values[i_new++] = (drax_value) k;
+    /**
+     * the instruction below is the new local definition.
+     */
+    new_fn->instructions->values[i_new++] = OP_PUSH;
+    new_fn->instructions->values[i_new++] = rv;
+    new_fn->instructions->values[i_new++] = OP_SET_L_ID;
+    new_fn->instructions->values[i_new++] = (drax_value) k;
 
     } else {
       raise_drax_error(vm, "runtime error: unspected OP on factory");
@@ -692,8 +692,8 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_GET_REF) {
-        int a = (int) AS_NUMBER(pop(vm));
         char* n = (char*) GET_VALUE(vm);
+        int a = (int) AS_NUMBER(GET_VALUE(vm));
 
         drax_value v = get_fun_table(vm->envs->native, n, a);
         if (v == 0) {
@@ -851,7 +851,13 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       VMCase(OP_FUN) {
         drax_value v = GET_VALUE(vm);
         drax_value extern_ref = GET_VALUE(vm);
-        UNUSED(extern_ref); /* discart extern_ref */
+        if (extern_ref == DRAX_TRUE_VAL) {
+          /**
+           * This routine will replace the external
+           * references on lambda.
+           */
+          if(buid_self_dep_fn(vm, &v) == 0) { return 1; }
+        }
         put_fun_table(vm->envs->functions, v);
         break;
       }
@@ -1043,7 +1049,7 @@ d_vm* createMainVM() {
  *
  * but creates the base environments
  */
-d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc) {
+d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc, int new_global_scope) {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
   vm->vid = vid;
   vm->instructions = new_instructions();
@@ -1063,12 +1069,14 @@ d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc) {
   vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
-  vm->envs = new_environment(1, 1, 1);
+  vm->envs = new_environment(1, 1, !new_global_scope);
 
   /**
    * Created on builtin definitions
   */
-  vm->envs->global = vm_base->envs->global;
+  if(!new_global_scope) {
+    vm->envs->global = vm_base->envs->global;
+  }
   vm->envs->local = vm_base->envs->local;
   vm->envs->modules = vm_base->envs->modules;
   vm->envs->native = vm_base->envs->native;
