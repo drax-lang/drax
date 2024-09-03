@@ -29,6 +29,7 @@ FILES= ./src/dvm.c \
 	   ./src/dgc.c \
 	   ./src/deval.c \
 	   ./src/dscheduler.c \
+	   ./src/doutopcode.c \
 	   ./src/mods/d_mod_os.c \
 	   ./src/mods/d_mod_http.c
 
@@ -118,6 +119,9 @@ debug: $(HTTP_LIB_NAME)
 
 inspect: $(HTTP_LIB_NAME)
 	$(DEFAULT_BUILD) $(DEBUGF) -D_AST_INSPECT
+
+opcode: $(HTTP_LIB_NAME)
+	$(DEFAULT_BUILD) $(DEBUGF) -D_AST_INSPECT_OP
 
 run:
 	./bin/$(APP)

@@ -15,6 +15,8 @@
 #include "dparser.h"
 #include "dio.h"
 
+#include "doutopcode.h"
+
 /* validation only number */
 #define binary_op(vm, op) \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
@@ -1083,6 +1085,9 @@ d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc) {
 int __run__(d_vm* vm, int inter_mode) {
   vm->pstatus = VM_STATUS_WORKING;
   __init__(vm);
+
+  DEBUG_OP(inspect_opcode(vm));
+
   int r = __start__(vm, inter_mode, 0);
   vm->pstatus = VM_STATUS_STOPED;
 

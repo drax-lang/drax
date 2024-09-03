@@ -89,4 +89,27 @@ res = l_c('nice!')
 
 assert(res == 'drax lang is nice!', 'fail to make nested fun')
 
+# 1. nested lambdas with frame
+fun get_nested_lambda(one) do
+    fun (two) do
+        fun (three) do
+            fun (four) do
+                {
+                    one: one,
+                    two: two,
+                    three: three,
+                    four: four
+                }
+            end
+        end
+    end
+end
+
+l_a = get_nested_lambda('drax')
+l_b = l_a('lang')
+l_c = l_b('is')
+res = l_c('nice!')
+
+assert(res == {one: "drax", two: "lang", three: "is", four: "nice!"}, 'fail to make nested fun')
+
 print("lambda's done!")

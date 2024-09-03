@@ -19,6 +19,12 @@
  #define DEBUG(x)
 #endif
 
+#ifdef _AST_INSPECT_OP
+ #define DEBUG_OP(x) (x)
+#else
+ #define DEBUG_OP(x)
+#endif
+
 
 #define VMDispatch(is_per_batch, ops) while(!is_per_batch || ops++ < 10)
 
