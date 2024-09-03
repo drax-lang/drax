@@ -596,6 +596,7 @@ static void block(d_vm* vm) {
 
 void process_function(d_vm* vm, bool v) {
   UNUSED(v);
+  int is_global = IS_GLOBAL_SCOPE(vm);
   const int max_arity = 255;
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
@@ -612,6 +613,16 @@ void process_function(d_vm* vm, bool v) {
     f->name = (char*) malloc(sizeof(char) * (ctk.length + 1));
     strncpy(f->name, ctk.first, ctk.length);
     f->name[ctk.length] = '\0';
+  }
+
+  if (!is_anonymous && !is_global) {
+    FATAL_CURR("syntax error");
+    printf(
+    "\n  named functions are only accepted in the global scope.\n\n"
+    "  you can proceed by changing this:\n"
+    "    fun %s(...) do ... end\n"
+    "  to:\n    %s = fun(...) do ... end\n\n",
+    f->name, f->name);
   }
 
   process_token(DTK_PAR_OPEN, "Expect '(' after function name.");
