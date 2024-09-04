@@ -1,162 +1,115 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <arpa/inet.h>
 
 #include "d_mod_http.h"
 #include "../dstring.h"
-#include "../http/include/civetweb.h"
 
-static int request_handler(struct mg_connection* cconn, void* cbdata) {
+drax_value start_http_server(d_vm* vm, char *options[], int* fail) {
+  dhttp_server* configs = (dhttp_server*) malloc(sizeof(dhttp_server));
+  configs->address = (struct sockaddr_in*) malloc(sizeof(struct sockaddr_in));
 
-  /**
-   * Get the request info
-   */
-  const struct mg_request_info *ri = mg_get_request_info(cconn);
-  const char *request_method = ri->request_method;
-  const char *local_uri = ri->local_uri;
+  configs->new_socket = -1;
+  int opt = 1;
 
-  const char *local_uri_raw = ri->local_uri_raw;
-  const char *http_version = ri->http_version;
-  const char *query_string = ri->query_string;
-  const char *remote_user = ri->remote_user;
-  const char* remote_addr = ri->remote_addr;
+  char* port = options[0];
+  char* endptr;
+  int iport = strtod(port, &endptr);
+  if (endptr == port) iport = 5000;
 
-  char *content_length = (char *) malloc(20 * sizeof(char));
-  snprintf(content_length, sizeof(content_length), "%lld", ri->content_length);
-
-  char *remote_port = (char *) malloc(12 * sizeof(char));
-  snprintf(remote_port, sizeof(remote_port), "%d", ri->remote_port);
-
-  char *server_port = (char *) malloc(12 * sizeof(char));
-  snprintf(server_port, sizeof(server_port), "%d", ri->server_port);
-
-  char *is_ssl = (char *) malloc(12 * sizeof(char));
-  snprintf(is_ssl, sizeof(is_ssl), "%d", ri->is_ssl);
-
-  drax_value v = (drax_value) cbdata;
-  int status_code_int = 200;
-  
-  if (IS_FUNCTION(v)) {
-
-    /**
-     * the orphans frame only accept char*
-     */
-    drax_frame* request_info = new_dframe_orphan(14);
-    put_value_dframe(request_info, (char*) "local_uri", (drax_value) local_uri);
-    put_value_dframe(request_info, (char*) "request_method", (drax_value) request_method);
-
-    put_value_dframe(request_info, (char*) "local_uri_raw", (drax_value) local_uri_raw);
-    put_value_dframe(request_info, (char*) "http_version", (drax_value) http_version);
-    put_value_dframe(request_info, (char*) "query_string", (drax_value) query_string);
-    put_value_dframe(request_info, (char*) "remote_user", (drax_value) remote_user);
-    put_value_dframe(request_info, (char*) "remote_addr", (drax_value) remote_addr);
-
-    put_value_dframe(request_info, (char*) "content_length", (drax_value) content_length);
-
-    put_value_dframe(request_info, (char*) "remote_port", (drax_value) remote_port);
-    put_value_dframe(request_info, (char*) "server_port", (drax_value) server_port);
-    put_value_dframe(request_info, (char*) "is_ssl", (drax_value) is_ssl);
-    
-    /**
-     * Get the header in request info
-     */
-
-    drax_frame* dheaders = new_dframe_orphan(MG_MAX_HEADERS);
-
-    size_t i;
-    for (i = 0; i < MG_MAX_HEADERS; i++) {
-      if (ri->http_headers[i].name != NULL) {
-        const char* val = ri->http_headers[i].value;
-        put_value_dframe(dheaders, (char*) ri->http_headers[i].name, (drax_value) val);
-      }
-    }
-    put_value_dframe(request_info, (char*) "headers", DS_VAL(dheaders));
-
-    drax_frame* conn = new_dframe_orphan(4);
-    put_value_dframe(conn, (char*) "request_info", DS_VAL(request_info));
-
-    drax_value f = run_instruction_on_vm_pool(v, DS_VAL(conn));
-
-    if (IS_FRAME(f)) {
-      drax_frame* ofr = CAST_FRAME(f);
-      
-      /**
-       * get status as string
-       */
-      char* status_code = (char*) "200";
-      drax_value status;
-      if(get_value_dframe(ofr, (char*) "status_code", &status) != -1) {
-        if (IS_STRING(status)) {
-          status_code = CAST_STRING(status)->chars;
-          status_code_int = atoi(status_code);
-          status_code_int = status_code_int <= 0 ? 200 : status_code_int;
-        }
-      }
-
-      /**
-       * get headers as string
-       */
-      char* header_string;
-      drax_value header;
-      if(get_value_dframe(ofr, (char*) "headers", &header) != -1) {
-        header_string = str_format_output(CAST_STRING(header)->chars);
-        mg_printf(cconn, "%s", (const char*) header_string);
-      }
-
-      /**
-       * get data as string
-       */
-      char* data_string = (char*) ".";
-      drax_value data;
-      if(get_value_dframe(ofr, (char*) "data", &data) != -1) {
-        data_string = str_format_output(CAST_STRING(data)->chars);
-        mg_printf(cconn, "%s", (const char*) data_string);
-      }
-    }
+  if ((configs->server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+    perror("Fail to create");
+    *fail = 1;
   }
 
-  return status_code_int;
+  if (setsockopt(configs->server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))) {
+    perror("Fail to configure");
+    close(configs->server_fd);
+    *fail = 1;
+  }
+
+  /**
+   * Define address and port
+   */
+  configs->address->sin_family = AF_INET;
+  configs->address->sin_addr.s_addr = INADDR_ANY;
+  configs->address->sin_port = htons(iport);
+
+  if (inet_pton(AF_INET, "127.0.0.1", &configs->address->sin_addr) <= 0) {
+    close(configs->server_fd);
+    *fail = 1;
+    return DS_VAL(new_derror(vm, (char *) "server error, Unsupported address!"));
+  }
+
+  if (bind(configs->server_fd, (struct sockaddr *) configs->address, sizeof(*configs->address)) < 0) {
+    close(configs->server_fd);
+    *fail = 1;
+    return DS_VAL(new_derror(vm, (char *) "server error, fail to bind!"));
+  }
+
+  if (listen(configs->server_fd, 3) < 0) {
+    close(configs->server_fd);
+    *fail = 1;
+    return DS_VAL(new_derror(vm, (char *) "server error, fail to listen!"));
+  }
+
+  *fail = 0;
+  return (drax_value) configs;
 }
 
-drax_value start_http_server(
-  d_vm* vm,
-  char *options[],
-  void (*callback_caller)(d_vm* vm, drax_value call),
-  drax_value call,
-  drax_value callback_req_handler
-) {
-  struct mg_callbacks callbacks;
-  struct mg_context *ctx;
+int accept_http_server(d_vm* vm, drax_value aconf, drax_value* res) {
+  if(!aconf) { return 0; }
 
-  /*
-    * Initialize callbacks
-    */
-  memset(&callbacks, 0, sizeof(callbacks));
+  dhttp_server* configs = (dhttp_server*) aconf;
+  int addrlen = sizeof(configs->address);
 
-  /*
-    * Start the server
-    */
-  ctx = mg_start(&callbacks, NULL, (const char**) options);
-
-  /*
-    * Add a URI handler
-    */
-
-    if ((callback_req_handler != 0) && (callback_req_handler != DRAX_NIL_VAL)) {
-      mg_set_request_handler(ctx, "/", request_handler, (void*) callback_req_handler);
-    }
-
-  callback_caller(vm, call);
-  return (drax_value) ctx;
-}
-
-int stop_http_server(drax_value v) {
-  if(!v) {
+  if ((configs->new_socket = accept(configs->server_fd, (struct sockaddr *) configs->address,
+   (socklen_t*) &addrlen)) < 0) {
+    close(configs->server_fd);
+    *res = DS_VAL(new_derror(vm, (char *) "server error, fail to accept connection!"));
     return 0;
   }
 
-  struct mg_context *ctx = (struct mg_context *) v;
-  mg_stop(ctx);
+  return 1;
+}
 
+char* receive_http_server(d_vm* vm, drax_value aconf) {
+  UNUSED(vm);
+  if(!aconf) { return 0; }
+  int bffsz = 16384;
+  char* buffer = (char*) malloc(bffsz * sizeof(char));
+
+  dhttp_server* configs = (dhttp_server*) aconf;
+  read(configs->new_socket, buffer, bffsz);
+
+  return buffer;
+}
+
+ssize_t send_http_server(d_vm* vm, drax_value aconf, char* s) {
+  UNUSED(vm);
+  if(!aconf) { return 0; }
+
+  dhttp_server* configs = (dhttp_server*) aconf;
+  char* data = str_format_output(s);
+  ssize_t r = write(configs->new_socket, data, strlen(data));
+  return -1 != r ;
+}
+
+int disconnect_client_http_server(d_vm* vm, drax_value v) {
+  UNUSED(vm);
+  if(!v) { return 0; }
+  dhttp_server* configs = (dhttp_server*) v;
+  close((int) configs->new_socket);
+  return 1;
+}
+
+int stop_http_server(d_vm* vm, drax_value v) {
+  UNUSED(vm);
+  if(!v) { return 0; }
+  dhttp_server* configs = (dhttp_server*) v;
+  close((int) configs->server_fd);
   return 1;
 }
 

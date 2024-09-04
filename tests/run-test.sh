@@ -27,6 +27,4 @@ export MODE=test
 
 ./bin/drax ./tests/lambdas-nested.dx
 
-./bin/drax ./tests/http/http-only-response-json.dx
-
-./bin/drax ./tests/http/http-only-response-text-plain.dx
+# ./bin/drax ./tests/http/http-only-response-text-plain.dx

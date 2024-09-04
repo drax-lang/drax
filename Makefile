@@ -1,13 +1,6 @@
 CC=gcc
 APP=drax
 
-## libcivetweb
-HTTP_LIB_NAME = libcivetweb.a
-HTTP_LIB=./src/http
-HTTP_LIB_FLAGS=-DUSE_WEBSOCKET -DUSE_IPV6 -lcrypto -lssl -DUSE_SSL_DH=1
-
-LIBS= -I$(HTTP_LIB)/include $(HTTP_LIB_NAME)
-
 ## Asm
 
 ASM_LINKS=
@@ -106,10 +99,6 @@ DEFAULT_BUILD = \
 		$(ASM_LINKS) \
 		$(DRAX_BUILD_FULL) \
 		$(FLAGS)
-
-$(HTTP_LIB_NAME):
-	$(MAKE) -C $(HTTP_LIB) WITH_IPV6=1 WITH_WEBSOCKET=1 COPT='-DNO_SSL_DL=1' clean lib
-	 cp $(HTTP_LIB)/$(HTTP_LIB_NAME) .
 
 all: $(HTTP_LIB_NAME)
 	$(DEFAULT_BUILD)

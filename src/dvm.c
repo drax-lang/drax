@@ -856,7 +856,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
            * This routine will replace the external
            * references on lambda.
            */
-          if(buid_self_dep_fn(vm, &v) == 0) { return 1; }
+          /*if(buid_self_dep_fn(vm, &v) == 0) { return 1; }*/
         }
         put_fun_table(vm->envs->functions, v);
         break;

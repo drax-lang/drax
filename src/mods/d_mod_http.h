@@ -17,10 +17,22 @@
 #include "../dscheduler.h"
 #include "../dvm.h"
 
-drax_value start_http_server(d_vm* vm, char *options[],
-    void (*callback_caller)(d_vm* vm, drax_value call),
-    drax_value call, drax_value callback_req_handler);
+typedef struct dhttp_server {
+  int server_fd;
+  int new_socket;
+  struct sockaddr_in* address;
+} dhttp_server;
 
-int stop_http_server(drax_value v);
+drax_value start_http_server(d_vm* vm, char *options[], int* fail);
+
+int stop_http_server(d_vm* vm, drax_value v);
+
+int accept_http_server(d_vm* vm, drax_value aconf, drax_value* res);
+
+char* receive_http_server(d_vm* vm, drax_value aconf);
+
+ssize_t send_http_server(d_vm* vm, drax_value aconf, char* s);
+
+int disconnect_client_http_server(d_vm* vm, drax_value aconf);
 
 #endif

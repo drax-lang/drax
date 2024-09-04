@@ -871,22 +871,10 @@ static drax_value __d_list_is_present(d_vm* vm, int* stat) {
 }
 
 /**
- * Http calls
+ * TCPServer calls
  */
-static void callback_caller(d_vm* vm, drax_value call) {
-  if (IS_NIL(call)) return;
-  
-  if (IS_NATIVE(call)) { 
-    do_dcall_native(vm, call);
-  }
-
-  if (IS_FUNCTION(call)) {
-   run_instruction_on_vm_pool(call, 0);
-  }
-}
 
 static drax_value __d_start_server(d_vm* vm, int* stat) {
-  drax_value call = pop(vm);
   drax_value opt = pop(vm);
 
   return_if_is_not_frame(opt, stat);
@@ -903,83 +891,100 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
   }
 
   /**
-   * get document_root as string
-   */
-  char* droot_string = (char*) ".";
-  drax_value droot;
-  if(get_value_dframe(ofr, (char*) "document_root", &droot) != -1) {
-    return_if_is_not_string(droot, stat);
-    droot_string = CAST_STRING(droot)->chars;
-  }
-
-  /**
    * get request_timeout_ms as string
    */
-  char* req_timeout_string = (char*) "10000";
+  char* host = (char*) "*";
   drax_value drt;
-  if(get_value_dframe(ofr, (char*) "request_timeout_ms", &drt) != -1) {
+  if(get_value_dframe(ofr, (char*) "host", &drt) != -1) {
     return_if_is_not_string(drt, stat);
-    req_timeout_string = CAST_STRING(drt)->chars;
-  }
-
-  /**
-   * get document_root as string
-   */
-  drax_value call_back_handler = DRAX_NIL_VAL;
-  drax_value gfn;
-  if(get_value_dframe(ofr, (char*) "request_handler", &gfn) != -1) {
-    return_if_is_not_function(gfn, stat);
-
-    if (CAST_FUNCTION(gfn)->arity != 1) {
-      DX_ERROR_FN(stat);
-      return DS_VAL(new_derror(vm, (char*) "Expected one argumento to 'request_handler' callback."));
-    }
-
-    call_back_handler = gfn;
+    host = CAST_STRING(drt)->chars;
   }
 
   char *options[] = {
-    (char*) "document_root", droot_string, 
-    (char*) "listening_ports", port_string, 
-    (char*) "request_timeout_ms", req_timeout_string,
+    port_string,
+    host,
     NULL
   };
 
-  #define IVALID_ARGS_CALLB (char *) "Do not expect arguments on callback function."
+  int fail;
+  drax_value res;
+  drax_value ctx = start_http_server(vm, options, &fail);
 
-  if (!IS_NIL(call)) {
-    if ((IS_NATIVE(call)) && (CAST_NATIVE(call)->arity != 0)) {
-      DX_ERROR_FN(stat);
-      return DS_VAL(new_derror(vm, IVALID_ARGS_CALLB));
-    }
-
-    if ((IS_FUNCTION(call)) && (CAST_FUNCTION(call)->arity != 0)) {
-      DX_ERROR_FN(stat);
-      return DS_VAL(new_derror(vm, IVALID_ARGS_CALLB));
-    }
+  if (!fail) {
+    drax_tid* tid = new_dtid(vm, ctx);
+    res = DS_VAL(tid);
+    DX_SUCESS_FN(stat);
+  } else {
+    DX_ERROR_FN(stat);
+    res = DS_VAL(ctx);
   }
 
-  drax_value ctx = start_http_server(vm, options, callback_caller, call, call_back_handler);
-  DX_SUCESS_FN(stat);
-
-  drax_tid* tid = new_dtid(vm, ctx);
-
-  /**
-   * Fix callback execution bug
-   */
-  return DS_VAL(tid);
+  return res;
 }
 
 static drax_value __d_stop_server(d_vm* vm, int* stat) {
   drax_value v = pop(vm);
   return_if_is_not_tid(v, stat);
   drax_tid* tid = CAST_TID(v);
-  int status = stop_http_server(tid->value);
+  int status = stop_http_server(vm, tid->value);
   
   tid->value = 0;
 
   DX_SUCESS_FN(stat);
   return status ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
+}
+
+static drax_value __d_accept_server(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  return_if_is_not_tid(v, stat);
+  drax_tid* tid = CAST_TID(v);
+  drax_value _err;
+  drax_value addrs = tid->value;
+  int success = accept_http_server(vm, addrs, &_err);
+
+  if (!success) {
+    DX_ERROR_FN(stat);
+    return _err;
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(tid);
+}
+
+static drax_value __d_receive_server(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  return_if_is_not_tid(v, stat);
+  drax_tid* tid = CAST_TID(v);
+  char* res = receive_http_server(vm, tid->value);
+  drax_string* s = new_dstring(vm, res, strlen(res));
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(s);
+}
+
+static drax_value __d_send_server(d_vm* vm, int* stat) {
+  drax_value data = pop(vm);
+  drax_value v = pop(vm);
+
+  return_if_is_not_tid(v, stat);
+  return_if_is_not_string(data, stat);
+
+  drax_tid* tid = CAST_TID(v);
+  send_http_server(vm, tid->value, CAST_STRING(data)->chars);
+
+  DX_SUCESS_FN(stat);
+  return DRAX_TRUE_VAL;
+}
+
+static drax_value __d_disconnect_server(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  return_if_is_not_tid(v, stat);
+  drax_tid* tid = CAST_TID(v);
+
+  disconnect_client_http_server(vm, tid->value);
+
+  DX_SUCESS_FN(stat);
+  return DRAX_TRUE_VAL;
 }
 
 /**
@@ -1066,12 +1071,16 @@ void create_native_modules(d_vm* vm) {
   put_mod_table(vm->envs->modules, DS_VAL(list));
 
   /**
-   * Http Module
+   * Socket Module
    */ 
-  drax_native_module* http = new_native_module(vm, "Http", 2);
+  drax_native_module* http = new_native_module(vm, "TCPServer", 6);
   const drax_native_module_helper http_helper[] = {
-    {2, "start", __d_start_server },
-    {1, "stop", __d_stop_server},
+    {1, "new",   __d_start_server },
+    {1, "close", __d_stop_server},
+    {1, "accept", __d_accept_server},
+    {1, "receive", __d_receive_server},
+    {2, "send", __d_send_server},
+    {1, "disconnect", __d_disconnect_server},
   };
   
   put_fun_on_module(http, http_helper, sizeof(http_helper) / sizeof(drax_native_module_helper)); 

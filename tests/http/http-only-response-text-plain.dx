@@ -1,21 +1,14 @@
-fun handle(a) do
-    result = 'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\ndrax-lang'
-    {
-        data: result,
-        status_code: 200
-    }
-end
 
-tid = Http.start({
-        port: '8080',
-        request_timeout_ms: '10000',
-        request_handler: &handle/1
-      }, nil)
-
-sleep(1000)
+server = TCPServer.new({ host: '*',  port: '8081' })
+conn = TCPServer.accept(server)
+request = TCPServer.receive(conn) |> inspect()
+TCPServer.send(conn, "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\ndrax-lang")
+TCPServer.disconnect(conn)
 
 res = Os.cmd("curl -s http://localhost:8080")
 assert(res == "drax-lang", "http request localhost:8080")
 
 Http.stop(tid)
+TCPServer.close(conn)
+
 print("Http text/plain done!")
