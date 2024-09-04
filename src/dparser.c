@@ -7,6 +7,8 @@
 #include "dparser.h"
 #include "dlex.h"
 
+#include "dbuiltin.h"
+
 #define LOCAL_SIZE_FACTOR 10
 
 #define DISABLE_PIPE_PROCESS() parser.is_pipe = 0
@@ -17,6 +19,24 @@
 
 parser_state parser;
 parser_builder* current = NULL;
+
+/**
+ * Module List
+ * 
+ * used in the parser to determine 
+ * whether functions have external references,
+ * ignoring modules for optimization.
+ */
+const char *str_module_list[] = {
+ "Math",
+ "TCPServer",
+ "List",
+ "Frame",
+ "Number",
+ "Core",
+ "Os",
+ NULL,
+};
 
 static d_local_registers* create_local_registers() {
   d_local_registers* l = (d_local_registers*) malloc(sizeof(d_local_registers));
@@ -189,7 +209,7 @@ static void put_instruction(d_vm* vm, drax_value o) {
   vm->active_instr->values[vm->active_instr->instr_count -1] = o;
 }
 
-static void process_external_ref(d_vm* vm) {
+static void process_external_ref(d_vm* vm) {  
   if (vm->active_instr->extrn_ref_count >= vm->active_instr->extrn_ref_capacity) {
     vm->active_instr->extrn_ref_capacity += 4;
     vm->active_instr->extrn_ref = (drax_value**) realloc(vm->active_instr->extrn_ref, sizeof(drax_value*) * vm->active_instr->extrn_ref_capacity);
@@ -518,8 +538,19 @@ void process_variable(d_vm* vm, bool v) {
 
   if (is_global || get_local(&parser, name) == -1) {
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
-    process_external_ref(vm);
-    
+
+    bool is_module = false;
+    int i;
+    for (i = 0; str_module_list[i] != NULL; i++) {
+      if (strcmp(str_module_list[i], name) == 0) {
+        is_module = true;
+        break;
+      }
+    }
+
+    if (!is_module) {
+      process_external_ref(vm);
+    }
     return;
   }
 
