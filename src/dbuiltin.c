@@ -584,9 +584,11 @@ static drax_value __d_frame_merge(d_vm* vm, int* stat) {
   int i;
   for(i = 0; i < f2->length; i++) {
     if(strcmp(f2->literals[i], nf1->literals[i]) == 0) {
-      memcpy(&nf1->keys[i], &f2->keys[i], sizeof(int));
-      memcpy(&nf1->values[i], &f2->values[i], sizeof(drax_value));
+      nf1->keys[i] = f2->keys[i];
+      nf1->values[i] = f2->values[i];
     } else {
+      char *s = (char *) malloc((strlen(f2->literals[i]) + 1) * sizeof(char));
+      strcpy(s, f2->literals[i]);
       put_value_dframe(nf1, f2->literals[i], f2->values[i]);
     }
   }
@@ -688,7 +690,6 @@ static drax_value __d_frame_remove(d_vm* vm, int* stat) {
   drax_frame* f = CAST_FRAME(a);
   drax_string* key = CAST_STRING(b);
 
-
   drax_value v;
   int idx = get_value_dframe(f, key->chars, &v);
   if(idx < 0) {
@@ -782,7 +783,9 @@ static drax_value __d_frame_new(d_vm* vm, int* stat) {
     drax_list* l1 = CAST_LIST(l->elems[i]);
 
     return_if_is_not_string(l1->elems[0], stat);
-    put_value_dframe(f, CAST_STRING(l1->elems[0])->chars, l1->elems[1]);
+    char *s = (char *) malloc((CAST_STRING(l1->elems[0])->length + 1) * sizeof(char));
+    strcpy(s, CAST_STRING(l1->elems[0])->chars);
+    put_value_dframe(f, s, l1->elems[1]);
   }
   
   DX_SUCESS_FN(stat);

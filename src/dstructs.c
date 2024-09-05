@@ -54,9 +54,13 @@ void put_value_dlist(drax_list* l, drax_value v) {
 }
 
 drax_error* new_derror(d_vm* vm, char* msg) {
-  drax_error* v = ALLOCATE_DSTRUCT(vm, drax_error, DS_FUNCTION);
-  v->chars = msg;
-  v->length = strlen(msg);
+  drax_error* v = ALLOCATE_DSTRUCT(vm, drax_error, DS_ERROR);
+  int sz = strlen(msg);
+  char* m = (char*) malloc(sz * sizeof(char));
+  strcpy((char*)m, msg);
+
+  v->chars = m;
+  v->length = sz;
   return v;
 }
 
@@ -121,16 +125,6 @@ drax_string* copy_dstring(d_vm* vm, const char* chars, int length) {
 
 drax_frame* new_dframe(d_vm* vm, int cap) {
   drax_frame* l = ALLOCATE_DSTRUCT(vm, drax_frame, DS_FRAME);
-  l->length = 0;
-  l->cap = cap == 0 ? 8 : cap;
-  l->values = (drax_value*) malloc(sizeof(drax_value) * l->cap);
-  l->literals = (char**) malloc(sizeof(char*) * l->cap);
-  l->keys = (int*) malloc(sizeof(int) * l->cap);
-  return l;
-}
-
-drax_frame* new_dframe_orphan(int cap) {
-  drax_frame* l = ALLOCATE_DSTRUCT_ORPHAN(NULL, drax_frame, DS_FRAME);
   l->length = 0;
   l->cap = cap == 0 ? 8 : cap;
   l->values = (drax_value*) malloc(sizeof(drax_value) * l->cap);

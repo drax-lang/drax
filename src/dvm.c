@@ -412,6 +412,7 @@ static int import_file(d_vm* vm, char* p, char * n) {
    * vm->exported[0] -> is used only the 
    * first element, for now.
    */
+  
     put_var_table(vm->envs->global, n, itvm->exported[0]);
     vm->d_ls = itvm->d_ls;
     __clean_vm_tmp__(itvm);
@@ -450,8 +451,8 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
    * [ OP_GET_G_ID | drax_value ]
    * 
    * instructions after:
-   * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value ]
-   * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value ]
+   * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value | ... | OP_GET_L_ID | drax_value ]
+   * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value | ... | OP_GET_L_ID | drax_value ]
    */
   new_fn->instructions->instr_count = 
     f->instructions->instr_count + (f->instructions->extrn_ref_count * 4);
@@ -663,13 +664,17 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           break;
         }
 
-        if(get_value_dframe(CAST_FRAME(f), (char*) k, &val) == -1) {
-          push(vm, DRAX_NIL_VAL);
+        if (IS_FRAME(f)) {
+          if(get_value_dframe(CAST_FRAME(f), (char*) k, &val) == -1) {
+            push(vm, DRAX_NIL_VAL);
+            break;
+          }
+          push(vm, val);
           break;
         }
-
-        push(vm, val);
-        break;
+        
+        raise_drax_error(vm, "error: key '%s' is not defined\n", k);
+        return 1;
       }
 
       /**
@@ -1006,9 +1011,13 @@ static void __clean_vm_tmp__(d_vm* itvm) {
   free(itvm->instructions);
   free(itvm->exported);
   
+  free(itvm->call_stack);
+  /*free(itvm->call_stack->values);*/
+  
   itvm->call_stack->count = 0;
   itvm->stack_count = 0;
   itvm->ip = NULL;
+  free(itvm);
 }
 
 d_vm* createMainVM() {
@@ -1096,7 +1105,7 @@ int __run__(d_vm* vm, int inter_mode) {
   vm->pstatus = VM_STATUS_WORKING;
   __init__(vm);
 
-  DEBUG_OP(inspect_opcode(vm));
+  DEBUG_OP(inspect_opcode(vm->ip, 0));
 
   int r = __start__(vm, inter_mode, 0);
   vm->pstatus = VM_STATUS_STOPED;

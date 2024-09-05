@@ -15,6 +15,8 @@ drax_value start_http_server(d_vm* vm, char *options[], int* fail) {
   int opt = 1;
 
   char* port = options[0];
+  char* host = options[1];
+
   char* endptr;
   int iport = strtod(port, &endptr);
   if (endptr == port) iport = 5000;
@@ -37,10 +39,10 @@ drax_value start_http_server(d_vm* vm, char *options[], int* fail) {
   configs->address->sin_addr.s_addr = INADDR_ANY;
   configs->address->sin_port = htons(iport);
 
-  if (inet_pton(AF_INET, "127.0.0.1", &configs->address->sin_addr) <= 0) {
+  if (inet_pton(AF_INET, host, &configs->address->sin_addr) <= 0) {
     close(configs->server_fd);
     *fail = 1;
-    return DS_VAL(new_derror(vm, (char *) "server error, Unsupported address!"));
+    return DS_VAL(new_derror(vm, (char *) "server error, Unsupported host!"));
   }
 
   if (bind(configs->server_fd, (struct sockaddr *) configs->address, sizeof(*configs->address)) < 0) {

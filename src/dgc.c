@@ -29,9 +29,29 @@ static void dgc_safe_free(drax_value v) {
         free(s->chars);
         s->chars = NULL;
       }
-    }
+    } else if (IS_ERROR(v)) {
+      DEBUG(printf("    -- dgc error free\n"));
+      drax_error* e = CAST_ERROR(v);
+      
+      if (NULL != e->chars) {
+        free(e->chars);
+        e->chars = NULL;
+      }
+    } else if (IS_FRAME(v)) {
+      DEBUG(printf("    -- dgc frame free\n"));
+      drax_frame* f = CAST_FRAME(v);
+      
+      if (NULL != f->literals) {
+        /*int i;
+        for (i = 0; i < f->length; i++) {
+          free(f->literals[i]);
+        }*/
+        free(f->keys);
 
-    if (IS_FUNCTION(v)) {
+        f->keys = NULL;
+        f->literals = NULL;
+      }
+    } else if (IS_FUNCTION(v)) {
       DEBUG(printf("    -- dgc function free\n"));
 
       drax_function* ff = CAST_FUNCTION(v);

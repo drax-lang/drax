@@ -2,13 +2,21 @@
 #include "dvm.h"
 #include "doutopcode.h"
 
-int inspect_opcode(d_vm* vm) {
-  UNUSED(vm);
+int inspect_opcode(drax_value* _ip, size_t level) {
+  UNUSED(_ip);
+  UNUSED(level);
 #ifdef _AST_INSPECT_OP
-
-  drax_value* ip = vm->ip;
+  drax_value* ip = _ip;
+  size_t i;
+  for (i = 0; i < level; i++) {
+    putchar(' ');
+  }
   printf("op code ===============\n");
   while(true) {
+    for (i = 0; i < level; i++) {
+      putchar(' ');
+    }
+    
     switch (*(ip++)) {
       case OP_CONST: {
         printf("OP_CONST, <value>\n");
@@ -127,34 +135,44 @@ int inspect_opcode(d_vm* vm) {
         break;
       }
       case OP_FUN: {
-        printf("OP_FUN, <value>, <value::bool>\n");
+        drax_function* f = CAST_FUNCTION(*(ip++));
+        int bb = (*(ip++)) == DRAX_TRUE_VAL;
+        printf("OP_FUN, extern ref::bool<%d>\n", bb);
+        inspect_opcode(f->instructions->values, level + 2);
         ip++;
         ip++;
         break;
       }
       case OP_AFUN: {
         printf("AOP_FUN, <value>, <value::bool>\n");
+        drax_function* f = CAST_FUNCTION(*ip);
+        inspect_opcode(f->instructions->values, level + 2);
         ip++;
         ip++;
         break;
       }
       case OP_SET_G_ID: {
-        printf("OP_SET_G_ID\n");
+        char* s = (char*)(*ip);
+        printf("OP_SET_G_ID, \"%s\"\n", s);
         ip++;
         break;
       }
       case OP_GET_G_ID: {
-        printf("OP_GET_G_ID\n");
+        char* s = (char*)(*ip);
+        printf("OP_GET_G_ID, \"%s\"\n", s);
         ip++;
         break;
       }
       case OP_SET_L_ID: {
-        printf("OP_SET_L_ID\n");
+        char* s = (char*)(*ip);
+        printf("OP_SET_L_ID, \"%s\"\n", s);
         ip++;
         break;
       }
       case OP_GET_L_ID: {
-        printf("OP_GET_L_ID\n");
+        char* s = (char*)(*ip);
+        printf("OP_GET_L_ID, \"%s\"\n", s);
+        ip++;
         break;
       }
       case OP_SET_I_ID: {
@@ -177,9 +195,9 @@ int inspect_opcode(d_vm* vm) {
         break;
       }
       case OP_IMPORT: {
-        printf("OP_IMPORT, <value::path>, <value::alias>\n");
-        ip++;
-        ip++;
+        char* path = (char*)(*ip++);
+        char* as = (char*)(*ip++);
+        printf("OP_IMPORT, \"%s\", \"%s\"\n", path, as);
         break;
       }
       case OP_EXPORT: {
@@ -191,8 +209,10 @@ int inspect_opcode(d_vm* vm) {
         break;
       }
       case OP_EXIT: {
-        printf("OP_EXIT\n");
-        printf("=======================\n");
+        for (i = 0; i < level; i++) {
+          putchar(' ');
+        }
+        printf("OP_EXIT\n=======================\n\n");
         return 0;
       }
       default: {
@@ -203,7 +223,7 @@ int inspect_opcode(d_vm* vm) {
 
     if (*(ip) == 0) return 0;
   }
-  printf("=======================\n");
+  printf("=======================\n\n");
  
 #endif
 

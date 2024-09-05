@@ -7,6 +7,6 @@
 #define __D_OP_INSPECT
 #include "dvm.h"
 
-int inspect_opcode(d_vm* vm);
+int inspect_opcode(drax_value* ip, size_t level);
 
 #endif

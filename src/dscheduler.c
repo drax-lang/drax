@@ -21,7 +21,7 @@ d_vm **global_vms;
 #define INITIAL_SLOTS_VM 2
 
 static void wait(unsigned ms) {
-  DEBUG(printf("scheduler waiting\n"));
+  /*DEBUG(printf("scheduler waiting\n"));*/
   #ifdef __WIN32__
     Sleep(ms);
   #else
@@ -103,33 +103,6 @@ int init_scheduler(d_vm * main_vm) {
   return 0;
 }
 
-static drax_value convert_orphan_frame_to_frame(d_vm *v, drax_value val) {
-  if (!val) return DRAX_NIL_VAL;
-
-  drax_frame* f = CAST_FRAME(val);
-
-  drax_frame* nf = new_dframe(v, f->cap);
-
-  int i;
-  for (i = 0; i < f->length; i++) {
-    if (IS_STRUCT(f->values[i])) {
-      drax_frame* sf = (drax_frame*) convert_orphan_frame_to_frame(v, DS_VAL(f->values[i]));
-      put_value_dframe(nf, f->literals[i], DS_VAL(sf));
-      continue;
-    }
-
-    char* raw_str = f->values[i] ? (char*) f->values[i] : (char*) "";
-    drax_string* s = new_dstring(v, raw_str, strlen(raw_str));
-    put_value_dframe(nf, f->literals[i], DS_VAL(s));
-  }
-  
-  /**
-   * we need to clean unuseds elements
-   * free(f);
-   **/ 
-  return DS_VAL(nf);
-}
-
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 /**
@@ -165,8 +138,7 @@ static void init_process_on_vm(drax_value val, int fd_result, drax_value value2p
          * function incement the local->count.
          */
         zero_new_local_range(el_v, fn->instructions->local_range);
-        drax_value nv2p = convert_orphan_frame_to_frame(el_v, value2push);
-        push(el_v, nv2p);
+        push(el_v, value2push);
 
         el_v->pstatus = VM_STATUS_WORKING;
         break;

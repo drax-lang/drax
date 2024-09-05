@@ -148,6 +148,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_AMP,       process_amper,       NULL,           iTERM),
   make_op_line(DTK_STRING,    process_string,      NULL,           iNONE),
   make_op_line(DTK_DSTRING,   process_dstring,     NULL,           iNONE),
+  make_op_line(DTK_MSTRING,   process_mstring,     NULL,           iNONE),
   make_op_line(DTK_NUMBER,    process_number,      NULL,           iNONE),
   make_op_line(DTK_AND,       NULL,                process_and,    iAND),
   make_op_line(DTK_ELSE,      NULL,                NULL,           iNONE),
@@ -492,6 +493,11 @@ void process_string(d_vm* vm, bool v) {
 void process_dstring(d_vm* vm, bool v) {
   UNUSED(v);
   put_pair(vm, OP_DSTR, DS_VAL(copy_dstring(vm, parser.prev.first + 1, parser.prev.length - 2)));
+}
+
+void process_mstring(d_vm* vm, bool v) {
+  UNUSED(v);
+  put_pair(vm, OP_DSTR, DS_VAL(copy_dstring(vm, parser.prev.first + 3, parser.prev.length - 6)));
 }
 
 void process_variable(d_vm* vm, bool v) {
@@ -882,6 +888,7 @@ int __build__(d_vm* vm, const char* input) {
   if (parser.has_error) {
     return 0;
   }
+  remove_locals_registers(&parser);
 
   put_pair(vm, OP_EXIT, 0xff);
   return 1;

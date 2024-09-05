@@ -276,12 +276,35 @@ d_token next_token() {
       }
 
       case '"': {
+        if (CURR_TOKEN() == '"') {
+          next_char();
+
+          if (CURR_TOKEN() == '"') {
+            int process_string = 1;
+            while (process_string && !IS_EOF()) {
+              next_char();
+              if (CURR_TOKEN() == '"') {
+                next_char();
+                if (CURR_TOKEN() == '"') {
+                  next_char();
+                  if (CURR_TOKEN() == '"') {
+                    next_char();
+                    return dmake_symbol(DTK_MSTRING);
+                  } 
+                }     
+              }
+              
+            }
+
+          }
+          return dmake_symbol(DTK_DSTRING); /**new mark */
+        }
+
         int is_scaped = 0;
-        while (
-          !((CURR_TOKEN() == '"') && (!is_scaped)) &&
-          (!IS_EOF())
-        ) {
+        while (!(CURR_TOKEN() == '"' && !is_scaped) && !IS_EOF()) {
           is_scaped = 0;
+          
+
           if (CURR_TOKEN() == '\n') clexs.line++;
           if (CURR_TOKEN() == '\\') {
             char sc = check_next();
