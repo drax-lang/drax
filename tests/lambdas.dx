@@ -112,4 +112,17 @@ res = l_c('nice!')
 
 assert(res == {one: "drax", two: "lang", three: "is", four: "nice!"}, 'fail to make nested fun')
 
+extrn0 = { val: 123 }
+extrn1 = 123
+extrn2 = 123
+extrn3 = 123
+extrn4 = 123
+
+fun mult_alloc(a,b) do
+    loc = extrn0.val
+    extrn1 + extrn2 + extrn3 + extrn4 + loc + a + b
+end
+
+assert(mult_alloc(1, 2) == 618, "mult_alloc(1, 2) == 618")
+
 print("lambda's done!")

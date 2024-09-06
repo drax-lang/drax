@@ -144,8 +144,9 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         break;
       }
       case OP_AFUN: {
-        printf("AOP_FUN, <value>, <value::bool>\n");
-        drax_function* f = CAST_FUNCTION(*ip);
+        drax_function* f = CAST_FUNCTION(*(ip++));
+        int bb = (*(ip++)) == DRAX_TRUE_VAL;
+        printf("OP_AFUN, extern ref::bool<%d>\n", bb);
         inspect_opcode(f->instructions->values, level + 2);
         ip++;
         ip++;

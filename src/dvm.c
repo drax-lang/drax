@@ -468,13 +468,15 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
 
   *v = DS_VAL(new_fn);
 
-  int i_new = f->instructions->local_range * 2;
+  int i_new = f->arity * 2;
 
-  memcpy(
-    new_fn->instructions->values,
-    f->instructions->values,
-    (f->instructions->local_range * 2) * sizeof(drax_value)
-  );
+  if (i_new > 0) {
+    memcpy(
+      new_fn->instructions->values,
+      f->instructions->values,
+      i_new * sizeof(drax_value)
+    );
+  }
 
   int i;
   for (i = 0; i < f->instructions->extrn_ref_count; i++) {
@@ -512,8 +514,8 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
 
   memcpy(
     new_fn->instructions->values + i_new,
-    f->instructions->values + (f->instructions->local_range * 2),
-    (f->instructions->instr_count - (f->instructions->local_range * 2)) * sizeof(drax_value)
+    f->instructions->values + (f->arity * 2),
+    (f->instructions->instr_count - (f->arity * 2)) * sizeof(drax_value)
   );
 
   /**
@@ -526,9 +528,15 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
     for (j = 0; j < new_fn->instructions->instr_count; j++) {
       if (&f->instructions->values[j] == ip) {
         new_fn->instructions->values[j + (f->instructions->extrn_ref_count * 4)] = OP_GET_L_ID;
+        break;
       }
     }
   }
+
+  DEBUG_OP(printf("build self dep. ------\n"));
+  DEBUG_OP(inspect_opcode(new_fn->instructions->values, 4));
+  DEBUG_OP(printf("end self dep.   ------\n\n"));
+
 
   return 1;
 }
