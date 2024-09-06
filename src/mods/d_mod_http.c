@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 
 #include "d_mod_http.h"
+#include "d_mod_os.h"
 #include "../dstring.h"
 
 drax_value start_http_server(d_vm* vm, char *options[], int* fail) {
@@ -85,8 +86,10 @@ char* receive_http_server(d_vm* vm, drax_value aconf) {
 
   dhttp_server* configs = (dhttp_server*) aconf;
   read(configs->new_socket, buffer, bffsz);
+  char* nc = replace_special_char(buffer);
+  free(buffer);
 
-  return buffer;
+  return nc;
 }
 
 ssize_t send_http_server(d_vm* vm, drax_value aconf, char* s) {

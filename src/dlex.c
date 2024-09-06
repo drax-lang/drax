@@ -304,7 +304,6 @@ d_token next_token() {
         while (!(CURR_TOKEN() == '"' && !is_scaped) && !IS_EOF()) {
           is_scaped = 0;
           
-
           if (CURR_TOKEN() == '\n') clexs.line++;
           if (CURR_TOKEN() == '\\') {
             char sc = check_next();

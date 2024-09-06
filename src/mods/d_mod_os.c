@@ -3,21 +3,50 @@
 
 #define BUF_SIZE 4096
 
-char* replace_special_char(char special, char new, char* str) {
+static char get_eq_char(char c) {
+  switch (c) {
+    case '\n':
+      return 'n';
+
+    case '\r':
+      return 'r';
+
+    case '\\':
+      return '\\';
+
+    case '\0':
+      return '0';
+
+    case '\t':
+      return 't';
+
+  default:
+    return 0;
+  }
+
+  return 0;
+}
+
+char* replace_special_char(char* str) {
   int i, j;
   int len = strlen(str);
   int count = 0;
   
   for (i = 0; i < len; i++) {
-    if (str[i] == special) count++;
+    if (str[i] == '\n') count++;
+    if (str[i] == '\r') count++;
+    if (str[i] == '\\') count++;
+    if (str[i] == '\0') count++;
+    if (str[i] == '\t') count++;
   }
   
   char* n = (char*) malloc(len + count + 1);
   
   for (i = 0, j = 0; i < len; i++, j++) {
-    if (str[i] == special) {
+    char r = get_eq_char(str[i]);
+    if (r != 0) {
       n[j++] = '\\';
-      n[j] = new;
+      n[j] = r;
     }
     else {
       n[j] = str[i];

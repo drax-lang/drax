@@ -61,7 +61,7 @@ static drax_value __d_read(d_vm* vm, int* stat) {
     DX_ERROR_FN(stat);
     return DS_VAL(new_derror(vm, (char *) "Fail to read input"));
   }
-  char* r = replace_special_char('\n', 'n', buff);
+  char* r = replace_special_char(buff);
   free(buff);
   DX_SUCESS_FN(stat);
   return DS_VAL(new_dstring(vm, r, strlen(r)));
@@ -419,7 +419,7 @@ static drax_value __d_cmd(d_vm* vm, int* stat) {
 
   char buf[4096];
   double status = (double) d_command(CAST_STRING(a)->chars, buf, sizeof(buf));
-  char* r = replace_special_char('\n', 'n', buf);
+  char* r = replace_special_char(buf);
 
   if (status != 0) {
     DX_ERROR_FN(stat);
@@ -436,7 +436,7 @@ static drax_value __d_cmd_with_status(d_vm* vm, int* stat) {
 
   char buf[4096];
   double status = (double) d_command(CAST_STRING(a)->chars, buf, sizeof(buf));
-  char* r = replace_special_char('\n', 'n', buf);
+  char* r = replace_special_char(buf);
 
   drax_list* l = new_dlist(vm, 2);
   put_value_dlist(l, AS_VALUE(status));

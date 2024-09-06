@@ -16,7 +16,7 @@
 
 #include "../dvm.h"
 
-char* replace_special_char(char special, char new, char* str);
+char* replace_special_char(char* str);
 
 int d_command(const char *command, char *output, int output_size);
 
