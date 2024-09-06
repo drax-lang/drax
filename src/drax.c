@@ -24,7 +24,7 @@ static int interactive_shell(d_vm* v) {
       char* input = b_read_content();
     #endif
     
-    if (__build__(v, input)) {
+    if (__build__(v, input, NULL)) {
       __run__(v, 1);
     }
 
@@ -44,7 +44,7 @@ static int process_file(d_vm* v, char** argv) {
     return 1;
   }
 
-  if (__build__(v, content)) {
+  if (__build__(v, content, path)) {
     stat = __run__(v, 0);
   } else {
     stat = 1;

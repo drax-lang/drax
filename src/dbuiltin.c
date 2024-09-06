@@ -576,14 +576,17 @@ static drax_value __d_frame_merge(d_vm* vm, int* stat) {
   drax_frame* f2 = CAST_FRAME(b);
 
   drax_frame* nf1 = new_dframe(vm, f1->length);
-  nf1->length = f1->length;
-  memcpy(nf1->keys, f1->keys, f1->length * sizeof(int));
-  memcpy(nf1->literals, f1->literals, f1->length * sizeof(char*));
-  memcpy(nf1->values, f1->values, f1->length * sizeof(drax_value));
+  
+  if (f1->length > 0) {
+    nf1->length = f1->length;  
+    memcpy(nf1->keys, f1->keys, f1->length * sizeof(int));
+    memcpy(nf1->literals, f1->literals, f1->length * sizeof(char*));
+    memcpy(nf1->values, f1->values, f1->length * sizeof(drax_value));
+  }
 
   int i;
   for(i = 0; i < f2->length; i++) {
-    if(strcmp(f2->literals[i], nf1->literals[i]) == 0) {
+    if((nf1->length > i) && (strcmp(f2->literals[i], nf1->literals[i]) == 0)) {
       nf1->keys[i] = f2->keys[i];
       nf1->values[i] = f2->values[i];
     } else {

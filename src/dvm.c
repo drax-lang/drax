@@ -95,7 +95,10 @@ static void trace_error(d_vm* vm) {
     d_instructions* instr = vm->active_instr; \
     if (instr) { \
       int idx = vm->ip - instr->values -1; \
-      if (instr->lines[idx] != last_line) {\
+      if (vm->active_instr->file != NULL) {\
+        printf(TRACE_DESCRIPTION_LINE_PATH, vm->active_instr->file, instr->lines[idx]);\
+        putchar('\n'); \
+      }else if (instr->lines[idx] != last_line) {\
       fprintf(stderr, TRACE_DESCRIPTION_LINE, instr->lines[idx]); \
       putchar('\n');} \
       last_line = instr->lines[idx]; \
@@ -400,7 +403,7 @@ static int import_file(d_vm* vm, char* p, char * n) {
   d_vm* itvm = ligth_based_createVM(vm, -2, 1, 1);
 
   int stat = 0;
-  if (__build__(itvm, content)) {
+  if (__build__(itvm, content, p)) {
     stat = __run__(itvm, 0);
   } else {
     return 1;
@@ -433,6 +436,7 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
   new_fn->name = f->name;
   new_fn->arity = f->arity;
 
+  new_fn->instructions->file = f->instructions->file;
   new_fn->instructions->lines = f->instructions->lines;
   new_fn->instructions->local_range = f->instructions->local_range + f->instructions->extrn_ref_count;
   new_fn->instructions->extrn_ref_count = 0;
@@ -536,7 +540,6 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
   DEBUG_OP(printf("build self dep. ------\n"));
   DEBUG_OP(inspect_opcode(new_fn->instructions->values, 4));
   DEBUG_OP(printf("end self dep.   ------\n\n"));
-
 
   return 1;
 }

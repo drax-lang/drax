@@ -16,8 +16,6 @@ print("-----------")
 
 print("")
 
-print("Print done!")
-
 mul = fun(value) do value * 2 end
 result =
 10
@@ -26,3 +24,5 @@ result =
 |> inspect()
 
 assert(result == 20, "inspect error: inspect(20)")
+
+print("Print done!")

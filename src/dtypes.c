@@ -24,6 +24,7 @@ d_instructions* new_instructions() {
   d_instructions* i = (d_instructions*) malloc(sizeof(d_instructions));
   i->instr_size = MAX_INSTRUCTIONS;
   i->instr_count = 0;
+  i->file = NULL;
   i->lines = (int*) malloc(sizeof(int) * MAX_INSTRUCTIONS);
   i->values = (drax_value*) malloc(sizeof(drax_value) * MAX_INSTRUCTIONS);
   i->local_range = 0;

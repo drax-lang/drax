@@ -19,7 +19,7 @@ static void print_frame(drax_frame* f) {
   putchar('{');
   int i;
   for (i = 0; i < f->length; i++) {
-    printf("%s: ", f->literals[i]);
+    printf("'%s': ", f->literals[i]);
     print_drax(f->values[i], 1);
 
     if ((i+1) < f->length) printf(", ");

@@ -67,7 +67,7 @@ typedef struct parser_builder {
   int curr_level;
 } parser_builder;
 
-int __build__(d_vm* vm, const char* input);
+int __build__(d_vm* vm, const char* input, char* path);
 
 drax_value process_arguments(d_vm* vm);
 

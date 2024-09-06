@@ -131,6 +131,7 @@ typedef struct d_instructions {
   drax_value* values;
   int instr_count;
   int instr_size;
+  char* file;
   int* lines;
   int local_range; /* used by local definitions */
 

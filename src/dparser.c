@@ -535,8 +535,10 @@ void process_variable(d_vm* vm, bool v) {
   }
 
   if (eq_and_next(DTK_PAR_OPEN)) {
-    drax_value arg_count = process_arguments(vm) + parser.is_pipe;
+    int _ispipe = parser.is_pipe;
     DISABLE_PIPE_PROCESS();
+    drax_value arg_count = process_arguments(vm) + _ispipe;
+
     put_pair(vm, OP_PUSH, (drax_value) name);
     put_pair(vm, is_global ? OP_CALL_G : OP_CALL_L, arg_count);
     return;
@@ -642,6 +644,7 @@ void create_function(d_vm* vm, bool is_internal, bool is_single_line) {
 
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
+  f->instructions->file = vm->active_instr->file;
   vm->active_instr = f->instructions;
   new_locals_register(&parser);
 
@@ -785,8 +788,9 @@ drax_value process_arguments(d_vm* vm) {
 
 void process_call(d_vm* vm, bool v) {
   UNUSED(v);
-  drax_value arg_count = process_arguments(vm) + parser.is_pipe;
+  int _ispipe = parser.is_pipe;
   DISABLE_PIPE_PROCESS();
+  drax_value arg_count = process_arguments(vm) + _ispipe;
   put_pair(vm, OP_D_CALL, arg_count);
 }
 
@@ -800,12 +804,13 @@ void process_dot(d_vm* vm, bool v) {
 
   if (eq_and_next(DTK_PAR_OPEN)) {
     /**
-     *  function calls inside elements
+     *  function calls inside elements 
      */
-    drax_value arg_count = process_arguments(vm) + parser.is_pipe;
-    put_pair(vm, OP_PUSH, (drax_value) k);
-    put_pair(vm, parser.is_pipe ? OP_CALL_IP : OP_CALL_I, arg_count);
+    int _ispipe = parser.is_pipe;
     DISABLE_PIPE_PROCESS();
+    drax_value arg_count = process_arguments(vm) + _ispipe;
+    put_pair(vm, OP_PUSH, (drax_value) k);
+    put_pair(vm, _ispipe ? OP_CALL_IP : OP_CALL_I, arg_count);
   } else if (eq_and_next(DTK_EQ)) {
     expression(vm);
     put_pair(vm, OP_PUSH, (drax_value) k);
@@ -872,9 +877,11 @@ void process_if(d_vm* vm, bool v) {
   process_token(DTK_END, "Expect 'end' after if definition.");
 }
 
-int __build__(d_vm* vm, const char* input) {
+int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_parser(vm);
+
+  vm->active_instr->file = path;
 
   parser.has_error = false;
   parser.panic_mode = false;

@@ -45,7 +45,8 @@
 #define CURR_CALLSTACK_SIZE(vm) vm->call_stack->count
 
 /* Trace messages */
-#define TRACE_DESCRIPTION_LINE "  line: %d "
+#define TRACE_DESCRIPTION_LINE      "  line: %d"
+#define TRACE_DESCRIPTION_LINE_PATH "  %s:%d"
 
 /* Common messages */
 #define MSG_NAME_IS_NOT_DEFINED    "'%s' is not defined."

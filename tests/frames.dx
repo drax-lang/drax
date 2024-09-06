@@ -61,6 +61,8 @@ assert(Frame.has_key(ff, "d"), "frame error: has_key(ff, d)")
 # Merge
 ff2 = { a: 15, c: 11, e: 12 }
 
+assert(Frame.merge({}, ff2) == { a: 15, c: 11, e: 12 }, "frame error: merge({}, ff2)")
+
 expected = { a: 15, b: 15, c: 11, d: 25, e: 12 }
 assert(Frame.merge(ff, ff2) == expected, "frame error: merge(ff, ff2)")
 

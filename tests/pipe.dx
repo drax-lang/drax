@@ -1,5 +1,25 @@
-fun calc(a, b, c) do
+fun mount(a, b, c) do
     [a, b, c]
 end
 
-print(1 |> calc(5, 6))
+assert((1 |> mount(5, 6)) == [1, 5, 6], "(1 |> mount(5, 6)) == [1, 5, 6]")
+
+fun other(a, b) do
+    [a, b]
+end
+
+val = 123
+
+r =
+    val
+    |> mount(1, 2)
+    |> other(fun () do 
+        fun () do 
+            fun () do 123 end
+        end
+    end)
+
+assert(r[0] == [123, 1, 2], 'r[0] = [123, 1, 2]')
+assert(r[1]()()() == 123, 'r[1]()()() == 123')
+
+print('Pipe done!')
