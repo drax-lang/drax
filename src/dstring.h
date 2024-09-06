@@ -21,6 +21,22 @@ char* strndup(const char *s, size_t n);
 
 char* str_format_output(const char* str);
 
+drax_value dstr_to_number(d_vm* vm, int* stat);
+
+drax_value dstr_split(d_vm *vm, int* stat);
+
+drax_value dstr_length(d_vm* vm, int* stat);
+
+drax_value dstr_copy(d_vm* vm, int* stat);
+
+drax_value dstr_copy2(d_vm* vm, int* stat);
+
+drax_value dstr_get(d_vm* vm, int* stat);
+
+drax_value dstr_to_uppercase(d_vm* vm, int* stat);
+
+drax_value dstr_to_lowercase(d_vm* vm, int* stat);
+
 int dstr_handle_str_call(d_vm* vm, char* n, int a, drax_value o);
 
 #endif

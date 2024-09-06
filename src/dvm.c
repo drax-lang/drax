@@ -308,7 +308,7 @@ static int do_dcall_inside(d_vm* vm, char* n, int a, drax_value m) {
     push(vm, result);
     return STATUS_DCALL_SUCCESS;
   }
-  
+
   if (IS_STRING(m)) {
     return dstr_handle_str_call(vm, n, a, m);
   }

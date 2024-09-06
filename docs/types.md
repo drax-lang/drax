@@ -54,7 +54,7 @@ or manipulate these characters with some native functions:
 
 Examples: 
 ```drax
-  > "foo\nbar".split("\n")
+  > String.split("foo\nbar", "\n")
   ["foo", "bar"]
 ```
 
@@ -62,7 +62,7 @@ Examples:
 
 Examples: 
 ```drax
-  > "drax".length
+  > String.length("drax")
   4
 ```
 
@@ -70,7 +70,7 @@ Examples:
 
 Examples: 
 ```drax
-  > "123".to_number()
+  > String.to_number("123")
   123
 ```
 
@@ -85,22 +85,22 @@ This function has two arguments:
 
 Examples: 
 ```drax
-  > "drax lang".copy(0)
+  > String.copy("drax lang", 0)
   "d"
 
-  > "drax lang".copy(0, 4)
+  > String.copy("drax lang", 0, 4)
   "drax"
 
-  > "drax lang".copy(-4, 4)
+  > String.copy("drax lang", -4, 4)
   "lang"
 
-  > "drax lang".copy(0, 0)
+  > String.copy("drax lang", 0, 0)
   ""
 ```   
 **get**: this function returns the character of the index that is passed as an argument.
 however it is much more common to use `[` ` ]` which internally maps to the `get` function
 ```drax
-  > "drax lang".get(0)
+  > String.get("drax lang", 0)
   "d"
 
   > "drax lang"[0]
