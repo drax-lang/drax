@@ -873,6 +873,130 @@ static drax_value __d_list_is_present(d_vm* vm, int* stat) {
   return l->length ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
 }
 
+static drax_value __d_list_remove_at(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+  return_if_is_not_number(b, stat);
+
+  drax_list* l = CAST_LIST(a);
+  int at = (int) CAST_NUMBER(b);
+  at = at < 0 ? l->length + at : at;
+
+  if(at >= l->length) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dlist(vm, 0));
+  }
+
+  drax_list* nl = new_dlist(vm, l->length - 1);
+  nl->length = l->length - 1;
+
+  memcpy(nl->elems, l->elems, at * sizeof(drax_value));
+  memcpy(nl->elems + at, l->elems + at + 1, (nl->length - at) * sizeof(drax_value));
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_list_insert_at(d_vm* vm, int* stat) {
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+  return_if_is_not_number(b, stat);
+
+  drax_list* l = CAST_LIST(a);
+  int at = (int) CAST_NUMBER(b);
+  at = at < 0 ? l->length + at : at;
+
+  if(at >= l->length) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dlist(vm, 0));
+  }
+
+  drax_list* nl = new_dlist(vm, l->length + 1);
+  nl->length = l->length + 1;
+
+  memcpy(nl->elems, l->elems, at * sizeof(drax_value));
+  memcpy(&nl->elems[at], &c, sizeof(drax_value));
+  memcpy(nl->elems + at + 1, l->elems + at, (l->length - at) * sizeof(drax_value));
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_list_replace_at(d_vm* vm, int* stat) {
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+  return_if_is_not_number(b, stat);
+
+  drax_list* l = CAST_LIST(a);
+  int at = (int) CAST_NUMBER(b);
+  at = at < 0 ? l->length + at : at;
+
+  if(at >= l->length) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dlist(vm, 0));
+  }
+  
+  drax_list* nl = new_dlist(vm, l->length);
+  nl->length = l->length;
+
+  memcpy(nl->elems, l->elems, at * sizeof(drax_value));
+  memcpy(&nl->elems[at], &c, sizeof(drax_value));
+  memcpy(nl->elems + at + 1, l->elems + at + 1, (l->length - at - 1) * sizeof(drax_value));
+  
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_list_slice(d_vm* vm, int* stat) {
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+  return_if_is_not_number(b, stat);
+
+  drax_list* l = CAST_LIST(a);
+  int from = (int) CAST_NUMBER(b);
+  int to = (int) CAST_NUMBER(c);
+
+  from = from < 0 ? l->length + from : from;
+  to = to < 0 ? l->length + to : to;
+
+  if(to <= from || from >= l->length || to > l->length) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dlist(vm, 0));
+  }
+
+  drax_list* nl = new_dlist(vm, abs(to - from));
+  nl->length = abs(to - from);
+
+  memcpy(nl->elems, l->elems + from, abs(to - from) * sizeof(drax_value));
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_list_sum(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+
+  drax_list* l = CAST_LIST(a);
+  double res = 0;
+
+  int i;
+  for(i = 0; i < l->length; i++) {
+    return_if_is_not_number(l->elems[i], stat);
+    res += CAST_NUMBER(l->elems[i]);
+  }
+
+  DX_SUCESS_FN(stat);
+  return AS_VALUE(res);
+}
+
 /**
  * TCPServer calls
  */
@@ -1026,7 +1150,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * Number module
    */
-  drax_native_module* number = new_native_module(vm, "Number", 2);
+  drax_native_module* number = new_native_module(vm, "Number", 1);
   const drax_native_module_helper number_helper[] = {
     {1, "to_string", __d_number_to_string }
   };
@@ -1060,7 +1184,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * List Module
    */ 
-  drax_native_module* list = new_native_module(vm, "List", 6);
+  drax_native_module* list = new_native_module(vm, "List", 11);
   const drax_native_module_helper list_helper[] = {
     {2, "concat", __d_list_concat },
     {1, "head", __d_list_head},
@@ -1068,6 +1192,11 @@ void create_native_modules(d_vm* vm) {
     {1, "length", __d_list_length},
     {1, "is_empty", __d_list_is_empty},
     {1, "is_present", __d_list_is_present},
+    {2, "remove_at", __d_list_remove_at},
+    {3, "insert_at", __d_list_insert_at},
+    {3, "replace_at", __d_list_replace_at},
+    {3, "slice", __d_list_slice},
+    {1, "sum", __d_list_sum},
   };
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
