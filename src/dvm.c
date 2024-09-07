@@ -442,6 +442,14 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
   new_fn->instructions->extrn_ref_count = 0;
   new_fn->instructions->_ip = f->instructions->_ip;
 
+  int i;
+  int qtt_n_inst = 0;/** we can ignore loop and alloc 4 ever */
+  for (i = 0; i < f->instructions->extrn_ref_count; i++) {
+    drax_value* ip = f->instructions->extrn_ref[i];
+    if (*(ip) == OP_GET_G_ID) { qtt_n_inst += 4; }
+    if (*(ip) == OP_GET_REF) { qtt_n_inst  += 3; }
+  }
+
   /**
    * For each "OP_GET_G_ID" operation, four more slots are
    * generated for commands.
@@ -459,7 +467,7 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
    * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value | ... | OP_GET_L_ID | drax_value ]
    */
   new_fn->instructions->instr_count = 
-    f->instructions->instr_count + (f->instructions->extrn_ref_count * 4);
+    f->instructions->instr_count + qtt_n_inst;
   
   if (new_fn->instructions->instr_size < new_fn->instructions->instr_count) {
     new_fn->instructions->instr_size = new_fn->instructions->instr_count + 1;
@@ -482,16 +490,14 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
     );
   }
 
-  int i;
   for (i = 0; i < f->instructions->extrn_ref_count; i++) {
     drax_value* ip = f->instructions->extrn_ref[i];
 
-    if (*(ip) == OP_GET_G_ID) {
       drax_value gv = *(ip + 1);
       char* k = (char*) gv;
-
       drax_value rv;
 
+    if (*(ip) == OP_GET_G_ID) {
       if (
         (get_mod_table(vm->envs->modules, k, &rv) == 0) &&
         (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &rv) == 0)
@@ -500,6 +506,21 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
           raise_drax_error(vm, _L_MSG_NOT_DEF, k);
           return 0;
         }
+      }
+    } else if (*(ip) == OP_GET_REF) {
+      int a = (int) AS_NUMBER(*(ip + 2));
+      rv = get_fun_table(vm->envs->native, k, a);
+      if (rv == 0) {
+        rv = get_fun_table(vm->envs->functions, k, a);
+      
+        if (rv == 0) {
+          raise_drax_error(vm, "error: function '%s/%d' is not defined\n", k, a);
+          return 1;
+        }
+      }
+    } else {
+      raise_drax_error(vm, "runtime error: unspected OP on factory");
+      return 0;
     }
 
     /**
@@ -509,29 +530,29 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
     new_fn->instructions->values[i_new++] = rv;
     new_fn->instructions->values[i_new++] = OP_SET_L_ID;
     new_fn->instructions->values[i_new++] = (drax_value) k;
-
-    } else {
-      raise_drax_error(vm, "runtime error: unspected OP on factory");
-      return 0;
-    }
   }
 
-  memcpy(
-    new_fn->instructions->values + i_new,
-    f->instructions->values + (f->arity * 2),
-    (f->instructions->instr_count - (f->arity * 2)) * sizeof(drax_value)
-  );
-
   /**
-   * Updated OP_GET_G_ID to OP_GET_L_ID
+   * Copy instructions and updated
+   * OP_GET_G_ID to OP_GET_L_ID.
    */
   int j;
-  for (i = 0; i < f->instructions->extrn_ref_count; i++) {
-    drax_value* ip = f->instructions->extrn_ref[i];
+  int old_i = (f->arity * 2); 
 
-    for (j = 0; j < new_fn->instructions->instr_count; j++) {
-      if (&f->instructions->values[j] == ip) {
-        new_fn->instructions->values[j + (f->instructions->extrn_ref_count * 4)] = OP_GET_L_ID;
+  for (i = i_new; i < new_fn->instructions->instr_count; i++, old_i++) {
+    new_fn->instructions->values[i] = f->instructions->values[old_i];
+
+    for (j = 0; j < f->instructions->extrn_ref_count; j++) {
+      drax_value* ip = f->instructions->extrn_ref[j];
+      if (&f->instructions->values[old_i] == ip) {/* change to new_fn */
+        if (*(ip) == OP_GET_REF) {
+          new_fn->instructions->values[i++] = OP_GET_L_ID;
+          old_i++; /* discart OP_GET_REF */
+          new_fn->instructions->values[i++] = f->instructions->values[old_i++];
+          old_i++; /* discart args */
+        } else {
+          new_fn->instructions->values[i] = OP_GET_L_ID;
+        }
         break;
       }
     }

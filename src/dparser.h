@@ -22,6 +22,7 @@ typedef struct d_local_registers {
 typedef struct parser_state {
   d_token current;
   d_token prev;
+  char* file;
 
   d_local_registers** locals;
   int locals_length;
