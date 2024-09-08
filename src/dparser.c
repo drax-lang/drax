@@ -162,6 +162,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_EOF,       NULL,                NULL,           iNONE),
   make_op_line(DTK_CONCAT,    NULL,                process_binary, iTERM),
   make_op_line(DTK_ID,        process_variable,    NULL,           iNONE),
+  make_op_line(DTK_RETURN,    process_return,      NULL,           iNONE),
   make_op_line(DTK_IMPORT,    process_import,      NULL,           iNONE),
   make_op_line(DTK_EXPORT,    process_export,      NULL,           iNONE),
 };
@@ -586,6 +587,12 @@ void process_import(d_vm* vm, bool v) {
   put_instruction(vm, (drax_value) alias);
 }
 
+void process_return(d_vm* vm, bool v) {
+  UNUSED(v);
+  expression(vm);
+  put_instruction(vm, (drax_value) OP_RETURN);
+}
+
 void process_export(d_vm* vm, bool v) {
   UNUSED(v);
   
@@ -883,9 +890,10 @@ int __build__(d_vm* vm, const char* input, char* path) {
 
   vm->active_instr->file = path;
 
-
-  parser.file = (char*) malloc(sizeof(char) * strlen(path) + 1);
-  strcpy(parser.file, path);
+  if (path != NULL) {
+    parser.file = (char*) malloc(sizeof(char) * strlen(path) + 1);
+    strcpy(parser.file, path);
+  }
 
   parser.has_error = false;
   parser.panic_mode = false;

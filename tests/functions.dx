@@ -206,4 +206,26 @@ end
 
 assert(sub_function(5, 15)()()()()()()(5, 6, 8) == 39, "sub_function(5, 15)()()()()()()(5, 6, 8) == 39")
 
+fun test_return(arg) do
+
+    if (arg == 'one') do
+        return "my one"
+    end
+
+    if (arg == 'two') do
+        return "my two"
+    end
+
+    if (arg == 'three') do
+        return "my three"
+    end
+
+    "unspected value"
+end
+
+assert(test_return('one') == 'my one', "test_return('one') == 'my one'")
+assert(test_return('two') == 'my two', "test_return('two') == 'my two'")
+assert(test_return('three') == 'my three', "test_return('three') == 'my three'")
+assert(test_return('none') == 'unspected value', "test_return('none') == 'unspected value'")
+
 print("Functions done!")

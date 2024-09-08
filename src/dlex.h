@@ -36,6 +36,9 @@ typedef enum dlex_types {
   /* modules */
   DTK_IMPORT, DTK_EXPORT,
 
+  /* return */
+  DTK_RETURN,
+
   /* errors */
   DTK_ERROR,
   

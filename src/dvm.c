@@ -95,12 +95,14 @@ static void trace_error(d_vm* vm) {
     d_instructions* instr = vm->active_instr; \
     if (instr) { \
       int idx = vm->ip - instr->values -1; \
-      if (vm->active_instr->file != NULL) {\
-        printf(TRACE_DESCRIPTION_LINE_PATH, vm->active_instr->file, instr->lines[idx]);\
-        putchar('\n'); \
-      }else if (instr->lines[idx] != last_line) {\
-      fprintf(stderr, TRACE_DESCRIPTION_LINE, instr->lines[idx]); \
-      putchar('\n');} \
+      if (instr->lines[idx] != 0 && instr->lines[idx] != last_line) {\
+        if (vm->active_instr->file != NULL) {\
+          printf(TRACE_DESCRIPTION_LINE_PATH, vm->active_instr->file, instr->lines[idx]);\
+          putchar('\n'); \
+        } else {\
+          fprintf(stderr, TRACE_DESCRIPTION_LINE, instr->lines[idx]); \
+          putchar('\n');} \
+      }\
       last_line = instr->lines[idx]; \
     }
 
