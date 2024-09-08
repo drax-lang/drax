@@ -186,7 +186,9 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         break;
       }
       case OP_GET_REF: {
-        printf("OP_GET_REF\n");
+        char* s = (char*)(*ip);
+        printf("OP_GET_REF, \"%s\"\n", s);
+        ip++;
         ip++;
         break;
       }

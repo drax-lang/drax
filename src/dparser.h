@@ -22,6 +22,7 @@ typedef struct d_local_registers {
 typedef struct parser_state {
   d_token current;
   d_token prev;
+  char* file;
 
   d_local_registers** locals;
   int locals_length;
@@ -96,6 +97,7 @@ callback_table(process_pipe);
 callback_table(process_call);
 callback_table(process_if);
 callback_table(process_do);
+callback_table(process_return);
 
 void dfatal(d_token* token, const char* message);
 

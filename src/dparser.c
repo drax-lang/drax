@@ -162,6 +162,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_EOF,       NULL,                NULL,           iNONE),
   make_op_line(DTK_CONCAT,    NULL,                process_binary, iTERM),
   make_op_line(DTK_ID,        process_variable,    NULL,           iNONE),
+  make_op_line(DTK_RETURN,    process_return,      NULL,           iNONE),
   make_op_line(DTK_IMPORT,    process_import,      NULL,           iNONE),
   make_op_line(DTK_EXPORT,    process_export,      NULL,           iNONE),
 };
@@ -220,7 +221,7 @@ static void process_external_ref(d_vm* vm) {
    * records references to variables outside of lambda, but which 
    * are not global, to be resolved at factory time
    */
-  drax_value* ip = &vm->active_instr->values[vm->active_instr->instr_count -2];
+  drax_value* ip = &vm->active_instr->values[vm->active_instr->instr_count - 2];
   vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
 }
 
@@ -517,7 +518,7 @@ void process_variable(d_vm* vm, bool v) {
     double value = strtod(parser.prev.first, &endptr);
 
     put_pair(vm, OP_GET_REF, (drax_value) name);
-    /*process_external_ref(vm); // get last - 2 */
+    process_external_ref(vm);
     put_instruction(vm, num_to_draxvalue(value));
     DISABLE_REFR_PROCESS();
     return;
@@ -584,6 +585,12 @@ void process_import(d_vm* vm, bool v) {
   alias[ctk.length] = '\0';
 
   put_instruction(vm, (drax_value) alias);
+}
+
+void process_return(d_vm* vm, bool v) {
+  UNUSED(v);
+  expression(vm);
+  put_instruction(vm, (drax_value) OP_RETURN);
 }
 
 void process_export(d_vm* vm, bool v) {
@@ -883,6 +890,11 @@ int __build__(d_vm* vm, const char* input, char* path) {
 
   vm->active_instr->file = path;
 
+  if (path != NULL) {
+    parser.file = (char*) malloc(sizeof(char) * strlen(path) + 1);
+    strcpy(parser.file, path);
+  }
+
   parser.has_error = false;
   parser.panic_mode = false;
 
@@ -904,7 +916,7 @@ int __build__(d_vm* vm, const char* input, char* path) {
 void dfatal(d_token* token, const char* message) {
   if (parser.panic_mode) return;
   parser.panic_mode = true;
-  fprintf(stderr, "Error, line %d:\n", token->line);
+  fprintf(stderr, "Error, '%s:%d'\n", parser.file, token->line);
 
   if (token->type == DTK_EOF) {
     fprintf(stderr, "  end of file");
