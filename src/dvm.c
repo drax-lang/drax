@@ -431,10 +431,10 @@ static int import_file(d_vm* vm, char* p, char * n) {
  * generates a new function, solving variables 
  * outside the scope.
  */
-static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
+static int build_self_dep_fn(d_vm* vm, drax_value* v) {
   drax_function* f = CAST_FUNCTION(*v);
   drax_function* new_fn = new_function(vm);
-
+  
   new_fn->name = f->name;
   new_fn->arity = f->arity;
 
@@ -560,9 +560,9 @@ static int buid_self_dep_fn(d_vm* vm, drax_value* v) {
     }
   }
 
-  DEBUG_OP(printf("build self dep. ------\n"));
-  DEBUG_OP(inspect_opcode(new_fn->instructions->values, 4));
-  DEBUG_OP(printf("end self dep.   ------\n\n"));
+  DEBUG_OP(printf("after: build self dep. *******\n"));
+  DEBUG_OP(inspect_opcode(new_fn->instructions->values, 8));
+  DEBUG_OP(printf("end **************************\n\n"));
 
   return 1;
 }
@@ -897,7 +897,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
            * 
            * Used by export routines
            */
-          if(buid_self_dep_fn(vm, &v) == 0) { return 1; }
+          if(build_self_dep_fn(vm, &v) == 0) { return 1; }
         }
         put_fun_table(vm->envs->functions, v);
         break;
@@ -920,7 +920,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
            * This routine will replace the external
            * references on lambda.
            */
-          if(buid_self_dep_fn(vm, &v) == 0) { return 1; }
+          if(build_self_dep_fn(vm, &v) == 0) { return 1; }
         }
         push(vm, v);
         break;
@@ -928,7 +928,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       VMCase(OP_IMPORT) {
         drax_value p = GET_VALUE(vm);
         drax_value n = GET_VALUE(vm);
-        import_file(vm, (char*) p, (char*) n);
+        if (import_file(vm, (char*) p, (char*) n)) return 1;
         break;
       }
       VMCase(OP_EXPORT) {
