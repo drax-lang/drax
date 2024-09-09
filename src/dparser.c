@@ -145,7 +145,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_LS,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LE,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_PIPE,      NULL,                process_pipe,   iTERM),
-  make_op_line(DTK_AMP,       process_amper,       NULL,           iTERM),
+  make_op_line(DTK_AMP,       process_amper,       NULL,           iNONE),
   make_op_line(DTK_STRING,    process_string,      NULL,           iNONE),
   make_op_line(DTK_DSTRING,   process_dstring,     NULL,           iNONE),
   make_op_line(DTK_MSTRING,   process_mstring,     NULL,           iNONE),
@@ -374,9 +374,23 @@ void process_pipe(d_vm* vm, bool v) {
 }
 
 void process_amper(d_vm* vm, bool v) {
-  ENABLE_REFR_PROCESS();
   UNUSED(v);
-  expression(vm);
+  if (eq_and_next(DTK_PAR_OPEN)) {
+    int _ispipe = parser.is_pipe;
+    DISABLE_PIPE_PROCESS();
+
+    if (parser.active_fun == 0) {
+      FATAL("call out of scope.");
+    }
+
+    put_pair(vm, OP_PUSH, parser.active_fun);
+    drax_value arg_count = process_arguments(vm) + _ispipe;
+    put_pair(vm, OP_D_CALL, arg_count);
+  } else {
+    ENABLE_REFR_PROCESS();
+    expression(vm);
+  }
+
 }
 
 void literal_translation(d_vm* vm, bool v) {
@@ -675,6 +689,7 @@ void create_function(d_vm* vm, bool is_internal, bool is_single_line) {
 
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
+  parser.active_fun = (drax_value) f;
   f->instructions->file = vm->active_instr->file;
   vm->active_instr = f->instructions;
   new_locals_register(&parser);
@@ -793,6 +808,7 @@ void create_function(d_vm* vm, bool is_internal, bool is_single_line) {
    * has external references.
    */
   put_instruction(vm, f->instructions->extrn_ref_count > 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
+  parser.active_fun = 0;
 }
 
 void process_function(d_vm* vm, bool v) {
@@ -919,6 +935,7 @@ int __build__(d_vm* vm, const char* input, char* path) {
 
   parser.has_error = false;
   parser.panic_mode = false;
+  parser.active_fun = 0;
 
   get_next_token();
 

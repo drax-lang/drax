@@ -228,4 +228,31 @@ assert(test_return('two') == 'my two', "test_return('two') == 'my two'")
 assert(test_return('three') == 'my three', "test_return('three') == 'my three'")
 assert(test_return('none') == 'unspected value', "test_return('none') == 'unspected value'")
 
+## self operator
+fun callme(a) do
+    if (a > 10) do
+        return a
+    end
+    &(a + 1)
+end
+
+r = callme(0)
+
+assert(r == 11, "r == 11")
+
+## self operator with anonymous function
+fr = {
+    callback: fun(a) do
+        if (a > 10) do
+            return a
+        end
+        &(a + 1)
+    end
+}
+
+r = fr.callback(0)
+
+assert(r == 11, "r == 11")
+
+
 print("Functions done!")
