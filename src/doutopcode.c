@@ -186,10 +186,9 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         break;
       }
       case OP_GET_REF: {
-        char* s = (char*)(*ip);
-        printf("OP_GET_REF, \"%s\"\n", s);
-        ip++;
-        ip++;
+        char* s = (char*)(*ip++);
+        int a = (int) AS_NUMBER((*ip++));
+        printf("OP_GET_REF, \"%s\", %d\n", s, a);
         break;
       }
       case OP_GET_REFI: {
@@ -209,7 +208,7 @@ int inspect_opcode(drax_value* _ip, size_t level) {
       }
       case OP_RETURN: {
         printf("OP_RETURN\n");
-        break;
+        return 0;
       }
       case OP_EXIT: {
         for (i = 0; i < level; i++) {
