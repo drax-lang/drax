@@ -188,10 +188,16 @@ static void put_instruction(d_vm* vm, drax_value o) {
 
   if (vm->active_instr->instr_count >= vm->active_instr->instr_size) {
     drax_value* f_before = &vm->active_instr->values[0];
-  
+    drax_value* new_val;
+
     vm->active_instr->instr_size = vm->active_instr->instr_size + MAX_INSTRUCTIONS;
-    vm->active_instr->values = (drax_value*) realloc(vm->active_instr->values, sizeof(drax_value) * vm->active_instr->instr_size);
+    new_val = (drax_value*) realloc(vm->active_instr->values, sizeof(drax_value) * vm->active_instr->instr_size);
     vm->active_instr->lines = (int*) realloc(vm->active_instr->lines, sizeof(int) * vm->active_instr->instr_size);
+
+    if (NULL == new_val) {
+      FATAL_CURR("Failed to expand instruction block");
+      return;
+    }
 
     /**
      * Update external ref references after realloc
@@ -199,12 +205,30 @@ static void put_instruction(d_vm* vm, drax_value o) {
      * This change will affect all nested lambdas, 
      * as they share references.
      */
-    drax_value* f_after = &vm->active_instr->values[0];
-    int i;
-    for (i = 0; i < vm->active_instr->extrn_ref_count; i++) {
-      int offset = vm->active_instr->extrn_ref[i] - f_before;
-      vm->active_instr->extrn_ref[i] = f_after + offset;
+    drax_value* f_after = &new_val[0];
+    int offset = f_after - f_before;
+    drax_value* f_before_end = &vm->active_instr->values[vm->active_instr->instr_count -2];
+
+    if (offset != 0)  {
+      int i;
+      for (i = 0; i < vm->active_instr->extrn_ref_count; i++) {
+
+        /**
+         * checks if the value belongs to the 
+         * changed block.
+         */
+        if (
+          vm->active_instr->extrn_ref[i] > f_before &&
+          vm->active_instr->extrn_ref[i] < f_before_end
+        ) {
+          drax_value* ite = (drax_value*) vm->active_instr->extrn_ref[i] + offset;
+          vm->active_instr->extrn_ref[i] = ite;
+        }
+
+      }
     }
+
+    vm->active_instr->values = new_val;
   }
 
   vm->active_instr->lines[vm->active_instr->instr_count -1] = parser.prev.line;
@@ -761,9 +785,7 @@ void create_function(d_vm* vm, bool is_internal, bool is_single_line) {
         vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
       }
     }
-
   }
-
   put_pair(vm, is_anonymous ? OP_AFUN : OP_FUN, DS_VAL(f));
   
   /**

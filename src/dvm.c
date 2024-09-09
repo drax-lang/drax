@@ -517,7 +517,7 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
       
         if (rv == 0) {
           raise_drax_error(vm, "error: function '%s/%d' is not defined\n", k, a);
-          return 1;
+          return 0;
         }
       }
     } else {
