@@ -57,6 +57,7 @@ static void dgc_safe_free(drax_value v) {
       drax_function* ff = CAST_FUNCTION(v);
       free(ff->instructions->values);
       free(ff->instructions);
+      free(ff->instructions->extrn_ref);
     }
 
     free(sct);

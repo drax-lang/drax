@@ -756,6 +756,8 @@ void create_function(d_vm* vm, bool is_internal, bool is_single_line) {
       }
     }
 
+    free(stack_args);
+
     process_token(DTK_PAR_CLOSE, "Expect ')' after parameters.");
 
     if (!is_anonymous) {
@@ -947,6 +949,7 @@ int __build__(d_vm* vm, const char* input, char* path) {
     return 0;
   }
   remove_locals_registers(&parser);
+  free(parser.locals);
 
   put_pair(vm, OP_EXIT, 0xff);
   return 1;

@@ -41,7 +41,7 @@
 
 #define process_lambda_function(vm, a, n, anf) \
     if (anf->arity != (int) a) { \
-      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a); \
+      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n ? n : "<function>", a); \
       return 0; }\
       process_lambda_function_no_validation(vm, anf);
 
@@ -332,8 +332,6 @@ static int do_dcall_inside(d_vm* vm, char* n, int a, drax_value m) {
  */
 
 static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
-  /* DEBUG( printf(" --do_dcall\n") ); */
-
   drax_value a = GET_VALUE(vm);
 
   /**
@@ -407,7 +405,9 @@ static int import_file(d_vm* vm, char* p, char * n) {
   int stat = 0;
   if (__build__(itvm, content, p)) {
     stat = __run__(itvm, 0);
+    free(content);
   } else {
+    free(content);
     return 1;
   }
 
@@ -844,7 +844,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         drax_value a = GET_VALUE(vm);
         drax_value v = peek(vm, a);
         drax_function* f = CAST_FUNCTION(v);
-        process_lambda_function(vm, a, "<function>", f);
+        process_lambda_function(vm, a, f->name, f);
         break;
       }
       VMCase(OP_CALL_L) {
@@ -1048,6 +1048,8 @@ static void __clean_vm_tmp__(d_vm* itvm) {
   free(itvm->call_stack);
   /*free(itvm->call_stack->values);*/
   
+  free(itvm->envs->functions);
+
   itvm->call_stack->count = 0;
   itvm->stack_count = 0;
   itvm->ip = NULL;

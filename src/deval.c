@@ -35,6 +35,7 @@ static void print_string(const char* str, int formated) {
       return;
     }
     printf(formated ? "\"%s\"" : "%s", tmpstr);
+    free(tmpstr);
   } else {
     printf(formated ? "\"%s\"" : "%s", str);
   }

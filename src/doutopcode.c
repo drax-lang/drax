@@ -140,7 +140,6 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         printf("OP_FUN, extern ref::bool<%d>\n", bb);
         inspect_opcode(f->instructions->values, level + 2);
         ip++;
-        ip++;
         break;
       }
       case OP_AFUN: {
@@ -148,7 +147,6 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         int bb = (*(ip++)) == DRAX_TRUE_VAL;
         printf("OP_AFUN, extern ref::bool<%d>\n", bb);
         inspect_opcode(f->instructions->values, level + 2);
-        ip++;
         ip++;
         break;
       }

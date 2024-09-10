@@ -41,7 +41,7 @@ char* strndup(const char *s, size_t n) {
   size_t len = strlen(s);
 
   if (n < len) len = n;
-  p = (char *)malloc(len + 1);
+  p = (char *) malloc(len + 1);
   if (p) {
     memcpy(p, s, len);
     p[len] = '\0';

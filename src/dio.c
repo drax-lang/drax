@@ -26,12 +26,17 @@ char* b_pwd() {
 }
 
 char* normalize_path(char* path) {
-  if (path[0] == '/') return path;
+  char* full_path;
+  if (path[0] == '/') {
+    full_path = malloc((strlen(path) * sizeof(char)) + 1);
+    strcpy(full_path, path);
+    return full_path;
+  }
 
   char* r_path = b_pwd();
   size_t rs = strlen(r_path);
   size_t cs = strlen(path);
-  char* full_path = (char*) malloc(sizeof(char) * (rs + cs + 2));
+  full_path = (char*) malloc(sizeof(char) * (rs + cs + 2));
  
   size_t i = 0;
   for (i = 0; i < rs; i++) { full_path[i] = r_path[i]; }
@@ -47,20 +52,20 @@ int get_file_content(char* name, char** content) {
 
   char * buffer = NULL;
   long length;
-  FILE * f = fopen (filename, "rb");
+  FILE * f = fopen(filename, "rb");
 
   if (f) {
-    fseek (f, 0, SEEK_END);
-    length = ftell (f);
-    fseek (f, 0, SEEK_SET);
+    fseek(f, 0, SEEK_END);
+    length = ftell(f);
+    fseek(f, 0, SEEK_SET);
     buffer = (char *) calloc(length + 1, sizeof(char));
     if (buffer) {
-      fread (buffer, 1, length, f);
+      fread(buffer, 1, length, f);
     }
     fclose (f);
   }
 
-  /*free(filename);*/
+  free(filename);
   if (buffer) {
     buffer[length] = 0;
     *content = buffer;
