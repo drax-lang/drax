@@ -27,7 +27,7 @@ typedef struct parser_state {
   d_local_registers** locals;
   int locals_length;
   int locals_capacity;
-
+  drax_value active_fun;
   int is_refr;
   int is_pipe;
   bool has_error;

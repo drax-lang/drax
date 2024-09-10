@@ -43,3 +43,21 @@ myfun()
 ```
 
 Functions always respect [scope rules](./scopes.md).
+
+### self reference
+
+for recursive calls it is possible to use the $(...args) operator to obtain the current function.
+
+
+Here is an example of use:
+
+```drax
+fun self_ref_fun(a) do
+    if (a > 10) do
+        return a
+    end
+    &(a + 1)
+end
+
+self_ref_fun(0)
+```
