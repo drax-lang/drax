@@ -120,8 +120,6 @@ void raise_drax_error(d_vm* vm, const char* format, ...);
 
 void zero_new_local_range(d_vm* vm, int range);
 
-int do_dcall_native(d_vm* vm, drax_value v);
-
 void do_call_function_no_validation(d_vm* vm, drax_value f);
 
 void __reset__(d_vm* vm);

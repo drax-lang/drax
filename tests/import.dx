@@ -14,8 +14,8 @@ assert(lib.key1 == 'str value', "lib.key1 == 'str value'")
 
 assert(lib.key2 == 123, "lib.key2 == 123")
 
-assert(lib.key3[0] == 123, "lib.key3[0] == 123")
+assert(List.at(lib.key3, 0) == 123, "lib.key3[0] == 123")
 
-assert(lib.key3[1] == 456, "lib.key3[1] == 456")
+assert(List.at(lib.key3, 1) == 456, "lib.key3[1] == 456")
 
 assert(lib.key4.k == 'v', "lib.key4.k == 'v'")

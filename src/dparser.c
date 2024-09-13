@@ -124,7 +124,7 @@ static void init_parser(d_vm* vm) {
 static operation_line op_lines[] = {
   make_op_line(DTK_PAR_OPEN,  process_grouping,    process_call,   iCALL),
   make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
-  make_op_line(DTK_BKT_OPEN,  process_list,        process_index,  iCALL),
+  make_op_line(DTK_BKT_OPEN,  process_list,        NULL,           iCALL),
   make_op_line(DTK_BKT_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_CBR_OPEN,  process_struct,      NULL,           iNONE),
   make_op_line(DTK_CBR_CLOSE, NULL,                NULL,           iNONE),
@@ -379,18 +379,20 @@ void process_amper(d_vm* vm, bool v) {
     int _ispipe = parser.is_pipe;
     DISABLE_PIPE_PROCESS();
 
-    if (parser.active_fun == 0) {
+    if (parser.active_fun == NULL) {
       FATAL("call out of scope.");
     }
 
-    put_pair(vm, OP_PUSH, parser.active_fun);
+    char* name = (char*) malloc(strlen(parser.active_fun->name) * sizeof(char));
+    strcpy(name, parser.active_fun->name);
+    put_pair(vm, OP_GET_G_ID, (drax_value) name);
+
     drax_value arg_count = process_arguments(vm) + _ispipe;
     put_pair(vm, OP_D_CALL, arg_count);
-  } else {
-    ENABLE_REFR_PROCESS();
-    expression(vm);
+    return;
   }
 
+  FATAL("Expect '(' after &.");
 }
 
 void literal_translation(d_vm* vm, bool v) {
@@ -407,14 +409,6 @@ void process_grouping(d_vm* vm, bool v) {
   UNUSED(v);
   expression(vm);
   process_token(DTK_PAR_CLOSE, "Expect ')' after expression.");
-}
-
-void process_index(d_vm* vm, bool v) {
-  UNUSED(v);
-  expression(vm);
-  put_pair(vm, OP_PUSH, (drax_value) "get");
-  process_token(DTK_BKT_CLOSE, "Expect ']' after index.");
-  put_pair(vm, OP_CALL_I, 1);
 }
 
 void process_list(d_vm* vm, bool v) {
@@ -549,15 +543,7 @@ void process_variable(d_vm* vm, bool v) {
   name[ctk.length] = '\0';
 
   if (parser.is_refr == 1 && get_current_token() == DTK_DIV) {
-    process_token(DTK_DIV, "Expect '/' after identifier.");
-    process_token(DTK_NUMBER, "Expect 'number' after '/'.");
-    
-    char* endptr = (char*) parser.prev.first + parser.prev.length;
-    double value = strtod(parser.prev.first, &endptr);
-
-    put_pair(vm, OP_GET_REF, (drax_value) name);
-    process_external_ref(vm);
-    put_instruction(vm, num_to_draxvalue(value));
+    /** disabled */
     DISABLE_REFR_PROCESS();
     return;
   }
@@ -570,16 +556,6 @@ void process_variable(d_vm* vm, bool v) {
       put_local(&parser, name);
       vm->active_instr->local_range++;
     }
-    return;
-  }
-
-  if (eq_and_next(DTK_PAR_OPEN)) {
-    int _ispipe = parser.is_pipe;
-    DISABLE_PIPE_PROCESS();
-    drax_value arg_count = process_arguments(vm) + _ispipe;
-
-    put_pair(vm, OP_PUSH, (drax_value) name);
-    put_pair(vm, is_global ? OP_CALL_G : OP_CALL_L, arg_count);
     return;
   }
 
@@ -682,14 +658,14 @@ static void block(d_vm* vm) {
   process_token(DTK_END, "Expect 'end' after block.");
 }
 
-void create_function(d_vm* vm, bool is_internal, bool is_single_line) {
+drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) {
   int is_global = IS_GLOBAL_SCOPE(vm);
   const int max_arity = 255;
   int i;
 
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
-  parser.active_fun = (drax_value) f;
+  parser.active_fun = f;
   f->instructions->file = vm->active_instr->file;
   vm->active_instr = f->instructions;
   new_locals_register(&parser);
@@ -803,19 +779,30 @@ void create_function(d_vm* vm, bool is_internal, bool is_single_line) {
       }
     }
   }
-  put_pair(vm, is_anonymous ? OP_AFUN : OP_FUN, DS_VAL(f));
+  put_pair(vm, OP_FUN, DS_VAL(f));
   
   /**
    * used to identify if the lambda factory 
    * has external references.
    */
   put_instruction(vm, f->instructions->extrn_ref_count > 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
-  parser.active_fun = 0;
+  parser.active_fun = NULL;
+  return f;
 }
 
 void process_function(d_vm* vm, bool v) {
   UNUSED(v);
-  create_function(vm, false, false);
+  int is_global = IS_GLOBAL_SCOPE(vm);
+  drax_function* f = create_function(vm, false, false);
+
+  if (f->name != NULL) {
+    /**
+     * If is not anonymous
+     */
+    char* n = (char*) malloc(strlen(f->name) + 1);
+    strcpy(n, f->name);
+    put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) n);
+  }
 }
 
 drax_value process_arguments(d_vm* vm) {
@@ -838,7 +825,7 @@ void process_call(d_vm* vm, bool v) {
   int _ispipe = parser.is_pipe;
   DISABLE_PIPE_PROCESS();
   drax_value arg_count = process_arguments(vm) + _ispipe;
-  put_pair(vm, OP_D_CALL, arg_count);
+  put_pair(vm, _ispipe ? OP_D_CALL_P : OP_D_CALL, arg_count);
 }
 
 void process_dot(d_vm* vm, bool v) {
@@ -849,31 +836,10 @@ void process_dot(d_vm* vm, bool v) {
   memcpy(k, parser.prev.first, parser.prev.length);
   k[parser.prev.length] = '\0';
 
-  if (eq_and_next(DTK_PAR_OPEN)) {
-    /**
-     *  function calls inside elements 
-     */
-    int _ispipe = parser.is_pipe;
-    DISABLE_PIPE_PROCESS();
-    drax_value arg_count = process_arguments(vm) + _ispipe;
-    put_pair(vm, OP_PUSH, (drax_value) k);
-    put_pair(vm, _ispipe ? OP_CALL_IP : OP_CALL_I, arg_count);
-  } else if (eq_and_next(DTK_EQ)) {
+  if (eq_and_next(DTK_EQ)) {
     expression(vm);
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_SET_I_ID);
-  } else if ((parser.is_refr == 1) && (get_current_token() == DTK_DIV)) {
-    /**
-     * reference function inside module
-     * 
-     * &module.function/1
-     */
-    process_token(DTK_DIV, "Expect '/' after identifier.");
-    process_token(DTK_NUMBER, "Expect 'number' after '/'.");
-    process_number(vm, false);
-
-    put_pair(vm, OP_GET_REFI, (drax_value) k);
-    DISABLE_REFR_PROCESS();
   } else {
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_GET_I_ID);
@@ -937,7 +903,7 @@ int __build__(d_vm* vm, const char* input, char* path) {
 
   parser.has_error = false;
   parser.panic_mode = false;
-  parser.active_fun = 0;
+  parser.active_fun = NULL;
 
   get_next_token();
 
@@ -958,7 +924,11 @@ int __build__(d_vm* vm, const char* input, char* path) {
 void dfatal(d_token* token, const char* message) {
   if (parser.panic_mode) return;
   parser.panic_mode = true;
-  fprintf(stderr, "Error, '%s:%d'\n", parser.file, token->line);
+  if (NULL != parser.file) {
+    fprintf(stderr, "Error, '%s:%d'\n", parser.file, token->line);
+  } else {
+    fprintf(stderr, "Error, line: %d\n", token->line);
+  }
 
   if (token->type == DTK_EOF) {
     fprintf(stderr, "  end of file");

@@ -8,15 +8,15 @@ assert(r == "Hello Drax\n", "os error: invalid return")
 
 r = Os.cmd_with_status("echo Hello Drax")
 
-assert(r[0] == 0, "os error: invalid return")
+assert(List.at(r, 0) == 0, "os error: invalid return")
 
-assert(r[1] == "Hello Drax\n", "os error: invalid return")
+assert(List.at(r, 1) == "Hello Drax\n", "os error: invalid return")
 
 r = Os.cmd_with_status("foo_bar")
 
-assert(r[0] == 127, "os error: invalid return (foo_bar)")
+assert(List.at(r, 0) == 127, "os error: invalid return (foo_bar)")
 
-assert(r[1] == "", "os error: invalid return (foo_bar)")
+assert(List.at(r, 1) == "", "os error: invalid return (foo_bar)")
 
 ### env var test
 
@@ -32,7 +32,7 @@ assert(r == nil, "os error: unspected env val on os")
 
 expect = Os.cmd_with_status("./bin/drax ./tests/os_exit.dx")
 
-assert(expect[0] == 42, "os error: invalid return (exit)")
+assert(List.at(expect, 0) == 42, "os error: invalid return (exit)")
 
 ### call module inside function
 

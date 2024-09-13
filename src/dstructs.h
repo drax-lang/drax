@@ -126,7 +126,7 @@ drax_native_module* new_native_module(d_vm* vm, const char* name, int cap);
 
 void put_fun_on_module(drax_native_module* m, const drax_native_module_helper helper[], int size);
 
-low_level_callback* get_fun_on_module(drax_native_module* m, const char* n, int a);
+low_level_callback* get_fun_on_module(drax_native_module* m, const char* n);
 
 void print_funcs_on_module(drax_native_module* m);
 

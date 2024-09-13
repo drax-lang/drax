@@ -89,6 +89,8 @@ static void dgc_mark(drax_value v) {
       drax_function* f = CAST_FUNCTION(v);
       int i;
       for (i = 0; i < f->instructions->instr_count; i++) {
+        if (f->instructions->values[i] == v) continue;
+
         dgc_mark(f->instructions->values[i]);
       }
     }

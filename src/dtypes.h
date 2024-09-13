@@ -91,21 +91,17 @@ typedef enum d_op_code {
   OP_JMF,
   OP_LOOP,
   OP_D_CALL,   /* direct call */
+  OP_D_CALL_P,
   OP_CALL_G,   /* global*/
   OP_CALL_L,   /* local*/
-  OP_CALL_I,   /* inside */
-  OP_CALL_IP,  /* inside pipe */
   OP_ARGS,     /* arguments */
   OP_FUN,
-  OP_AFUN,     /* Anonimous */
   OP_SET_G_ID, /* global */
   OP_GET_G_ID,
   OP_SET_L_ID, /* local */
   OP_GET_L_ID,
   OP_SET_I_ID, /* inside */
   OP_GET_I_ID,
-  OP_GET_REF,  /* &reference */
-  OP_GET_REFI, /* &reference inside */
   OP_IMPORT,   /* import file */
   OP_EXPORT,   /* export file */
   OP_RETURN,

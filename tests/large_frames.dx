@@ -628,7 +628,7 @@ fun remove_all_items(current, pos) do
     if(Frame.is_empty(current)) do
         current
     else
-        remove_all_items(Frame.remove(current, klf[pos]), pos + 1)
+        remove_all_items(Frame.remove(current, List.at(klf, pos)), pos + 1)
     end
 end
 

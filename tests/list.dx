@@ -1,24 +1,24 @@
 ll = [1, 2, 3, "string", [1,2,3]]
 
-assert(ll.length == 5, "list error: length error")
+assert(List.length(ll) == 5, "list error: length error")
 
-assert(ll[3] == "string", "list error: array indexing")
+assert(List.at(ll, 3) == "string", "list error: array indexing")
 
-assert(ll[-3] == 3, "list error: array indexing negative")
+assert(List.at(ll, -3) == 3, "list error: array indexing negative")
 
 ll = [1, 2, 3] ++ [4, 5, 6]
 
-assert(ll.length == 6, "list error: concat length")
+assert(List.length(ll) == 6, "list error: concat length")
 
-assert([1,2,[42]][2][0] == 42, "list error: nested list access")
+assert(List.at(List.at([1,2,[42]], 2), 0) == 42, "list error: nested list access")
 
-assert([1,2,[42, [123]]][2][1][0] == 123, "list error: nested big 3 level access ")
+assert(List.at(List.at(List.at([1,2,[42, [123]]], 2), 1), 0) == 123, "list error: nested big 3 level access ")
 
 ### module list
 
 val = List.concat([1, 2, 3], [4, 5, 6])
 
-assert(val.length == 6, "list error: concat length")
+assert(List.length(val) == 6, "list error: concat length")
 
 assert(ll == val, "list error: compare ll with val")
 

@@ -49,7 +49,7 @@
 #define STATUS_DCALL_SUCCESS          1
 #define STATUS_DCALL_SUCCESS_NO_CLEAR 2
 
-#define _L_MSG_NOT_DEF "error: variable '%s' is not defined\n"
+#define _L_MSG_NOT_DEF "error: '%s' is not defined\n"
 
 /* VM stack. */
 
@@ -213,8 +213,11 @@ static int get_definition(d_vm* vm, int is_local) {
     ((!is_local) || (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &v) == 0))
   ) {
     if(get_var_table(vm->envs->global, k, &v) == 0) {
-      raise_drax_error(vm, _L_MSG_NOT_DEF, k);
-      return 0;
+      v = get_fun_table(vm->envs->native, k, 0);
+      if (!v) {
+        raise_drax_error(vm, _L_MSG_NOT_DEF, k);
+        return 0;
+      }
     }
   }
 
@@ -228,162 +231,6 @@ static int get_definition(d_vm* vm, int is_local) {
     return STATUS_DCALL_ERROR; \
   }
 
-static int do_dcall_get_fun(d_vm* vm, char* n, int a, int global, drax_value* v ) {
-  /**
-   * Priority of search:
-   * 
-   *  1. Module  4. Native
-   *  2. Local   5. Function
-   *  3. Global
-   */
-
-  if (get_mod_table(vm->envs->modules, n, v) == 1) return 1;
-
-  if (get_local_table(vm->envs->local, vm->active_instr->local_range, n, v) == 1) return 1;
-
-  if (global) {
-    if (get_var_table(vm->envs->global, n, v) == 1) return 1;
-  }
-
-  *v = get_fun_table(vm->envs->native, n, a);
-
-  if (*v != 0) return 1;
-
-  *v = get_fun_table(vm->envs->functions, n, a);
-
-  return (*v != 0);
-}
-
-/**
- * Native Call Definitions
- * 
- * This function responds to the following status:
- * STATUS_DCALL_ERROR:   an error occurred
- * STATUS_DCALL_SUCCESS: success, proceed normally
- */
-int do_dcall_native(d_vm* vm, drax_value v) {
-  int scs = 0;
-  drax_os_native* ns = CAST_NATIVE(v);
-  low_level_callback* nf = ns->function;
-  drax_value result = nf(vm, &scs);
-
-  if (!scs) {
-    drax_error* e = CAST_ERROR(result);
-    raise_drax_error(vm, e->chars);
-    return STATUS_DCALL_ERROR;
-  }
-
-  push(vm, result);
-  return STATUS_DCALL_SUCCESS;
-}
-
-/**
- * Execute the function call inside an element
- */
-static int do_dcall_inside(d_vm* vm, char* n, int a, drax_value m) {
-  drax_value v;
-
-  if (IS_FRAME(m)) {
-    if(get_value_dframe(CAST_FRAME(m), (char*) n, &v) == -1) {
-      raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
-      return STATUS_DCALL_ERROR;
-    }
-
-    drax_function* af = CAST_FUNCTION(v);
-    process_lambda_function(vm, a, n, af)
-    return STATUS_DCALL_SUCCESS_NO_CLEAR;
-  }
-
-  if (IS_MODULE(m)) {
-    low_level_callback* nf = get_fun_on_module(CAST_MODULE(m), n, a);
-
-    return_if_not_found_error(vm, nf, n, a);
-    int scs = 0;
-    drax_value result = nf(vm, &scs);
-
-    if (!scs) {
-      drax_error* e = CAST_ERROR(result);
-      raise_drax_error(vm, e->chars);
-      return STATUS_DCALL_ERROR;
-    }
-
-    push(vm, result);
-    return STATUS_DCALL_SUCCESS;
-  }
-
-  if (IS_STRING(m)) {
-    return dstr_handle_str_call(vm, n, a, m);
-  }
-
-  if (IS_LIST(m)) {
-    return dlist_handle_call(vm, n, a, m);
-  }
-
-  return_if_not_found_error(vm, 0, n, a);
-}
-
-/**
- * Call Definitions
- * 
- * This function responds to the following status:
- * STATUS_DCALL_ERROR:            an error occurred
- * STATUS_DCALL_SUCCESS:          success, proceed normally
- * STATUS_DCALL_SUCCESS_NO_CLEAR: Proceed without clearing the stack
- */
-
-static int do_dcall(d_vm* vm, int inside, int global, int pipe) {
-  drax_value a = GET_VALUE(vm);
-
-  /**
-   * if call is using dot operator
-   */
-  drax_value m = 0;
-
-  char* n = (char*) (pop(vm));
-
-  if (inside) {
-    if (pipe) {
-      /**
-       * if the function is called via pipe to a 
-       * sub-element [module.function()], we invert
-       * the argument with the base element.
-       * 
-       * the base element must be inverted to not be 
-       * considered an argument.
-       */
-
-      drax_value _t = vm->stack[vm->stack_count - a];
-      vm->stack[vm->stack_count - a] = vm->stack[vm->stack_count -1 - a];
-      vm->stack[vm->stack_count -1 - a] = _t;
-    }
-
-    m = peek(vm, a);
-  }
-
-  if (inside) { return do_dcall_inside(vm, n, a, m); }
-
-  drax_value v = 0;
-  if(do_dcall_get_fun(vm, n, a, global, &v) == 0) {
-    return_if_not_found_error(vm, 0, n, a);
-  }
-
-  if (IS_NATIVE(v)) { return do_dcall_native(vm, v); }
-
-  if (IS_FUNCTION(v)) {
-    drax_function* f = CAST_FUNCTION(v);
-    process_lambda_function(vm, a, n, f);
-
-    /**
-     * In this case, the function name is 
-     * only removed from the stack during the return,
-     * because we can have nested calls.
-     */
-
-    return STATUS_DCALL_SUCCESS;
-  }
-
-  return_if_not_found_error(vm, 0, n, a);
-}
 
 static void __clean_vm_tmp__(d_vm* itvm);
 
@@ -449,7 +296,6 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
   for (i = 0; i < f->instructions->extrn_ref_count; i++) {
     drax_value* ip = f->instructions->extrn_ref[i];
     if (*(ip) == OP_GET_G_ID) { qtt_n_inst += 4; }
-    if (*(ip) == OP_GET_REF) { qtt_n_inst  += 3; }
   }
 
   /**
@@ -500,24 +346,18 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
       drax_value rv;
 
     if (*(ip) == OP_GET_G_ID) {
-      if (
+      if ((NULL != new_fn->name) && (strcmp(new_fn->name, k) == 0)) {
+        rv = DS_VAL(new_fn);
+      } else if (
         (get_mod_table(vm->envs->modules, k, &rv) == 0) &&
-        (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &rv) == 0)
+        ((get_local_table(vm->envs->local, vm->active_instr->local_range, k, &rv) == 0))
       ) {
         if(get_var_table(vm->envs->global, k, &rv) == 0) {
-          raise_drax_error(vm, _L_MSG_NOT_DEF, k);
-          return 0;
-        }
-      }
-    } else if (*(ip) == OP_GET_REF) {
-      int a = (int) AS_NUMBER(*(ip + 2));
-      rv = get_fun_table(vm->envs->native, k, a);
-      if (rv == 0) {
-        rv = get_fun_table(vm->envs->functions, k, a);
-      
-        if (rv == 0) {
-          raise_drax_error(vm, "error: function '%s/%d' is not defined\n", k, a);
-          return 0;
+          rv = get_fun_table(vm->envs->native, k, 0);
+          if (!rv) {
+            raise_drax_error(vm, _L_MSG_NOT_DEF, k);
+            return 0;
+          }
         }
       }
     } else {
@@ -546,25 +386,41 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
 
     for (j = 0; j < f->instructions->extrn_ref_count; j++) {
       drax_value* ip = f->instructions->extrn_ref[j];
-      if (&f->instructions->values[old_i] == ip) {/* change to new_fn */
-        if (*(ip) == OP_GET_REF) {
-          new_fn->instructions->values[i++] = OP_GET_L_ID;
-          old_i++; /* discart OP_GET_REF */
-          new_fn->instructions->values[i++] = f->instructions->values[old_i++];
-          old_i++; /* discart args */
-        } else {
-          new_fn->instructions->values[i] = OP_GET_L_ID;
-        }
+      if (&f->instructions->values[old_i] == ip) {
+        new_fn->instructions->values[i] = OP_GET_L_ID;
         break;
       }
     }
   }
 
+  /*
   DEBUG_OP(printf("after: build self dep. *******\n"));
   DEBUG_OP(inspect_opcode(new_fn->instructions->values, 8));
   DEBUG_OP(printf("end **************************\n\n"));
-
+  */
   return 1;
+}
+
+static void process_pipe_args(d_vm* vm, drax_value a) {
+  /**
+   * if the function is called via pipe to a 
+   * sub-element [module.function()], we invert
+   * the argument with the base element.
+   * 
+   * the base element must be inverted to not be 
+   * considered an argument.
+   */
+
+  drax_value _t = vm->stack[vm->stack_count - a];
+  vm->stack[vm->stack_count - a] = vm->stack[vm->stack_count -1 - a];
+  vm->stack[vm->stack_count -1 - a] = _t;
+}
+
+static void remove_elem_on_stack(d_vm* vm, size_t distance) {
+  for (; distance > 0; distance--) {
+    vm->stack[(vm->stack_count - 1) - distance] = vm->stack[vm->stack_count - distance];
+  }
+  vm->stack_count--;
 }
 
 static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
@@ -682,22 +538,6 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         drax_value f = pop(vm);
         drax_value val;
 
-        if(IS_STRING(f)) {
-          if (dstr_handle_str_call(vm, (char*) k, 0, f) == 0) { return 1; };
-          break;
-        }
-
-        if(IS_LIST(f)) {
-          if (dlist_handle_call(vm, (char*) k, 0, f) == 0) { return 1; };
-          break;
-        }
-
-        if (IS_MODULE(f)) {
-          /* return native function here */
-          push(vm, DRAX_NIL_VAL);
-          break;
-        }
-
         if (IS_FRAME(f)) {
           if(get_value_dframe(CAST_FRAME(f), (char*) k, &val) == -1) {
             push(vm, DRAX_NIL_VAL);
@@ -706,47 +546,15 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           push(vm, val);
           break;
         }
+
+        if (IS_MODULE(f)) {
+          low_level_callback* nf = get_fun_on_module(CAST_MODULE(f), (const char*) k);
+          push(vm, nf ? DS_VAL(new_dllcallback(vm, nf, (const char*) k, 0)) : DRAX_NIL_VAL);
+          break;
+        }
         
         raise_drax_error(vm, "error: key '%s' is not defined\n", k);
         return 1;
-      }
-
-      /**
-       * Internal references is only allowed to modules.
-       * 
-       * &module_name.function_name/arity
-       */
-      VMCase(OP_GET_REFI) {
-        int a = (int) AS_NUMBER(pop(vm));
-        char* n = (char*) GET_VALUE(vm);
-        drax_value m = pop(vm);
-        low_level_callback* nf = get_fun_on_module(CAST_MODULE(m), n, a);
-        
-        if (nf == 0) {
-          raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
-          return 1;
-        }
-
-        push(vm, DS_VAL(new_dllcallback(vm, nf, n, a)));
-        break;
-      }
-      VMCase(OP_GET_REF) {
-        char* n = (char*) GET_VALUE(vm);
-        int a = (int) AS_NUMBER(GET_VALUE(vm));
-
-        drax_value v = get_fun_table(vm->envs->native, n, a);
-        if (v == 0) {
-          v = get_fun_table(vm->envs->functions, n, a);
-        
-          if (v == 0) {
-            raise_drax_error(vm, "error: function '%s/%d' is not defined\n", n, a);
-            return 1;
-          }
-        }
-        
-        /* if(vm->vid == -1) free(n); we need to copy string on parser to free*/
-        push(vm, v);
-        break;
       }
       VMCase(OP_EQUAL) {
         drax_value b = pop(vm);
@@ -836,6 +644,41 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       VMCase(OP_LOOP) {
         break;
       }
+      VMCase(OP_D_CALL_P) {
+        /**
+         * Direct call
+         * when the function is on stack
+         */
+        drax_value a = GET_VALUE(vm);
+        process_pipe_args(vm, a);
+        drax_value v = peek(vm, a);
+        remove_elem_on_stack(vm, a);
+        
+        if (0 == v || DRAX_NIL_VAL == v) {
+          raise_drax_error(vm, "vm_error: function is not valid!\n");
+          return 1;
+        }
+
+        if (IS_FUNCTION(v)) {
+          drax_function* f = CAST_FUNCTION(v);
+          process_lambda_function(vm, a, f->name, f);
+          break;
+        }
+
+        if (IS_NATIVE(v)) {
+          int scs = 0;
+          drax_value result = CAST_NATIVE(v)->function(vm, &scs);
+          if (!scs) {
+            drax_error* e = CAST_ERROR(result);
+            raise_drax_error(vm, e->chars);
+            return 1;
+          }
+          push(vm, result);
+          break;
+        }
+
+        break;
+      }
       VMCase(OP_D_CALL) {
         /**
          * Direct call
@@ -843,66 +686,34 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
          */
         drax_value a = GET_VALUE(vm);
         drax_value v = peek(vm, a);
-        drax_function* f = CAST_FUNCTION(v);
-        process_lambda_function(vm, a, f->name, f);
-        break;
-      }
-      VMCase(OP_CALL_L) {
-        if (do_dcall(vm, 0, 0, 0) == STATUS_DCALL_ERROR) return 1;
-        break;
-      }
-      VMCase(OP_CALL_G) {
-        if (do_dcall(vm, 0, 1, 0) == STATUS_DCALL_ERROR) return 1;
-        break;
-      }
-      VMCase(OP_CALL_I) {
-        int r = do_dcall(vm, 1, 0, 0);
-        
-        if (r == STATUS_DCALL_ERROR) return 1;
-        if (r == STATUS_DCALL_SUCCESS_NO_CLEAR) break;
-        
-        drax_value t = pop(vm);
+        remove_elem_on_stack(vm, a);
 
-        /**
-         * Remove the function name and struct 
-         * from the stack.
-         */
-        pop(vm);
-        push(vm, t);
-        break;
-      }
-      VMCase(OP_CALL_IP) {
-        int r = do_dcall(vm, 1, 0, 1);
-        
-        if (r == 0) return 1;
-        if (r == 2) break;
-        
-        drax_value t = pop(vm);
+        if (0 == v || DRAX_NIL_VAL == v) {
+          raise_drax_error(vm, "vm_error: function is not valid!\n");
+          return 1;
+        }
 
-        /**
-         * Remove the function name and struct 
-         * from the stack.
-         */
-        pop(vm);
-        push(vm, t);
+        if (IS_FUNCTION(v)) {
+          drax_function* f = CAST_FUNCTION(v);
+          process_lambda_function(vm, a, f->name, f);
+          break;
+        }
+
+        if (IS_NATIVE(v)) {
+          int scs = 0;
+          drax_value result = CAST_NATIVE(v)->function(vm, &scs);
+          if (!scs) {
+            drax_error* e = CAST_ERROR(result);
+            raise_drax_error(vm, e->chars);
+            return 1;
+          }
+          push(vm, result);
+          break;
+        }
+
         break;
       }
       VMCase(OP_FUN) {
-        drax_value v = GET_VALUE(vm);
-        drax_value extern_ref = GET_VALUE(vm);
-        if (extern_ref == DRAX_TRUE_VAL) {
-          /**
-           * This routine will replace the external
-           * references on function.
-           * 
-           * Used by export routines
-           */
-          if(build_self_dep_fn(vm, &v) == 0) { return 1; }
-        }
-        put_fun_table(vm->envs->functions, v);
-        break;
-      }
-      VMCase(OP_AFUN) {
         /**
          * Check if is factory
          * 
@@ -941,17 +752,16 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           DRAX_NIL_VAL :
           pop(vm);
 
-        vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range;
+        v = v ? v : DRAX_NIL_VAL;
 
+        vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range;
         vm->active_instr = callstack_pop(vm);
         if (vm->active_instr) {
           vm->ip = vm->active_instr->_ip;
         }
 
         push(vm, v);
-
         if (!vm->active_instr) return 0;
-
         break;
       }
       VMCase(OP_EXIT) {

@@ -109,6 +109,7 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         printf("OP_LOOP\n");
         break;
       }
+      case OP_D_CALL_P:
       case OP_D_CALL: {
         printf("OP_D_CALL, <fn::value>\n");
         ip++;
@@ -124,28 +125,10 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         ip++;
         break;
       }
-      case OP_CALL_I: {
-        printf("OP_CALL_I, <value>\n");
-        ip++;
-        break;
-      }
-      case OP_CALL_IP: {
-        printf("OP_CALL_IP, <value>\n");
-        ip++;
-        break;
-      }
       case OP_FUN: {
         drax_function* f = CAST_FUNCTION(*(ip++));
         int bb = (*(ip++)) == DRAX_TRUE_VAL;
         printf("OP_FUN, extern ref::bool<%d>\n", bb);
-        inspect_opcode(f->instructions->values, level + 2);
-        ip++;
-        break;
-      }
-      case OP_AFUN: {
-        drax_function* f = CAST_FUNCTION(*(ip++));
-        int bb = (*(ip++)) == DRAX_TRUE_VAL;
-        printf("OP_AFUN, extern ref::bool<%d>\n", bb);
         inspect_opcode(f->instructions->values, level + 2);
         ip++;
         break;
@@ -181,17 +164,6 @@ int inspect_opcode(drax_value* _ip, size_t level) {
       }
       case OP_GET_I_ID: {
         printf("OP_GET_I_ID\n");
-        break;
-      }
-      case OP_GET_REF: {
-        char* s = (char*)(*ip++);
-        int a = (int) AS_NUMBER((*ip++));
-        printf("OP_GET_REF, \"%s\", %d\n", s, a);
-        break;
-      }
-      case OP_GET_REFI: {
-        printf("OP_GET_REFI\n");
-        ip++;
         break;
       }
       case OP_IMPORT: {
