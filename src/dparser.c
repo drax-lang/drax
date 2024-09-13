@@ -306,7 +306,7 @@ static void put_const(d_vm* vm, drax_value value) {
 static void patch_jump(d_vm* vm, int offset) {
   int jump = GET_INSTRUCTION(vm)->instr_count - offset - 2;
 
-  if (jump > UINT16_MAX) {
+  if ((unsigned int) jump > UINT16_MAX) {
     FATAL("Too much code to jump over.");
   }
 

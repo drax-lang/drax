@@ -446,6 +446,15 @@ static drax_value __d_cmd_with_status(d_vm* vm, int* stat) {
   return DS_VAL(l);
 }
 
+static int create_directory(const char* path, mode_t mode) {
+#ifdef _WIN32
+    (void) mode;
+    return CreateDirectory(path, NULL) ? 0 : -1;
+#else
+    return mkdir(path, mode);
+#endif
+}
+
 static drax_value __d_mkdir(d_vm* vm, int* stat, int permission) {
   drax_value b = permission ? pop(vm) : DRAX_NIL_VAL;
   drax_value a = pop(vm);
@@ -471,7 +480,7 @@ static drax_value __d_mkdir(d_vm* vm, int* stat, int permission) {
      */
   }
 
-  int r = mkdir(CAST_STRING(a)->chars, mode);
+  int r = create_directory(CAST_STRING(a)->chars, mode);
 
   if (r == -1) {
     DX_SUCESS_FN(stat);

@@ -9,6 +9,10 @@
 #include "dvm.h"
 #include "ddefs.h"
 
+#ifndef UINT16_MAX
+  #define UINT16_MAX 65535
+#endif
+
 #define callback_table(n) void n(d_vm* vm, bool b);
 
 #define make_op_line(i, l, m, r) [i] = {l, m, r}

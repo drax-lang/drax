@@ -8,7 +8,12 @@
 #include "dscheduler.h"
 
 #ifdef _B_BUILF_FULL
-  #include <editline/readline.h>
+  #ifdef _WIN32
+    #include <windows.h>
+    #include "dshell.h"
+  #else
+    #include <editline/readline.h>
+  #endif
 #else
   #include "dshell.h"
 #endif
