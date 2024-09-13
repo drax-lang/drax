@@ -1260,13 +1260,13 @@ void create_native_modules(d_vm* vm) {
     {1, "length", __d_list_length},
     {1, "is_empty", __d_list_is_empty},
     {1, "is_present", __d_list_is_present},
-      {2, "remove_at", __d_list_remove_at},
+    {2, "remove_at", __d_list_remove_at},
     {3, "insert_at", __d_list_insert_at},
     {3, "replace_at", __d_list_replace_at},
     {3, "slice", __d_list_slice},
     {1, "sum", __d_list_sum},
-    {2, "at", __d_list_at}
-    {1, "sparse", __d_list_sparse},
+    {2, "at", __d_list_at},
+    {1, "sparse", __d_list_sparse}
   };
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
