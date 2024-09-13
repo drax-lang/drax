@@ -92,6 +92,10 @@ else
 	    -ledit
 endif
 
+ifeq ($(TARGET_OS),WIN32)
+	DRAX_BUILD_FULL= 
+endif
+
 DEFAULT_BUILD = \
 		$(CC) \
 		$(FILES) \
