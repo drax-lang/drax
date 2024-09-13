@@ -49,9 +49,10 @@
 #define TRACE_DESCRIPTION_LINE_PATH "  %s:%d"
 
 /* Common messages */
-#define MSG_NAME_IS_NOT_DEFINED    "'%s' is not defined."
-#define MSG_NUMBER_OF_INVALID_ARGS "Number of invalid arguments, expected %d arguments."
-#define MSG_BAD_AGR_ARITH_OP       "Bad argument in arithmetic expression."
+#define MSG_NAME_IS_NOT_DEFINED     "'%s' is not defined."
+#define MSG_NUMBER_OF_INVALID_ARGS  "Number of invalid arguments, expected %d arguments."
+#define MSG_BAD_AGR_ARITH_OP        "Bad argument in arithmetic expression."
+#define MSG_FUNCTION_IS_NOT_DEFINED "error: function '%s/%d' is not defined\n"
 
 #define VM_STATUS_STOPED   0 /* prepared to work */
 #define VM_STATUS_WORKING  1 /* working */

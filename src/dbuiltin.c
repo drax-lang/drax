@@ -1217,7 +1217,7 @@ void create_native_modules(d_vm* vm) {
     {1, "length", dstr_length },
     {2, "copy", dstr_copy },
     {3, "copy", dstr_copy2 },
-    {2, "get", dstr_get },
+    {2, "at", dstr_at },
     {1, "to_uppercase", dstr_to_uppercase },
     {1, "to_lowercase", dstr_to_lowercase },
     {1, "to_number", dstr_to_number },

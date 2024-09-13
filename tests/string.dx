@@ -25,21 +25,21 @@ v = String.split("foo\nbar\nbaz", "\n")
 
 v = String.split("http://addr.com", "http://")
 
-# assert(v[0] == "", "string error: failt split return type")
-# assert(v[1] == "addr.com", "string error: failt split return type")
+assert(List.at(v, 0) == "", "string error: failt split return type")
+assert(List.at(v, 1) == "addr.com", "string error: failt split return type")
 
-# ### check index
+### check index
 
-# assert("foo"[0] == "f", "string error: array indexing error to string case 1")
+assert(String.at("foo", 0) == "f", "string error: array indexing error to string case 1")
 
-# assert("bar"[-1] == "r", "string error: array indexing error to string case 2")
+assert(String.at("bar", -1) == "r", "string error: array indexing error to string case 2")
 
-# assert("bar"[10] == "", "string error: array indexing error to string case 3")
+assert(String.at("bar", 10) == "", "string error: array indexing error to string case 3")
 
-# ### teste with definitions
+### teste with definitions
 
-# s = "bar"[-10]
-# assert(s == "", "string error: array indexing error to string case 4")
+s = String.at("bar", -10)
+assert(s == "", "string error: array indexing error to string case 4")
 
 assert(String.length("process \" ") == 10, "string error: fail to scape string")
 

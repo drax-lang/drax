@@ -173,7 +173,7 @@ assert(Frame.get_or_else(ff, "ampty", []) == [], "frame error: the get(ff, empty
 # New
 assert(Frame.is_empty(Frame.new()), "frame error: the new/0 function not returned an empty frame")
 
-assert(Frame.new(Frame.to_list(ff)), "frame error: error to convert list in frame")
-assert(Frame.new([]), "frame error: the new({}) function not returned an empty frame")
+assert(Frame.new_from_list(Frame.to_list(ff)), "frame error: error to convert list in frame")
+assert(Frame.new_from_list([]), "frame error: the new({}) function not returned an empty frame")
 
 print("Frames done!")

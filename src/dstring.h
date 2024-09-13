@@ -31,7 +31,7 @@ drax_value dstr_copy(d_vm* vm, int* stat);
 
 drax_value dstr_copy2(d_vm* vm, int* stat);
 
-drax_value dstr_get(d_vm* vm, int* stat);
+drax_value dstr_at(d_vm* vm, int* stat);
 
 drax_value dstr_to_uppercase(d_vm* vm, int* stat);
 

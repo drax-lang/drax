@@ -99,10 +99,14 @@ int inspect_opcode(drax_value* _ip, size_t level) {
       }
       case OP_JMP: {
         printf("OP_JMP\n");
+        ip++;
+        ip++;
         break;
       }
       case OP_JMF: {
         printf("OP_JMF\n");
+        ip++;
+        ip++;
         break;
       }
       case OP_LOOP: {
@@ -128,9 +132,13 @@ int inspect_opcode(drax_value* _ip, size_t level) {
       case OP_FUN: {
         drax_function* f = CAST_FUNCTION(*(ip++));
         int bb = (*(ip++)) == DRAX_TRUE_VAL;
-        printf("OP_FUN, extern ref::bool<%d>\n", bb);
+
+        if (f->name) {
+          printf("OP_FUN<%s>, extern ref::bool<%d>\n", f->name, bb);
+        } else {
+          printf("OP_FUN, extern ref::bool<%d>\n", bb);
+        }
         inspect_opcode(f->instructions->values, level + 2);
-        ip++;
         break;
       }
       case OP_SET_G_ID: {
@@ -178,7 +186,7 @@ int inspect_opcode(drax_value* _ip, size_t level) {
       }
       case OP_RETURN: {
         printf("OP_RETURN\n");
-        return 0;
+        break;
       }
       case OP_EXIT: {
         for (i = 0; i < level; i++) {

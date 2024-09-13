@@ -202,15 +202,14 @@ void put_fun_on_module(drax_native_module* m, const drax_native_module_helper he
   m->count = size;
 }
 
-low_level_callback* get_fun_on_module(drax_native_module* m, const char* n) {
+int get_fun_on_module(drax_native_module* m, const char* n) {
   int i;
   for (i = 0; i < m->count; i++) {
     if (strcmp(m->fn_names[i], n) == 0) {
-      /*if (m->arity[i] != a) { continue; }*/
-      return m->fun[i];
+      return i;
     }
   }
-  return 0;
+  return -1;
 }
 
 void print_funcs_on_module(drax_native_module* m) {
