@@ -55,7 +55,7 @@ the second argument must be an octal number.
 
 Example:
 ```drax
-  > Os.mkdir("folder", 0o777)
+  > Os.pmkdir("folder", 0o777)
   true
 ```
 

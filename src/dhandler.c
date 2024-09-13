@@ -113,9 +113,10 @@ d_fun_table* new_fun_table() {
 
 static drax_fun_node* 
 get_elem_on_fun_table(d_fun_table* t, size_t h, uint8_t a) {
+  UNUSED(a);
   int i;
   for (i = 0; i < t->count; i++) {
-    if (t->pairs[i].key == h && t->pairs[i].args == a) {
+    if (t->pairs[i].key == h /*&& t->pairs[i].args == a*/) {
       return &t->pairs[i];
     }
   }

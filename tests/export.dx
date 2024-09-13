@@ -8,7 +8,7 @@ end
 
 
 export {
-    calc: &calc_two/2,
+    calc: calc_two,
     name: name,
     key1: "str value",
     key2: 123,

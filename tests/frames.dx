@@ -167,8 +167,8 @@ assert(Frame.is_empty(Frame.remove({}, "a")), "frame error: expected ampty frame
 
 # Get
 assert(Frame.get(ff, "a"), "frame error: the property 'a' not exists")
-assert(Frame.get(ff, "ampty", 15) == 15, "frame error: the get(ff, empty) function did not return 15 as default")
-assert(Frame.get(ff, "ampty", []) == [], "frame error: the get(ff, empty) function did not return [] as default")
+assert(Frame.get_or_else(ff, "ampty", 15) == 15, "frame error: the get(ff, empty) function did not return 15 as default")
+assert(Frame.get_or_else(ff, "ampty", []) == [], "frame error: the get(ff, empty) function did not return [] as default")
 
 # New
 assert(Frame.is_empty(Frame.new()), "frame error: the new/0 function not returned an empty frame")

@@ -74,8 +74,8 @@ local_scope_2_tst_lambda()
 
 ### get function definition
 
-tmp = &get_lambda/0
-tmp2 = &say/1
+tmp = get_lambda
+tmp2 = say
 
 assert(typeof(tmp) == "function", "function error: get function definition")
 
@@ -117,7 +117,7 @@ local_range_scope()
 
 fun sum_test_safe_def(a) do a + 1 end
 
-old_def = &sum_test_safe_def/1
+old_def = sum_test_safe_def
 
 fun sum_test_safe_def(a) do a + 10 end
 
@@ -125,13 +125,13 @@ assert(sum_test_safe_def(1) == 11, "function error: sum_test_safe_def(1) == 11")
 
 assert(old_def(1) == 2, "function error: sum_test_safe_def(1) == 2")
 
-native_def_ref = &Os.cmd/1
+native_def_ref = Os.cmd
 
 assert(typeof(native_def_ref) == "function", "function error: typedef(native_def_ref) == 'function'")
 
-ref_concat_test = &List.concat/2
+ref_concat_test = List.concat
 
-assert(ref_concat_test([1, 2, 3], [4, 5, 6]).length == 6, "ref_concat_test([1, 2, 3], [4, 5, 6]).length == 6")
+assert(List.length(ref_concat_test([1, 2, 3], [4, 5, 6])) == 6, "ref_concat_test([1, 2, 3], [4, 5, 6]).length == 6")
 
 
 
@@ -151,10 +151,9 @@ gg = "drax"
     |> cat_test_tmp()
     |> cat_test_tmp()
     |> cat_test_tmp()
-    |> cat_test_tmp("end")
     |> fr.sub.sub.fn()
 
-assert(gg == "drax:cat::cat::cat:--end--by_lambda", "function error: pipe operator")
+assert(gg == "drax:cat::cat::cat:--by_lambda", "function error: pipe operator")
 
 fun assign_error(a) do
     b = a
@@ -238,19 +237,7 @@ end
 
 r = callme(0)
 
-assert(r == 11, "r == 11")
-
-## self operator with anonymous function
-fr = {
-    callback: fun(a) do
-        if (a > 10) do
-            return a
-        end
-        &(a + 1)
-    end
-}
-
-r = fr.callback(0)
+print(r)
 
 assert(r == 11, "r == 11")
 

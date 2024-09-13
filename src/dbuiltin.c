@@ -806,6 +806,27 @@ static drax_value __d_frame_new_empty(d_vm* vm, int* stat) {
  * List Module
  */
 
+static drax_value __d_list_at(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_list(a, stat);
+  return_if_is_not_number(b, stat);
+
+  double n = draxvalue_to_num(b);
+  drax_list* ll = CAST_LIST(a);
+
+  if (n < 0) { n = ll->length + n; }
+
+  if (n < 0 || n >= ll->length) {
+    DX_SUCESS_FN(stat);
+    return DRAX_NIL_VAL;
+  }
+
+  DX_SUCESS_FN(stat);
+  return ll->elems[(int) n];
+}
+
 static drax_value __d_list_concat(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
   drax_value a = pop(vm);
@@ -1132,7 +1153,7 @@ void create_native_modules(d_vm* vm) {
     {1, "system", __d_system},
     {1, "get_env", __d_get_env },
     {1, "mkdir", __d_mkdir1 },
-    {2, "mkdir", __d_mkdir2 },
+    {2, "pmkdir", __d_mkdir2 },
   };
 
   put_fun_on_module(mos, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper)); 
@@ -1174,11 +1195,11 @@ void create_native_modules(d_vm* vm) {
     {2, "has_key", __d_frame_has_key },
     {2, "remove", __d_frame_remove },
     {2, "get", __d_frame_get },
-    {3, "get", __d_frame_get_or_else },
+    {3, "get_or_else", __d_frame_get_or_else },
     {1, "is_empty", __d_frame_is_empty },
     {1, "is_present", __d_frame_is_present },
     {0, "new", __d_frame_new_empty },
-    {1, "new", __d_frame_new },
+    {1, "new_from_list", __d_frame_new },
   };
 
   put_fun_on_module(frame, frame_helper, sizeof(frame_helper) / sizeof(drax_native_module_helper)); 
@@ -1187,7 +1208,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * List Module
    */ 
-  drax_native_module* list = new_native_module(vm, "List", 11);
+  drax_native_module* list = new_native_module(vm, "List", 12);
   const drax_native_module_helper list_helper[] = {
     {2, "concat", __d_list_concat },
     {1, "head", __d_list_head},
@@ -1200,6 +1221,7 @@ void create_native_modules(d_vm* vm) {
     {3, "replace_at", __d_list_replace_at},
     {3, "slice", __d_list_slice},
     {1, "sum", __d_list_sum},
+    {2, "at", __d_list_at}
   };
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 

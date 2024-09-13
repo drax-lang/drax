@@ -27,7 +27,7 @@ typedef struct parser_state {
   d_local_registers** locals;
   int locals_length;
   int locals_capacity;
-  drax_value active_fun;
+  drax_function* active_fun;
   int is_refr;
   int is_pipe;
   bool has_error;
@@ -72,7 +72,7 @@ int __build__(d_vm* vm, const char* input, char* path);
 
 drax_value process_arguments(d_vm* vm);
 
-void create_function(d_vm* vm, bool is_internal, bool is_single_line);
+drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line);
 
 callback_table(process_grouping);
 callback_table(process_list);
@@ -89,7 +89,6 @@ callback_table(process_import);
 callback_table(process_export);
 callback_table(process_struct);
 callback_table(process_dot);
-callback_table(process_index);
 callback_table(process_function);
 callback_table(literal_translation);
 callback_table(process_amper);
