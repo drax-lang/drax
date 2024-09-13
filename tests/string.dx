@@ -6,24 +6,24 @@ expected = (say("Hello", "World"))
 
 assert(expected == "Hello World", "string error: Concat with nested functions")
 
-# assert("1234".to_number() == 1234, "string error: unspected return to_number with cmp")
+assert(String.to_number("1234") == 1234, "string error: unspected return to_number with cmp")
 
-# assert(typeof("1234".to_number()) == typeof(1234), "string error: unspected return to_number with cmp")
+assert(typeof(String.to_number("1234")) == typeof(1234), "string error: unspected return to_number with cmp")
 
-# assert("0xff".to_number() == 255, "string error: unspected return to_number hex")
-# assert("0xff".to_number() == 0xff, "string error: unspected return to_number hex raw")
+assert(String.to_number("0xff") == 255, "string error: unspected return to_number hex")
+assert(String.to_number("0xff") == 0xff, "string error: unspected return to_number hex raw")
 
-# assert("0o765".to_number() == 501, "string error: unspected return to_number octal")
-# assert("0o765".to_number() == 0o765, "string error: unspected return to_number octal raw")
+assert(String.to_number("0o765") == 501, "string error: unspected return to_number octal")
+assert(String.to_number("0o765") == 0o765, "string error: unspected return to_number octal raw")
 
-# assert("0b1111011".to_number() == 123, "string error: unspected return to_number binary")
-# assert("0b1111011".to_number() == 0b1111011, "string error: unspected return to_number binary raw")
+assert(String.to_number("0b1111011") == 123, "string error: unspected return to_number binary")
+assert(String.to_number("0b1111011") == 0b1111011, "string error: unspected return to_number binary raw")
 
-# v = "foo\nbar\nbaz".split("\n")
+v = String.split("foo\nbar\nbaz", "\n")
 
 # assert(typeof(v) == "list", "string error: failt split return type")
 
-# v = "http://addr.com".split("http://")
+v = String.split("http://addr.com", "http://")
 
 # assert(v[0] == "", "string error: failt split return type")
 # assert(v[1] == "addr.com", "string error: failt split return type")
@@ -41,12 +41,12 @@ assert(expected == "Hello World", "string error: Concat with nested functions")
 # s = "bar"[-10]
 # assert(s == "", "string error: array indexing error to string case 4")
 
-# assert("process \" ".length == 10, "string error: fail to scape string")
+assert(String.length("process \" ") == 10, "string error: fail to scape string")
 
 # ### lower/upper case
 
-# assert("FOO".to_lowercase == "foo", "string error: fail to lower case")
-# assert("abcdefghijklmnopqrstuvwxyz_1234567890".to_uppercase == "ABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890", "string error: fail to upper case by alphabet")
-# assert("foo".to_uppercase == "FOO", "string error: fail to upper case")
+assert(String.to_lowercase("FOO") == "foo", "string error: fail to lower case")
+assert(String.to_uppercase("abcdefghijklmnopqrstuvwxyz_1234567890") == "ABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890", "string error: fail to upper case by alphabet")
+assert(String.to_uppercase("foo") == "FOO", "string error: fail to upper case")
 
 print("String done!")

@@ -9,30 +9,32 @@
  *  "0xff".to_number() => 255
  *  "0o777".to_number() => 511
  */
-static int  dstr_to_number(d_vm* vm, int a, drax_string* ds) {
-  args_fail_required_size(a, 0, "this function does not expect arguments");
+drax_value dstr_to_number(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  drax_string* ds = CAST_STRING(a);
 
   if (ds->length > 2 && ds->chars[0] == '0') {
     char* endptr = (char*) ds->chars + ds->length;
 
     if (ds->chars[1] == 'x') {
-      push(vm, AS_VALUE((double) strtol(ds->chars, &endptr, 16)));
-      return 1;
+      DX_SUCESS_FN(stat);
+      return AS_VALUE((double) strtol(ds->chars, &endptr, 16));
     }
 
     if (ds->chars[1] == 'b') {
-      push(vm, AS_VALUE((double) strtol(ds->chars + 2, &endptr, 2)));
-      return 1;
+      DX_SUCESS_FN(stat);
+      return AS_VALUE((double) strtol(ds->chars + 2, &endptr, 2));
     }
 
     if (ds->chars[1] == 'o') {
-      push(vm, AS_VALUE((double) strtol(ds->chars + 2, &endptr, 8)));
-      return 1;
+      DX_SUCESS_FN(stat);
+      return AS_VALUE((double) strtol(ds->chars + 2, &endptr, 8));
     }
   }
 
-  push(vm, AS_VALUE(strtod(ds->chars, NULL)));
-  return 1;
+  DX_SUCESS_FN(stat);
+  return AS_VALUE(strtod(ds->chars, NULL));
 }
 
 #if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
@@ -85,12 +87,13 @@ char* str_format_output(const char* str) {
  *   "foo\nbar".split("\n") => ["foo", "bar"]
  */
 
-static drax_value dstr_split(d_vm *vm, int a, drax_string* ds) {
-  args_fail_required_size(a, 1, "only one argument is expected");
-
+drax_value dstr_split(d_vm *vm, int* stat) {
   drax_value v1 = pop(vm);
-  dvalidate_string(vm, v1, "error: expected string as argument");
+  drax_value a = pop(vm);
+  return_if_is_not_string(v1, stat);
+  return_if_is_not_string(a, stat);
 
+  drax_string* ds = CAST_STRING(a);
   drax_string* dd = CAST_STRING(v1);
   char *str = ds->chars;
   char *delim = dd->chars;
@@ -113,20 +116,22 @@ static drax_value dstr_split(d_vm *vm, int a, drax_string* ds) {
     put_value_dlist(l, DS_VAL(new_dstring(vm, n, strlen(n))));
   }
 
-  push(vm, DS_VAL(l));
-  return 1;
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l);
 }
 
 
 /**
  * returns the length of the string
- * 
+ *
  *  "foo".length => 3
  */
-static int dstr_length(d_vm* vm, int a, drax_string* ds) {
-  args_fail_required_size(a, 0, "this function does not expect arguments");
-  push(vm, AS_VALUE(ds->length));;
-  return 1;
+drax_value dstr_length(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  drax_string* ds = CAST_STRING(a);
+  DX_SUCESS_FN(stat);
+  return AS_VALUE(ds->length);
 }
 
 /**
@@ -139,15 +144,16 @@ static int dstr_length(d_vm* vm, int a, drax_string* ds) {
  * "drax lang".copy(0, 0) => ""
  */
 
-static int dstr_copy(d_vm* vm, int a, drax_string* ds) {
-  args_fail_required_bigger_than(a, 1);
-  args_fail_required_less_than(a, 3);
-
-  drax_value v2 = a > 1 ? pop(vm) : AS_VALUE(1);
+drax_value dstr_copy(d_vm* vm, int* stat) {
+  drax_value v2 = AS_VALUE(1);
   drax_value v1 = pop(vm);
 
-  dvalidate_number(vm, v1, "error: copy arguments must be numbers");
-  dvalidate_number(vm, v2, "error: copy arguments must be numbers");
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  return_if_is_not_number(v1, stat);
+  return_if_is_not_number(v2, stat);
+
+  drax_string* ds = CAST_STRING(a);
   
   int a2 = (int) (AS_NUMBER(v2));
   int a1 = (int) (AS_NUMBER(v1));
@@ -176,8 +182,51 @@ static int dstr_copy(d_vm* vm, int a, drax_string* ds) {
   strncpy(copy, str + a1, copy_len);
   copy[copy_len] = '\0';
 
-  push(vm, DS_VAL(new_dstring(vm, copy, copy_len)));
-  return 1;
+  DX_SUCESS_FN(stat);
+  return DS_VAL(new_dstring(vm, copy, copy_len));
+}
+
+
+drax_value dstr_copy2(d_vm* vm, int* stat) {
+  drax_value v2 = pop(vm);
+  drax_value v1 = pop(vm);
+
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  return_if_is_not_number(v1, stat);
+  return_if_is_not_number(v2, stat);
+
+  drax_string* ds = CAST_STRING(a);
+  
+  int a2 = (int) (AS_NUMBER(v2));
+  int a1 = (int) (AS_NUMBER(v1));
+
+  char* str = ds->chars;
+  if (str == NULL) {
+    char* ts = (char*) malloc(1);
+    ts[0] = '\0';
+    push(vm, DS_VAL(new_dstring(vm, (char*) ts, 0)));
+    return 1;
+  }
+
+  int str_len = strlen(str);
+  if (a1 >= str_len || a2 < 0) {
+    char* ts = (char*) malloc(1);
+    ts[0] = '\0';
+    push(vm, DS_VAL(new_dstring(vm, (char*) ts, 0)));
+    return 1;
+  }
+
+  a1 = a1 < 0 ? ds->length + a1 : a1;
+  int copy_len = str_len - a1;
+  if (a2 < copy_len) copy_len = a2;
+
+  char* copy = (char*) malloc(copy_len + 1);
+  strncpy(copy, str + a1, copy_len);
+  copy[copy_len] = '\0';
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(new_dstring(vm, copy, copy_len));
 }
 
 /**
@@ -189,7 +238,77 @@ static int dstr_copy(d_vm* vm, int a, drax_string* ds) {
  *  "bar"[-1] => "r"
  *  "bar"[10] => ""
  */
-static int dstr_get(d_vm* vm, int a, drax_string* ds) {
+drax_value dstr_get(d_vm* vm, int* stat) {
+  drax_value v1 = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  return_if_is_not_number(v1, stat);
+
+  double n = draxvalue_to_num(v1);
+  drax_string* ds = CAST_STRING(a);
+
+  if (n < 0) { n = ds->length + n; }
+
+  if (n < 0 || n >= ds->length) {
+    char* ts = (char*) malloc(1);
+    ts[0] = '\0';
+    push(vm, DS_VAL(new_dstring(vm, (char*) ts, 0)));
+    return 1;
+  }
+
+  char* str = (char*) malloc(2);
+  str[0] = ds->chars[(int) n];
+  str[1] = '\0';
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(new_dstring(vm, str, 1));
+}
+
+/**
+ * Returns a new string with all characters converted to uppercase
+ * 
+ * "foo".to_uppercase() => "FOO"
+ */
+drax_value dstr_to_uppercase(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  drax_string* ds = CAST_STRING(a);
+
+  char* upper = (char*) malloc(ds->length + 1);
+
+  int i;
+  for(i = 0; i < ds->length; i++) {
+    upper[i] = toupper(ds->chars[i]);
+  }
+  upper[ds->length] = '\0';
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(new_dstring(vm, upper, strlen(upper)));
+}
+
+/**
+ * Returns a new string with all characters converted to lowercase
+ * 
+ * "FOO".to_lowercase() => "foo"
+ */
+drax_value dstr_to_lowercase(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  drax_string* ds = CAST_STRING(a);
+
+  char* lower = (char*) malloc(ds->length + 1);
+
+  int i;
+  for(i = 0; i < ds->length; i++) {
+    lower[i] = tolower(ds->chars[i]);
+  }
+  lower[ds->length] = '\0';
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(new_dstring(vm, lower, strlen(lower)));
+}
+
+static int dstr_get_i(d_vm* vm, int a, drax_string* ds) {
   args_fail_required_size(a, 1, "expected one argument.");
   drax_value v1 = pop(vm);
   dvalidate_number(vm, v1, "error: copy arguments must be numbers");
@@ -211,58 +330,10 @@ static int dstr_get(d_vm* vm, int a, drax_string* ds) {
   return 1;
 }
 
-/**
- * Returns a new string with all characters converted to uppercase
- * 
- * "foo".to_uppercase() => "FOO"
- */
-static int dstr_to_uppercase(d_vm* vm, int a, drax_string* ds) {
-  args_fail_required_size(a, 0, "this function does not expect arguments");
-
-  char* upper = (char*) malloc(ds->length + 1);
-
-  int i;
-  for(i = 0; i < ds->length; i++) {
-    upper[i] = toupper(ds->chars[i]);
-  }
-  upper[ds->length] = '\0';
-
-  push(vm, DS_VAL(new_dstring(vm, upper, strlen(upper))));
-
-  return 1;
-}
-
-/**
- * Returns a new string with all characters converted to lowercase
- * 
- * "FOO".to_lowercase() => "foo"
- */
-static int dstr_to_lowercase(d_vm* vm, int a, drax_string* ds) {
-  args_fail_required_size(a, 0, "this function does not expect arguments");
-
-  char* lower = (char*) malloc(ds->length + 1);
-
-  int i;
-  for(i = 0; i < ds->length; i++) {
-    lower[i] = tolower(ds->chars[i]);
-  }
-  lower[ds->length] = '\0';
-
-  push(vm, DS_VAL(new_dstring(vm, lower, strlen(lower))));
-
-  return 1;
-}
-
 int dstr_handle_str_call(d_vm* vm, char* n, int a, drax_value o) {
   drax_string* s = CAST_STRING(o);
-  
-  match_dfunction(n, "split",        dstr_split,        vm, a, s);
-  match_dfunction(n, "length",       dstr_length,       vm, a, s);
-  match_dfunction(n, "to_number",    dstr_to_number,    vm, a, s);
-  match_dfunction(n, "copy",         dstr_copy,         vm, a, s);
-  match_dfunction(n, "to_uppercase", dstr_to_uppercase, vm, a, s);
-  match_dfunction(n, "to_lowercase", dstr_to_lowercase, vm, a, s);
-  match_dfunction(n, "get",          dstr_get,          vm, a, s);
+
+  match_dfunction(n, "get", dstr_get_i, vm, a, s);
 
   raise_drax_error(vm, "error: function '%s/%d' is not defined", n, a);
 

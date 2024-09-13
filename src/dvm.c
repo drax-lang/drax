@@ -231,6 +231,7 @@ static int get_definition(d_vm* vm, int is_local) {
     return STATUS_DCALL_ERROR; \
   }
 
+
 static void __clean_vm_tmp__(d_vm* itvm);
 
 /**
