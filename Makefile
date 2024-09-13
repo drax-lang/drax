@@ -18,7 +18,6 @@ FILES= ./src/dvm.c \
        ./src/dbuiltin.c \
        ./src/dtime.c \
 	   ./src/dstring.c \
-	   ./src/dlist.c \
 	   ./src/dgc.c \
 	   ./src/deval.c \
 	   ./src/dscheduler.c \
