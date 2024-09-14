@@ -527,8 +527,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_PUSH) {
-        drax_value v = GET_VALUE(vm);
-        push(vm, v);
+        push(vm, GET_VALUE(vm));
         break;
       }
       VMCase(OP_SET_G_ID) {
@@ -539,7 +538,6 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       }
       VMCase(OP_GET_G_ID) {
         if(get_definition(vm, 0) == 0) { return 1; }
-
         break;
       }
       VMCase(OP_SET_L_ID) {
@@ -550,7 +548,6 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       }
       VMCase(OP_GET_L_ID) {
         if(get_definition(vm, 1) == 0) { return 1; }
-
         break;
       }
       VMCase(OP_SET_I_ID) {
@@ -748,8 +745,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       }
       VMCase(OP_RETURN) {
         int is_no_instr = (vm->active_instr->instr_count <= 1);
-
-        vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range;
+        vm->envs->local->count -= vm->active_instr->local_range;
         vm->active_instr = callstack_pop(vm);
         if (vm->active_instr) {
           vm->ip = vm->active_instr->_ip;

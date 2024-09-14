@@ -6,6 +6,7 @@
 #include "dtypes.h"
 #include "dparser.h"
 #include "dlex.h"
+#include "deval.h"
 
 #include "dbuiltin.h"
 
@@ -940,9 +941,9 @@ void dfatal(d_token* token, const char* message) {
   if (parser.panic_mode) return;
   parser.panic_mode = true;
   if (NULL != parser.file) {
-    fprintf(stderr, "Error, '%s:%d'\n", parser.file, token->line);
+    fprintf(stderr, D_COLOR_RED"Error, '%s:%d'\n"D_COLOR_RESET, parser.file, token->line);
   } else {
-    fprintf(stderr, "Error, line: %d\n", token->line);
+    fprintf(stderr, D_COLOR_RED"Error, line: %d\n"D_COLOR_RESET, token->line);
   }
 
   if (token->type == DTK_EOF) {

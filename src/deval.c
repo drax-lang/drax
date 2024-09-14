@@ -31,7 +31,7 @@ static void print_string(const char* str, int formated) {
   if (!formated) {
     char* tmpstr = str_format_output(str);
     if (tmpstr == NULL) {
-      printf("runtime error: cannot format string");
+      fprintf(stderr, D_COLOR_RED"runtime error: cannot format string"D_COLOR_RESET);
       return;
     }
     printf(formated ? "\"%s\"" : "%s", tmpstr);
