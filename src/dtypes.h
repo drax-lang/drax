@@ -68,7 +68,7 @@ typedef enum drax_nanbox_def {
  * Instructions
 */
 typedef enum d_op_code {
-  OP_CONST,
+  OP_CONST = 1,
   OP_NIL, 
   OP_TRUE,
   OP_FALSE,

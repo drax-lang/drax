@@ -186,6 +186,9 @@ int inspect_opcode(drax_value* _ip, size_t level) {
       }
       case OP_RETURN: {
         printf("OP_RETURN\n");
+        if ((*(ip) == 0) && 
+            (*(ip + 1) == 0) &&
+            (*(ip + 2) == 0)) return 0;
         break;
       }
       case OP_EXIT: {
@@ -201,7 +204,13 @@ int inspect_opcode(drax_value* _ip, size_t level) {
       }
     }
 
-    if (*(ip) == 0) return 0;
+    if (*(ip) == 0) {
+      for (i = 0; i < level; i++) {
+        putchar(' ');
+      }
+      printf("\033[31m<Hole here>\033[0m\n");
+    }
+
   }
   printf("=======================\n\n");
  

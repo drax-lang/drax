@@ -62,7 +62,20 @@ static drax_value peek(d_vm* vm, int distance) {
 /* VM Call stack */
 
 static void callstack_push(d_vm* vm, d_instructions* v) {
-  vm->call_stack->values[vm->call_stack->count++] = v;
+  d_instructions* nv = (d_instructions*) malloc(sizeof(d_instructions));
+
+  nv->values = v->values;
+  nv->instr_count = v->instr_count;
+  nv->instr_size = v->instr_size;
+  nv->file = v->file;
+  nv->lines = v->lines;
+  nv->local_range = v->local_range;
+  nv->extrn_ref_count = v->extrn_ref_count;
+  nv->extrn_ref_capacity = v->extrn_ref_capacity;
+  nv->extrn_ref = v->extrn_ref;
+  nv->_ip = v->_ip;
+
+  vm->call_stack->values[vm->call_stack->count++] = nv;
 }
 
 static d_instructions* callstack_pop(d_vm* vm) {
@@ -413,7 +426,6 @@ static int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
 
   if (IS_FUNCTION(v)) {
     drax_function* f = CAST_FUNCTION(v);
-
     if (f->arity != (int) a) {
       raise_drax_error(vm, MSG_FUNCTION_IS_NOT_DEFINED, f->name ? f->name : "<function>", a);
       return 1;
@@ -430,7 +442,6 @@ static int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
   if (IS_NATIVE(v)) {
     int scs = 0;
     drax_os_native* nf = CAST_NATIVE(v);
-
     if (nf->arity != (int) a) {
       raise_drax_error(vm, MSG_FUNCTION_IS_NOT_DEFINED, nf->name ? nf->name : "<function>", a);
       return 1;
@@ -745,11 +756,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_RETURN) {
-        drax_value v = (vm->active_instr->instr_count == 1) ?
-          DRAX_NIL_VAL :
-          pop(vm);
-
-        v = v ? v : DRAX_NIL_VAL;
+        int is_no_instr = (vm->active_instr->instr_count <= 1);
 
         vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range;
         vm->active_instr = callstack_pop(vm);
@@ -757,7 +764,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           vm->ip = vm->active_instr->_ip;
         }
 
-        push(vm, v);
+        if (is_no_instr) push(vm, DRAX_NIL_VAL);
         if (!vm->active_instr) return 0;
         break;
       }
