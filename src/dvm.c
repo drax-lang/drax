@@ -62,26 +62,17 @@ static drax_value peek(d_vm* vm, int distance) {
 /* VM Call stack */
 
 static void callstack_push(d_vm* vm, d_instructions* v) {
-  d_instructions* nv = (d_instructions*) malloc(sizeof(d_instructions));
-
-  nv->values = v->values;
-  nv->instr_count = v->instr_count;
-  nv->instr_size = v->instr_size;
-  nv->file = v->file;
-  nv->lines = v->lines;
-  nv->local_range = v->local_range;
-  nv->extrn_ref_count = v->extrn_ref_count;
-  nv->extrn_ref_capacity = v->extrn_ref_capacity;
-  nv->extrn_ref = v->extrn_ref;
-  nv->_ip = v->_ip;
-
-  vm->call_stack->values[vm->call_stack->count++] = nv;
+  vm->call_stack->values[vm->call_stack->count] = v;
+  vm->call_stack->_ip[vm->call_stack->count] = v->_ip;
+  vm->call_stack->count++;
 }
 
 static d_instructions* callstack_pop(d_vm* vm) {
   if (vm->call_stack->count == 0) return 0;
   vm->call_stack->count--;
-  return vm->call_stack->values[vm->call_stack->count];
+  d_instructions* v = vm->call_stack->values[vm->call_stack->count];
+  v->_ip = vm->call_stack->_ip[vm->call_stack->count];
+  return v;
 }
 
 /**
@@ -855,8 +846,9 @@ static void __clean_vm_tmp__(d_vm* itvm) {
   free(itvm->instructions);
   free(itvm->exported);
   
-  free(itvm->call_stack);
   /*free(itvm->call_stack->values);*/
+  /*free(itvm->call_stack->_ip);*/
+  free(itvm->call_stack);
   
   free(itvm->envs->functions);
 
@@ -895,6 +887,7 @@ d_vm* createMainVM() {
   vm->call_stack->size = CALL_STACK_SIZE;
   vm->call_stack->count = 0;
   vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
+  vm->call_stack->_ip = (drax_value**) malloc(sizeof(drax_value*) * CALL_STACK_SIZE);
   vm->pstatus = VM_STATUS_STOPED;
   return vm;
 }
@@ -942,6 +935,7 @@ d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc, int new_global_
   vm->call_stack->size = CALL_STACK_SIZE;
   vm->call_stack->count = 0;
   vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
+  vm->call_stack->_ip = (drax_value**) malloc(sizeof(drax_value*) * CALL_STACK_SIZE);
   vm->pstatus = VM_STATUS_STOPED;
 
   return vm;

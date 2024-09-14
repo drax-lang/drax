@@ -237,9 +237,28 @@ end
 
 r = callme(0)
 
-print(r)
-
 assert(r == 11, "r == 11")
 
+## same funcion on call stack
+##
+
+fun make_Tree(v) do
+    {
+        rg: nil,
+        lf: nil,
+        value: v
+    }
+end
+
+fun put(tree, value) do
+    if (tree == nil) do
+        return make_Tree(value)
+    end
+
+    Frame.put(tree, 'lf', put(tree.lf, value))
+end
+
+r = make_Tree(5) |> put(4)
+assert(r == {rg: nil, lf: {rg: nil, lf: nil, value: 4}, value: 5}, 'fail to make simple tree')
 
 print("Functions done!")

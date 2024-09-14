@@ -909,7 +909,7 @@ int __build__(d_vm* vm, const char* input, char* path) {
 
   while (get_current_token() != DTK_EOF) {
     expression(vm);
-    put_instruction(vm, OP_POP);
+    /*put_instruction(vm, OP_POP);*/
   }
 
   if (parser.has_error) {
