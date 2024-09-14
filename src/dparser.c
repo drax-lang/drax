@@ -126,7 +126,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_BKT_OPEN,  process_list,        NULL,           iCALL),
   make_op_line(DTK_BKT_CLOSE, NULL,                NULL,           iNONE),
-  make_op_line(DTK_CBR_OPEN,  process_struct,      NULL,           iNONE),
+  make_op_line(DTK_CBR_OPEN,  process_frame,       NULL,           iNONE),
   make_op_line(DTK_CBR_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_DO,        process_do,          NULL,           iNONE),
   make_op_line(DTK_END,       NULL,                NULL,           iNONE),
@@ -431,7 +431,7 @@ void process_list(d_vm* vm, bool v) {
   put_instruction(vm, OP_LIST);
 }
 
-void process_struct(d_vm* vm, bool v) {
+void process_frame(d_vm* vm, bool v) {
   UNUSED(v);
 
   if (eq_and_next(DTK_CBR_CLOSE)) {
@@ -442,17 +442,31 @@ void process_struct(d_vm* vm, bool v) {
 
   double lc = 0;
   do {
-    process_token(DTK_ID, "Expect 'identifier' as an key.");
-    
-    char* name = (char*) malloc(sizeof(char) * (parser.prev.length + 1));
-    strncpy(name, parser.prev.first, parser.prev.length);
-    name[parser.prev.length] = '\0';
+    char* name;
+    if(eq_and_next(DTK_ID)) {
+      name = (char*) malloc(sizeof(char) * (parser.prev.length + 1));
+      strncpy(name, parser.prev.first, parser.prev.length);
+      name[parser.prev.length] = '\0';
+    } else {
 
+      if(
+        eq_and_next(DTK_STRING) ||
+        eq_and_next(DTK_DSTRING)
+      ) {
+        name = (char*) malloc(sizeof(char) * (parser.prev.length - 2));
+        strncpy(name, parser.prev.first + 1, parser.prev.length - 2);
+        name[parser.prev.length - 2] = '\0';
+      } else {
+        FATAL_CURR("Expect 'identifier' as an key.");
+        return;
+      }
+    }
+    
     put_pair(vm, OP_PUSH, (drax_value) name);
     process_token(DTK_COLON, "Expect ':' after elements.");
     expression(vm);
     lc += 2;
-  } while (eq_and_next(DTK_COMMA));
+  } while (eq_and_next(DTK_COMMA) && parser.current.type != DTK_CBR_CLOSE);
 
   process_token(DTK_CBR_CLOSE, "Expect '}' after elements.");
   put_const(vm, NUMBER_VAL(lc));

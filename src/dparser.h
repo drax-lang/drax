@@ -87,7 +87,7 @@ callback_table(process_and);
 callback_table(process_or);
 callback_table(process_import);
 callback_table(process_export);
-callback_table(process_struct);
+callback_table(process_frame);
 callback_table(process_dot);
 callback_table(process_function);
 callback_table(literal_translation);

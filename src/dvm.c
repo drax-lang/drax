@@ -846,8 +846,8 @@ static void __clean_vm_tmp__(d_vm* itvm) {
   free(itvm->instructions);
   free(itvm->exported);
   
-  /*free(itvm->call_stack->values);*/
-  /*free(itvm->call_stack->_ip);*/
+  free(itvm->call_stack->values);
+  free(itvm->call_stack->_ip);
   free(itvm->call_stack);
   
   free(itvm->envs->functions);
