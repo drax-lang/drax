@@ -36,10 +36,10 @@ static int interactive_shell(d_vm* v) {
 
 static int process_file(d_vm* v, char** argv) {
   int stat = 0;
-  char * content = 0;
-  char * path = argv[1];
+  char* content = 0;
+  char* path = argv[1];
 
-  if(get_file_content(path, &content)) {
+  if(get_file_content(NULL, path, &content)) {
     printf("file '%s' not found.\n", path);
     return 1;
   }

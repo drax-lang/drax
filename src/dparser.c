@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <libgen.h>
 
 #include "dtypes.h"
 #include "dparser.h"
@@ -909,12 +912,16 @@ int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_parser(vm);
 
-  vm->active_instr->file = path;
-
   if (path != NULL) {
-    parser.file = (char*) malloc(sizeof(char) * strlen(path) + 1);
-    strcpy(parser.file, path);
+    long path_max = pathconf(path, _PC_PATH_MAX);
+    parser.file = (char*) malloc(sizeof(char) * path_max);
+    if (realpath(path, parser.file) == 0) {
+      fprintf(stderr, "fail to make full path: '%s'.\n", path);
+    }
   }
+
+  vm->active_instr->file = (char*) malloc(sizeof(char) * strlen(parser.file) + 1);
+  strcpy(vm->active_instr->file, parser.file);
 
   parser.has_error = false;
   parser.panic_mode = false;

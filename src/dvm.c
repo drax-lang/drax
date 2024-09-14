@@ -232,7 +232,7 @@ static void __clean_vm_tmp__(d_vm* itvm);
 static int import_file(d_vm* vm, char* p, char * n) {
   char * content = 0;
 
-  if(get_file_content(p, &content)) {
+  if(get_file_content(vm->active_instr->file, p, &content)) {
     printf("file '%s' not found.\n", p);
     return 1;
   }
@@ -240,7 +240,8 @@ static int import_file(d_vm* vm, char* p, char * n) {
   d_vm* itvm = ligth_based_createVM(vm, -2, 1, 1);
 
   int stat = 0;
-  if (__build__(itvm, content, p)) {
+  char* new_p = normalize_path(vm->active_instr->file, p);
+  if (__build__(itvm, content, new_p)) {
     stat = __run__(itvm, 0);
     free(content);
   } else {

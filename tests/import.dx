@@ -1,8 +1,8 @@
 test_val = 10
 
-import 'tests/export.dx' as lib
-import 'tests/export.dx' as lib2
-import 'tests/export.dx' as lib3
+import './export.dx' as lib
+import './export.dx' as lib2
+import './export.dx' as lib3
 
 assert(test_val == 10, "the global scope is being changed")
 
