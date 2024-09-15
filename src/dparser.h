@@ -97,6 +97,7 @@ callback_table(process_call);
 callback_table(process_if);
 callback_table(process_do);
 callback_table(process_return);
+callback_table(process_line_break);
 
 void dfatal(d_token* token, const char* message);
 
