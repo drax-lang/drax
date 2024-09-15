@@ -7,8 +7,8 @@
 
 char* b_pwd();
 
-char* normalize_path(char* path);
+char* normalize_path(char* bp, char* path);
 
-int get_file_content(char* name, char** content);
+int get_file_content(char* bp, char* name, char** content);
 
 #endif

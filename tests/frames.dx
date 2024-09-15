@@ -176,4 +176,11 @@ assert(Frame.is_empty(Frame.new()), "frame error: the new/0 function not returne
 assert(Frame.new_from_list(Frame.to_list(ff)), "frame error: error to convert list in frame")
 assert(Frame.new_from_list([]), "frame error: the new({}) function not returned an empty frame")
 
+fwithcomma = {
+    'value': 12,
+    'value @ test': 456,
+}
+
+assert(fwithcomma == {'value': 12, 'value @ test': 456}, 'fail to make frame with complex string and comma')
+
 print("Frames done!")

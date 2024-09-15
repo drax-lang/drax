@@ -2,7 +2,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <libgen.h>
+
 #include "dio.h"
+#include "dstring.h"
 
 char* b_pwd() {
   #ifdef _WIN32
@@ -25,7 +28,14 @@ char* b_pwd() {
   #endif
 }
 
-char* normalize_path(char* path) {
+char* normalize_path(char* bp, char* path) {
+  char* nbp = NULL;
+
+  if (NULL != bp) {
+    nbp = strndup(bp, strlen(bp) + 1);
+    nbp = dirname(nbp);
+  }
+
   char* full_path;
   if (path[0] == '/') {
     full_path = malloc((strlen(path) * sizeof(char)) + 1);
@@ -33,7 +43,8 @@ char* normalize_path(char* path) {
     return full_path;
   }
 
-  char* r_path = b_pwd();
+  int unp = NULL == nbp;
+  char* r_path = unp ? b_pwd() : nbp;
   size_t rs = strlen(r_path);
   size_t cs = strlen(path);
   full_path = (char*) malloc(sizeof(char) * (rs + cs + 2));
@@ -43,22 +54,22 @@ char* normalize_path(char* path) {
   full_path[rs] = '/';
   for (i = 0; i < cs; i++) { full_path[i + rs + 1] = path[i]; }
   full_path[rs + cs + 1] = '\0';
-  free(r_path);
+  if (unp) free(r_path);
   return full_path;
 }
 
-int get_file_content(char* name, char** content) {
-  char* filename = normalize_path(name);
-
-  char * buffer = NULL;
+int get_file_content(char* bp, char* name, char** content) {
+  char* filename = normalize_path(bp, name);
+  
+  char* buffer = NULL;
   long length;
-  FILE * f = fopen(filename, "rb");
+  FILE* f = fopen(filename, "rb");
 
   if (f) {
     fseek(f, 0, SEEK_END);
     length = ftell(f);
     fseek(f, 0, SEEK_SET);
-    buffer = (char *) calloc(length + 1, sizeof(char));
+    buffer = (char*) calloc(length + 1, sizeof(char));
     if (buffer) {
       fread(buffer, 1, length, f);
     }

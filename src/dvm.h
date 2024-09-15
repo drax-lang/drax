@@ -80,6 +80,7 @@ typedef struct dt_envs {
 
 typedef struct  dcall_stack {
   d_instructions** values;
+  drax_value** _ip;
   int count;
   int size;
 } dcall_stack;
