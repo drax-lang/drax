@@ -129,7 +129,7 @@ static bool values_equal(drax_value a, drax_value b) {
     case DS_STRING:
       return CAST_STRING(a)->hash == CAST_STRING(b)->hash;
       
-    case DS_LIST:
+    case DS_LIST: {
       drax_list* l1 = CAST_LIST(a);
       drax_list* l2 = CAST_LIST(b);
 
@@ -141,8 +141,9 @@ static bool values_equal(drax_value a, drax_value b) {
         }
       }
       return true;
+    }
 
-    case DS_FRAME:
+    case DS_FRAME: {
       drax_frame* f1 = CAST_FRAME(a);
       drax_frame* f2 = CAST_FRAME(b);
 
@@ -155,6 +156,7 @@ static bool values_equal(drax_value a, drax_value b) {
         }
       }
       return true;
+    }
 
 
     case DS_FUNCTION:
