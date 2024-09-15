@@ -9,6 +9,9 @@
 
 #ifdef _WIN32
   drax_value start_http_server(d_vm* vm, char *options[], int* fail) {
+    UNUSED(vm);
+    UNUSED(options);
+    UNUSED(fail);
     return -1;
   }
 #else
@@ -69,6 +72,9 @@
 
 #ifdef _WIN32
   int accept_http_server(d_vm* vm, drax_value aconf, drax_value* res) {
+    UNUSED(vm);
+    UNUSED(aconf);
+    UNUSED(res);
     return -1;
   }
 #else
@@ -91,7 +97,9 @@
 
 #ifdef _WIN32
   char* receive_http_server(d_vm* vm, drax_value aconf) {
-    return "nil";
+    UNUSED(vm);
+    UNUSED(aconf);
+    return "";
   }
 #else
   char* receive_http_server(d_vm* vm, drax_value aconf) {
@@ -131,6 +139,7 @@
 #ifdef _WIN32
   int disconnect_client_http_server(d_vm* vm, drax_value v) {
     UNUSED(vm);
+    UNUSED(v);
     return 1;
   }
 #else
@@ -146,7 +155,7 @@
 #ifdef _WIN32
   int stop_http_server(d_vm* vm, drax_value v) {
   UNUSED(vm);
-
+  UNUSED(v);
   return 1;
 }
 #else

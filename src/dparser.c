@@ -908,14 +908,35 @@ void process_if(d_vm* vm, bool v) {
   process_token(DTK_END, "Expect 'end' after if definition.");
 }
 
+static int get_realpath(const char* path, char* resolved_path) {
+  #ifdef _WIN32
+      if (GetFullPathName(path, _PC_PATH_MAX, resolved_path, NULL) == 0) {
+        return 0;
+    }
+
+    return 1;
+  #else
+    char* r = realpath(path, resolved_path);
+    return r != NULL;
+  #endif
+}
+
+static long get_path_max(const char* path) {
+  #ifdef _WIN32
+      return _PC_PATH_MAX;
+  #else
+      return pathconf(path, _PC_PATH_MAX);
+  #endif
+}
+
 int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_parser(vm);
 
   if (path != NULL) {
-    long path_max = pathconf(path, _PC_PATH_MAX);
+    long path_max = get_path_max(path);
     parser.file = (char*) malloc(sizeof(char) * path_max);
-    if (realpath(path, parser.file) == 0) {
+    if (get_realpath(path, parser.file) == 0) {
       fprintf(stderr, "fail to make full path: '%s'.\n", path);
     }
     vm->active_instr->file = (char*) malloc(sizeof(char) * strlen(parser.file) + 1);

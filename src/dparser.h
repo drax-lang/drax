@@ -9,6 +9,13 @@
 #include "dvm.h"
 #include "ddefs.h"
 
+
+#ifdef _WIN32
+  #include <windows.h>
+
+  #define _PC_PATH_MAX 260
+#endif
+
 #ifndef UINT16_MAX
   #define UINT16_MAX 65535
 #endif
