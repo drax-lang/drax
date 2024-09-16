@@ -792,7 +792,6 @@ static void initialize_builtin_functions(d_vm* vm) {
 
 static dt_envs* new_environment(int ignore_natives, int ignore_local, int ignore_global) {
   dt_envs* e = (dt_envs*) malloc(sizeof(dt_envs));
-  e->functions = new_fun_table();
 
   if (!ignore_global) {
     e->global = new_var_table();
@@ -840,7 +839,7 @@ void __reset__(d_vm* vm) {
 
 static void __clean_vm_tmp__(d_vm* itvm) { 
   itvm->active_instr = NULL;
-  
+  /*
   free(itvm->instructions->values);
   free(itvm->instructions->lines);
   free(itvm->instructions);
@@ -850,8 +849,7 @@ static void __clean_vm_tmp__(d_vm* itvm) {
   free(itvm->call_stack->_ip);
   free(itvm->call_stack);
   
-  free(itvm->envs->functions);
-
+*/
   itvm->call_stack->count = 0;
   itvm->stack_count = 0;
   itvm->ip = NULL;
