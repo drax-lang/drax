@@ -175,9 +175,7 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         break;
       }
       case OP_IMPORT: {
-        char* path = (char*)(*ip++);
-        char* as = (char*)(*ip++);
-        printf("OP_IMPORT, \"%s\", \"%s\"\n", path, as);
+        printf("OP_IMPORT\n");
         break;
       }
       case OP_EXPORT: {

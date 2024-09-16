@@ -601,23 +601,10 @@ void process_variable(d_vm* vm, bool v) {
 
 void process_import(d_vm* vm, bool v) {
   UNUSED(v);
-  get_next_token();
-
-  d_token ctk = parser.prev;
-  char* path = (char*) malloc(sizeof(char) * (ctk.length));
-  strncpy(path, ctk.first +1, ctk.length -2);
-  path[ctk.length -2] = '\0';
-
-  put_pair(vm, OP_IMPORT, (drax_value) path);
-  process_token(DTK_AS, "Expect 'as' after path.");
-
-  get_next_token();
-  ctk = parser.prev;
-  char* alias = (char*) malloc(sizeof(char) * (ctk.length + 1));
-  strncpy(alias, ctk.first, ctk.length);
-  alias[ctk.length] = '\0';
-
-  put_instruction(vm, (drax_value) alias);
+  process_token(DTK_PAR_OPEN, "Expect '(' after import.");
+  expression(vm);
+  process_token(DTK_PAR_CLOSE, "Expect ')' before expression on import.");
+  put_instruction(vm, OP_IMPORT);
 }
 
 void process_return(d_vm* vm, bool v) {
@@ -628,8 +615,9 @@ void process_return(d_vm* vm, bool v) {
 
 void process_export(d_vm* vm, bool v) {
   UNUSED(v);
-  
+  process_token(DTK_PAR_OPEN, "Expect '(' after export.");
   create_function(vm, true, true);
+  process_token(DTK_PAR_CLOSE, "Expect ')' before expression on export.");
   put_pair(vm, OP_D_CALL, 0);
   put_instruction(vm, (drax_value) OP_EXPORT);
 }

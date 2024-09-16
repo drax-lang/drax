@@ -6,12 +6,11 @@ fun calc_two(a, b) do
     a * b + test_val
 end
 
-
-export {
+export({
     calc: calc_two,
     name: name,
     key1: "str value",
     key2: 123,
     key3: [123, 456],
     key4: { k: 'v' }
-}
+})

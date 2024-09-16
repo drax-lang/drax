@@ -229,18 +229,23 @@ static void __clean_vm_tmp__(d_vm* itvm);
  * 
  * this function process importations.
  */
-static int import_file(d_vm* vm, char* p, char * n) {
+static int import_file(d_vm* vm, drax_value v) {
   char * content = 0;
 
-  if(get_file_content(vm->active_instr->file, p, &content)) {
-    printf("file '%s' not found.\n", p);
+  if (!IS_STRING(v)) {
+    raise_drax_error(vm, "import with unexpected type, the argument must be a string");
+  }
+
+  drax_string* p = CAST_STRING(v);
+  if(get_file_content(vm->active_instr->file, p->chars, &content)) {
+    printf("file '%s' not found.\n", p->chars);
     return 1;
   }
 
   d_vm* itvm = ligth_based_createVM(vm, -2, 1, 1);
 
   int stat = 0;
-  char* new_p = normalize_path(vm->active_instr->file, p);
+  char* new_p = normalize_path(vm->active_instr->file, p->chars);
   if (__build__(itvm, content, new_p)) {
     stat = __run__(itvm, 0);
     free(content);
@@ -256,7 +261,7 @@ static int import_file(d_vm* vm, char* p, char * n) {
    * first element, for now.
    */
   
-    put_var_table(vm->envs->global, n, itvm->exported[0]);
+    push(vm, itvm->exported[0]);
     vm->d_ls = itvm->d_ls;
     __clean_vm_tmp__(itvm);
     /*dgc_swap(vm);*/
@@ -734,9 +739,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_IMPORT) {
-        drax_value p = GET_VALUE(vm);
-        drax_value n = GET_VALUE(vm);
-        if (import_file(vm, (char*) p, (char*) n)) return 1;
+        if (import_file(vm, pop(vm))) return 1;
         break;
       }
       VMCase(OP_EXPORT) {

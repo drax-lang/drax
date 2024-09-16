@@ -29,7 +29,9 @@ export MODE=test
 
 ./bin/drax ./tests/pipe.dx
 
+echo -e "\n\033[43mExpecting errors .....\033[0m"
 ./bin/drax ./tests/expressions.dx
+echo -e "\n\033[43m----------------------\033[0m"
 
 echo "----------------------------------------"
 echo -e "\n\033[32mAll tests were executed successfully!\033[0m"
