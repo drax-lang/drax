@@ -1,7 +1,9 @@
 test_val = 10
 
+path = './export.dx'
+
 lib = import('./export.dx')
-lib2 = import('./export.dx')
+lib2 = import(path)
 lib3 = import('./export.dx')
 
 assert(test_val == 10, "the global scope is being changed")
