@@ -1230,7 +1230,7 @@ static drax_value __d_list_zip(d_vm* vm, int* stat) {
     return DS_VAL(new_derror(vm, (char*) "expected lists with the same size"));
   }
 
-  drax_list* nl = new_dlist(vm, l1->length / 2);
+  drax_list* nl = new_dlist(vm, l1->length);
 
   int i;
   for(i = 0; i < l1->length; i++) {
