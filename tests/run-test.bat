@@ -1,5 +1,7 @@
 @REM export MODE=test
 
+.\bin\drax .\tests\expressions.dx
+
 .\bin\drax .\tests\print.dx
 
 .\bin\drax .\tests\number.dx
@@ -25,5 +27,7 @@
 .\bin\drax .\tests\lambdas-nested.dx
 
 .\bin\drax .\tests\pipe.dx
+
+./bin/drax ./tests/gc.dx
 
 @REM  .\bin\drax .\tests\http\http-only-response-text-plain.dx
