@@ -153,8 +153,8 @@ static bool values_equal(drax_value a, drax_value b) {
       if(f1->length != f2->length) { return false; }
 
       for(i = 0; i < f1->length; i++) {
-        if(!values_equal(f1->values[i], f2->values[i]) ||
-          strcmp(f1->literals[i], f2->literals[i]) != 0) {
+        if(f1->keys[i] != f2->keys[i] || 
+          !values_equal(f1->values[i], f2->values[i])) {
           return false;
         }
       }
@@ -264,7 +264,7 @@ static int import_file(d_vm* vm, drax_value v) {
     push(vm, itvm->exported[0]);
     vm->d_ls = itvm->d_ls;
     __clean_vm_tmp__(itvm);
-    /*dgc_swap(vm);*/
+    /*if (-1 == vm->vid) dgc_swap(vm);*/
     return stat;
 }
 
@@ -547,9 +547,8 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_SET_L_ID) {
-        drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
-        put_local_table(vm->envs->local, k, v);
+        put_local_table(vm->envs->local, k, pop(vm));
         break;
       }
       VMCase(OP_GET_L_ID) {
