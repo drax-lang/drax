@@ -546,7 +546,7 @@ static drax_value __d_number_to_string(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
   return_if_is_not_number(a, stat);
 
-  char *s = (char *) malloc(50 * sizeof(char));
+  char *s = (char *) calloc(50, sizeof(char));
   double num = CAST_NUMBER(a);
   
   snprintf(s, sizeof(s), "%g", num);
