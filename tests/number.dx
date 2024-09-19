@@ -59,5 +59,31 @@ assert(result == 7, "number error: 21/21")
 assert(Number.to_string(11.7) == "11.7", "number error: Number.to_string(11.7)")
 assert(Number.to_string(-11.7) == "-11.7", "number error: Number.to_string(-11.7)")
 assert(Number.to_string(-0.17) == "-0.17", "number error: Number.to_string(-0.17)")
+assert(Number.to_string(8080) == "8080", "number error: Number.to_string(8080)")
+
+assert(Number.max(1, 2) == 2, "number error: expected 2 as result")
+assert(Number.max(-10, -2) == -2, "number error: expected -2 as result")
+assert(Number.max(-10, -20) == -10, "number error: expected -10 as result")
+assert(Number.max(-10, 0) == 0, "number error: expected 0 as result")
+
+assert(Number.min(1, 2) == 1, "number error: expected 1 as result")
+assert(Number.min(-10, -2) == -10, "number error: expected -10 as result")
+assert(Number.min(-10, -20) == -20, "number error: expected -20 as result")
+assert(Number.min(-10, 0) == -10, "number error: expected -10 as result")
+
+assert(!Number.is_even(1), "number error: 1 not is even")
+assert(!Number.is_even(13), "number error: 13 not is even")
+assert(Number.is_even(2), "number error: 2 is even")
+assert(Number.is_even(Math.pow(2, 64)), "number error: (2 ^ 64) is even")
+
+assert(Number.is_odd(1), "number error: 1 is odd")
+assert(Number.is_odd(13), "number error: 13 is even")
+assert(!Number.is_odd(2), "number error: 2 not is even")
+assert(!Number.is_odd(Math.pow(2, 64)), "number error: (2 ^ 64) not is even")
+
+assert(Number.floor_div(10, 3) == 3, "number error: expected 3 as result")
+assert(Number.floor_div(100, 20) == 5, "number error: expected 5 as result")
+assert(Number.floor_div(2.5, 0.5), "number error: expected 5 as result")
+assert(Number.floor_div(13, 2) == 6, "number error: expected 6 as result")
 
 print("Number done!")
