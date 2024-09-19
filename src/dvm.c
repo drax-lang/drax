@@ -873,6 +873,10 @@ d_vm* createMainVM() {
   vm->stack_count = 0;
   vm->envs = new_environment(0, 0, 0);
 
+  vm->gc_meta = (dgc_meta*) malloc(sizeof(dgc_meta));
+  vm->gc_meta->n_cycles = 0;
+  vm->gc_meta->n_free_structs = 0;
+
   /**
    * Created on builtin definitions
   */
