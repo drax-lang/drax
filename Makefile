@@ -73,7 +73,6 @@ FLAGS=  -std=c99 \
 		-lm \
 		-Wall  \
 		-ansi \
-		-lpthread \
 		$(WARNING) \
 		$(DWN_CCFLAGS) \
 		$(LIBS) \
@@ -90,6 +89,13 @@ else
     DRAX_BUILD_FULL= \
 	    -D_B_BUILF_FULL \
 	    -ledit
+endif
+
+ifeq ($(TARGET_OS),WIN32)
+	DRAX_BUILD_FULL= 
+	FLAGS += -lws2_32
+else
+	FLAGS += -pthread
 endif
 
 DEFAULT_BUILD = \
@@ -118,7 +124,11 @@ config:
 	mkdir bin
 
 test:
+ifeq ($(TARGET_OS),WIN32)
+	tests\run-test.bat
+else
 	sh tests/run-test.sh
+endif
 
 clean:
 	rm -rf ./bin/$(APP)

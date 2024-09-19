@@ -311,7 +311,7 @@ static void put_const(d_vm* vm, drax_value value) {
 static void patch_jump(d_vm* vm, int offset) {
   int jump = GET_INSTRUCTION(vm)->instr_count - offset - 2;
 
-  if (jump > UINT16_MAX) {
+  if ((unsigned int) jump > UINT16_MAX) {
     FATAL("Too much code to jump over.");
   }
 
@@ -936,14 +936,34 @@ void process_if(d_vm* vm, bool v) {
   process_token(DTK_END, "Expect 'end' after if definition.");
 }
 
+static int get_realpath(const char* path, char* resolved_path) {
+  #ifdef _WIN32
+      if (GetFullPathName(path, _PC_PATH_MAX, resolved_path, NULL) == 0) {
+        return 0;
+    }
+
+    return 1;
+  #else
+    return realpath(path, resolved_path);
+  #endif
+}
+
+static long get_path_max(const char* path) {
+  #ifdef _WIN32
+      return _PC_PATH_MAX;
+  #else
+      return pathconf(path, _PC_PATH_MAX);
+  #endif
+}
+
 int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_parser(vm);
 
   if (path != NULL) {
-    long path_max = pathconf(path, _PC_PATH_MAX);
+    long path_max = get_path_max(path);
     parser.file = (char*) malloc(sizeof(char) * path_max);
-    if (realpath(path, parser.file) == 0) {
+    if (get_realpath(path, parser.file) == 0) {
       fprintf(stderr, "fail to make full path: '%s'.\n", path);
     }
     vm->active_instr->file = (char*) malloc(sizeof(char) * strlen(parser.file) + 1);

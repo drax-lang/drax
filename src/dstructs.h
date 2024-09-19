@@ -5,11 +5,21 @@
 #include "dtypes.h"
 #include "dvm.h"
 
+#ifndef _WIN32
+  #include <sys/ioctl.h>
+#else
+  #include <windows.h>
+#endif
+
 typedef struct d_vm d_vm;
 
 #define DRAX_STYPEOF(v)   (CAST_STRUCT(v)->type)
 
 #define IS_ST_TYPE(v, t)  (IS_STRUCT(v) && DRAX_STYPEOF(v) == t)
+
+#ifdef IS_ERROR
+  #undef IS_ERROR
+#endif
 
 #define IS_ERROR(v)       IS_ST_TYPE(v, DS_ERROR)
 #define IS_FRAME(v)       IS_ST_TYPE(v, DS_FRAME)

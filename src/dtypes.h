@@ -112,7 +112,11 @@ typedef enum d_op_code {
  * Drax Value definitions
 */
 
-typedef unsigned long drax_value;
+#ifndef _WIN_32
+  typedef uint64_t drax_value;
+#else
+  typedef unsigned long drax_value;
+#endif
 
 typedef enum bimode {
   BI_NONE,

@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
 #include <math.h>
 
@@ -213,39 +212,79 @@ int get_fun_on_module(drax_native_module* m, const char* n) {
 }
 
 void print_funcs_on_module(drax_native_module* m) {
+  #ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    int columns;
 
-  struct winsize w;
-  ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-
-  int max_distance = 0;
-  int i, j;
-
-  for (i = 0; i < m->count; i++) {
-    int str_len = strlen(m->fn_names[i]);
-    max_distance = str_len > max_distance ? str_len : max_distance;
-  }
-  max_distance += 5;
-
-  int num_cols = (int) floor(w.ws_col / max_distance);
-  int curr_col = 0;
-
-  for (i = 0; i < m->count; i++) {
-    curr_col++;
-
-    printf("%s/%i", m->fn_names[i], m->arity[i]);
-
-    if (curr_col == num_cols) {
-      curr_col = 0;
-      putchar('\n');
-      continue;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+        columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    } else {
+        columns = 80;
     }
 
-      int spaces = (max_distance -1) - strlen(m->fn_names[i]);
-      for(j = 0; j < spaces; j++) {
-        putchar(' ');
+    int max_distance = 0;
+    int i, j;
+
+    for (i = 0; i < m->count; i++) {
+      int str_len = strlen(m->fn_names[i]);
+      max_distance = str_len > max_distance ? str_len : max_distance;
+    }
+    max_distance += 5;
+
+    int num_cols = (int) floor(columns / max_distance);
+    int curr_col = 0;
+
+    for (i = 0; i < m->count; i++) {
+      curr_col++;
+
+      printf("%s/%i", m->fn_names[i], m->arity[i]);
+
+      if (curr_col == num_cols) {
+        curr_col = 0;
+        putchar('\n');
+        continue;
       }
 
-  }
+        int spaces = (max_distance -1) - strlen(m->fn_names[i]);
+        for(j = 0; j < spaces; j++) {
+          putchar(' ');
+        }
+
+    }
+  #else
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+    int max_distance = 0;
+    int i, j;
+
+    for (i = 0; i < m->count; i++) {
+      int str_len = strlen(m->fn_names[i]);
+      max_distance = str_len > max_distance ? str_len : max_distance;
+    }
+    max_distance += 5;
+
+    int num_cols = (int) floor(w.ws_col / max_distance);
+    int curr_col = 0;
+
+    for (i = 0; i < m->count; i++) {
+      curr_col++;
+
+      printf("%s/%i", m->fn_names[i], m->arity[i]);
+
+      if (curr_col == num_cols) {
+        curr_col = 0;
+        putchar('\n');
+        continue;
+      }
+
+        int spaces = (max_distance -1) - strlen(m->fn_names[i]);
+        for(j = 0; j < spaces; j++) {
+          putchar(' ');
+        }
+
+    }
+  #endif
 
   putchar('\n');
 }

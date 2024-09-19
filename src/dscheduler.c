@@ -1,20 +1,83 @@
-#include <pthread.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
 #include <string.h>
 #include <unistd.h>
 
-#ifdef __WIN32__
-#include <windows.h>
-#else
-#include <sys/select.h>
-#endif
-
 #include "dscheduler.h"
 #include "dvm.h"
 #include "dtime.h"
 #include "dstructs.h"
+
+static int dread(int fd, void* v, int sv) {
+  #ifdef _WIN32
+    return _read(fd, v, sv);
+  #else
+    return read(fd, v, sv);
+  #endif
+}
+
+static int dpipe(int fd[2]) {
+  #ifdef _WIN32
+    return _pipe(fd, 256, O_BINARY);
+  #else
+    return pipe(fd);
+  #endif
+}
+
+static int dwrite(int fd, void* v, int sv) {
+  #ifdef _WIN32
+    return _write(fd, v, sv);
+  #else
+    return write(fd, v, sv);
+  #endif
+}
+
+static int dcreate_thread(dthread_t* thread_id, start_routine_t __start_routine) {
+  #ifdef _WIN32
+    DWORD threadID;
+    HANDLE thread_handle = CreateThread(
+        NULL,                
+        0,                   
+        __start_routine,      
+        NULL,                
+        0,                   
+        &threadID            
+    );
+
+    if (thread_handle == NULL) {
+        return 1;
+    }
+
+    *thread_id = threadID;
+    return 0;
+  #else
+    return pthread_create(thread_id, NULL, __start_routine, NULL);
+  #endif
+}
+
+#ifdef _WIN32
+  static void dthread_mutex_lock(dthread_mutex_t* lock) {
+    WaitForSingleObject( 
+      lock,
+      INFINITE
+    );
+  }
+#else
+  static void dthread_mutex_lock(dthread_mutex_t* lock) {
+    pthread_mutex_lock(lock);
+  }
+#endif
+
+#ifdef _WIN32
+  static void dthread_mutex_unlock(dthread_mutex_t* lock) {
+    ReleaseMutex(lock);
+  }
+#else
+  static void dthread_mutex_unlock(dthread_mutex_t* lock) {
+    pthread_mutex_unlock(lock);
+  }
+#endif
 
 d_vm **global_vms;
 
@@ -22,7 +85,7 @@ d_vm **global_vms;
 
 static void wait(unsigned ms) {
   /*DEBUG(printf("scheduler waiting\n"));*/
-  #ifdef __WIN32__
+  #ifdef _WIN32
     Sleep(ms);
   #else
     struct timeval t;
@@ -41,7 +104,7 @@ static void wait(unsigned ms) {
 static int close_vm_state(d_vm* vm) {
   if (vm->pstatus == VM_STATUS_FINISHED) {
     drax_value v = pop(vm);
-    write(vm->pipeID, &v, sizeof(v));
+    dwrite(vm->pipeID, &v, sizeof(v));
     __reset__(vm); /* maybe dont initialize instructions struct inside reset */
     vm->pstatus = VM_STATUS_STOPED;
     return 1;
@@ -50,7 +113,7 @@ static int close_vm_state(d_vm* vm) {
   return 0;
 }
 
-static void* start_schedule_loop(void* arg) {
+static no_return_p start_schedule_loop(void* arg) {
   UNUSED(arg);
   int active_routines = 0;
   size_t i;
@@ -73,6 +136,7 @@ static void* start_schedule_loop(void* arg) {
         }
       }
     }
+
     if (active_routines <= 0) {
       wait(1000);
     }
@@ -85,16 +149,16 @@ static void* start_schedule_loop(void* arg) {
  * 
  */
 int init_scheduler(d_vm * main_vm) {
-  global_vms = (d_vm **)malloc(sizeof(d_vm *) * INITIAL_SLOTS_VM);
+  global_vms = (d_vm **) malloc(sizeof(d_vm *) * INITIAL_SLOTS_VM);
 
   size_t i;
   for (i = 0; i < INITIAL_SLOTS_VM; i++) {
     global_vms[i] = ligth_based_createVM(main_vm, i, 0, 0);
   }
 
-  pthread_t thread;
+  dthread_t thread;
   int err;
-  err = pthread_create(&thread, NULL, start_schedule_loop, NULL);
+  err = dcreate_thread(&thread, start_schedule_loop);
   if (err != 0) {
       fprintf(stderr, "Fail to create scheduler: %s\n", strerror(err));
       return 1;
@@ -103,7 +167,7 @@ int init_scheduler(d_vm * main_vm) {
   return 0;
 }
 
-static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+dthread_mutex_t lock;
 
 /**
  * await the first vm available
@@ -111,7 +175,7 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
  * change only vm with status VM_STATUS_STOPED
  */
 static void init_process_on_vm(drax_value val, int fd_result, drax_value value2push) {
-  pthread_mutex_lock(&lock);
+  dthread_mutex_lock(&lock);
   d_vm *v = NULL;
 
   while (v == NULL) {
@@ -147,7 +211,7 @@ static void init_process_on_vm(drax_value val, int fd_result, drax_value value2p
     }
   }
 
-  pthread_mutex_unlock(&lock);
+  dthread_mutex_unlock(&lock);
 }
 
 /**
@@ -158,13 +222,13 @@ static void init_process_on_vm(drax_value val, int fd_result, drax_value value2p
  */
 drax_value run_instruction_on_vm_pool(drax_value fn, drax_value v) {
   int fd[2];
-  if (pipe(fd) == -1) {
+  if (dpipe(fd) == -1) {
     return DRAX_NIL_VAL; /* return a error */
   }
 
   init_process_on_vm(fn, fd[1], v);
 
   drax_value value;
-  read(fd[0], &value, sizeof(value));
+  dread(fd[0], &value, sizeof(value));
   return value;
 }
