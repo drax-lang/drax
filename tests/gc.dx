@@ -1,0 +1,16 @@
+## garbage collector
+
+c = Core.gc_meta_info()
+assert(c == {'num_cycles': 0, 'num_free_structs': 0}, "fail to get metadata")
+
+# unuseds values
+"discarted"
+"discarted"
+"discarted"
+
+Core.gc_swap()
+c = Core.gc_meta_info()
+assert(c.num_cycles >= 1, "fail to process num. cycles")
+assert(c.num_free_structs >= 3, "fail to process num. cycles")
+
+print('Garbage Collector done!')

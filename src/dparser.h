@@ -91,7 +91,7 @@ callback_table(process_and);
 callback_table(process_or);
 callback_table(process_import);
 callback_table(process_export);
-callback_table(process_struct);
+callback_table(process_frame);
 callback_table(process_dot);
 callback_table(process_function);
 callback_table(literal_translation);
@@ -101,6 +101,7 @@ callback_table(process_call);
 callback_table(process_if);
 callback_table(process_do);
 callback_table(process_return);
+callback_table(process_line_break);
 
 void dfatal(d_token* token, const char* message);
 

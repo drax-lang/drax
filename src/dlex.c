@@ -152,6 +152,7 @@ d_token next_token() {
       case '\n': {
         clexs.line++;
         clexs.first = clexs.current;
+        /*return dmake_symbol(DTK_LB);*/
         break;
       }
 

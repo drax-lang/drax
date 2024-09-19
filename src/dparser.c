@@ -2,10 +2,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <libgen.h>
 
 #include "dtypes.h"
 #include "dparser.h"
 #include "dlex.h"
+#include "deval.h"
 
 #include "dbuiltin.h"
 
@@ -126,7 +130,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_BKT_OPEN,  process_list,        NULL,           iCALL),
   make_op_line(DTK_BKT_CLOSE, NULL,                NULL,           iNONE),
-  make_op_line(DTK_CBR_OPEN,  process_struct,      NULL,           iNONE),
+  make_op_line(DTK_CBR_OPEN,  process_frame,       NULL,           iNONE),
   make_op_line(DTK_CBR_CLOSE, NULL,                NULL,           iNONE),
   make_op_line(DTK_DO,        process_do,          NULL,           iNONE),
   make_op_line(DTK_END,       NULL,                NULL,           iNONE),
@@ -165,6 +169,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_RETURN,    process_return,      NULL,           iNONE),
   make_op_line(DTK_IMPORT,    process_import,      NULL,           iNONE),
   make_op_line(DTK_EXPORT,    process_export,      NULL,           iNONE),
+  make_op_line(DTK_LB,        process_line_break,  NULL,           iNONE),
 };
 
 #define GET_PRIORITY(v) (&op_lines[v])
@@ -431,7 +436,7 @@ void process_list(d_vm* vm, bool v) {
   put_instruction(vm, OP_LIST);
 }
 
-void process_struct(d_vm* vm, bool v) {
+void process_frame(d_vm* vm, bool v) {
   UNUSED(v);
 
   if (eq_and_next(DTK_CBR_CLOSE)) {
@@ -442,17 +447,31 @@ void process_struct(d_vm* vm, bool v) {
 
   double lc = 0;
   do {
-    process_token(DTK_ID, "Expect 'identifier' as an key.");
-    
-    char* name = (char*) malloc(sizeof(char) * (parser.prev.length + 1));
-    strncpy(name, parser.prev.first, parser.prev.length);
-    name[parser.prev.length] = '\0';
+    char* name;
+    if(eq_and_next(DTK_ID)) {
+      name = (char*) malloc(sizeof(char) * (parser.prev.length + 1));
+      strncpy(name, parser.prev.first, parser.prev.length);
+      name[parser.prev.length] = '\0';
+    } else {
 
+      if(
+        eq_and_next(DTK_STRING) ||
+        eq_and_next(DTK_DSTRING)
+      ) {
+        name = (char*) malloc(sizeof(char) * (parser.prev.length - 2));
+        strncpy(name, parser.prev.first + 1, parser.prev.length - 2);
+        name[parser.prev.length - 2] = '\0';
+      } else {
+        FATAL_CURR("Expect 'identifier' as an key.");
+        return;
+      }
+    }
+    
     put_pair(vm, OP_PUSH, (drax_value) name);
     process_token(DTK_COLON, "Expect ':' after elements.");
     expression(vm);
     lc += 2;
-  } while (eq_and_next(DTK_COMMA));
+  } while (eq_and_next(DTK_COMMA) && parser.current.type != DTK_CBR_CLOSE);
 
   process_token(DTK_CBR_CLOSE, "Expect '}' after elements.");
   put_const(vm, NUMBER_VAL(lc));
@@ -582,23 +601,10 @@ void process_variable(d_vm* vm, bool v) {
 
 void process_import(d_vm* vm, bool v) {
   UNUSED(v);
-  get_next_token();
-
-  d_token ctk = parser.prev;
-  char* path = (char*) malloc(sizeof(char) * (ctk.length));
-  strncpy(path, ctk.first +1, ctk.length -2);
-  path[ctk.length -2] = '\0';
-
-  put_pair(vm, OP_IMPORT, (drax_value) path);
-  process_token(DTK_AS, "Expect 'as' after path.");
-
-  get_next_token();
-  ctk = parser.prev;
-  char* alias = (char*) malloc(sizeof(char) * (ctk.length + 1));
-  strncpy(alias, ctk.first, ctk.length);
-  alias[ctk.length] = '\0';
-
-  put_instruction(vm, (drax_value) alias);
+  process_token(DTK_PAR_OPEN, "Expect '(' after import.");
+  expression(vm);
+  process_token(DTK_PAR_CLOSE, "Expect ')' before expression on import.");
+  put_instruction(vm, OP_IMPORT);
 }
 
 void process_return(d_vm* vm, bool v) {
@@ -609,10 +615,17 @@ void process_return(d_vm* vm, bool v) {
 
 void process_export(d_vm* vm, bool v) {
   UNUSED(v);
-  
+  process_token(DTK_PAR_OPEN, "Expect '(' after export.");
   create_function(vm, true, true);
+  process_token(DTK_PAR_CLOSE, "Expect ')' before expression on export.");
   put_pair(vm, OP_D_CALL, 0);
   put_instruction(vm, (drax_value) OP_EXPORT);
+}
+
+void process_line_break(d_vm* vm, bool v) {
+  UNUSED(v);
+  UNUSED(vm);
+  get_next_token();
 }
 
 /* end of processors functions */
@@ -650,9 +663,32 @@ static void expression(d_vm* vm) {
   parse_priorities(vm, iASSIGNMENT);
 }
 
+static void expression_with_lb(d_vm* vm) {
+  int cl = parser.current.line;
+    
+  expression(vm);
+  
+  if (
+    cl == parser.current.line &&
+    get_current_token() != DTK_EOF
+  ) {
+    FATAL("unspected expression.");
+  }
+}
+
 static void block(d_vm* vm) {
   while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
+    int cl = parser.current.line;
+    
     expression(vm);
+    
+    if (
+      cl == parser.current.line &&
+      get_current_token() != DTK_EOF &&
+      get_current_token() != DTK_END
+    ) {
+      FATAL("unspected expression.");
+    }
   }
 
   process_token(DTK_END, "Expect 'end' after block.");
@@ -849,7 +885,17 @@ void process_dot(d_vm* vm, bool v) {
 void process_do(d_vm* vm, bool v) {
   UNUSED(v);
   while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
+    int cl = parser.current.line;
+    
     expression(vm);
+    
+    if (
+      cl == parser.current.line &&
+      get_current_token() != DTK_EOF &&
+      get_current_token() != DTK_END
+    ) {
+      FATAL("unspected expression.");
+    }
   }
 }
 
@@ -894,11 +940,14 @@ int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_parser(vm);
 
-  vm->active_instr->file = path;
-
   if (path != NULL) {
-    parser.file = (char*) malloc(sizeof(char) * strlen(path) + 1);
-    strcpy(parser.file, path);
+    long path_max = pathconf(path, _PC_PATH_MAX);
+    parser.file = (char*) malloc(sizeof(char) * path_max);
+    if (realpath(path, parser.file) == 0) {
+      fprintf(stderr, "fail to make full path: '%s'.\n", path);
+    }
+    vm->active_instr->file = (char*) malloc(sizeof(char) * strlen(parser.file) + 1);
+    strcpy(vm->active_instr->file, parser.file);
   }
 
   parser.has_error = false;
@@ -908,7 +957,8 @@ int __build__(d_vm* vm, const char* input, char* path) {
   get_next_token();
 
   while (get_current_token() != DTK_EOF) {
-    expression(vm);
+    expression_with_lb(vm);
+    /*put_instruction(vm, OP_POP);*/
   }
 
   if (parser.has_error) {
@@ -925,9 +975,9 @@ void dfatal(d_token* token, const char* message) {
   if (parser.panic_mode) return;
   parser.panic_mode = true;
   if (NULL != parser.file) {
-    fprintf(stderr, "Error, '%s:%d'\n", parser.file, token->line);
+    fprintf(stderr, D_COLOR_RED"Error, '%s:%d'\n"D_COLOR_RESET, parser.file, token->line);
   } else {
-    fprintf(stderr, "Error, line: %d\n", token->line);
+    fprintf(stderr, D_COLOR_RED"Error, line: %d\n"D_COLOR_RESET, token->line);
   }
 
   if (token->type == DTK_EOF) {

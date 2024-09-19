@@ -73,16 +73,21 @@
 typedef struct dt_envs {
   d_mod_table* modules;
   d_fun_table* native;
-  d_fun_table* functions;
   d_generic_var_table* global;
   d_local_var_table* local; /* Local definitions inside functions */
 } dt_envs;
 
-typedef struct  dcall_stack {
+typedef struct dcall_stack {
   d_instructions** values;
+  drax_value** _ip;
   int count;
   int size;
 } dcall_stack;
+
+typedef struct dgc_meta {
+  int n_cycles;
+  int n_free_structs;
+} dgc_meta;
 
 typedef struct d_vm {
   /**
@@ -106,6 +111,7 @@ typedef struct d_vm {
   d_struct* d_ls;
   int pstatus;
   int pipeID;
+  dgc_meta* gc_meta;
 } d_vm;
 
 /* VM */

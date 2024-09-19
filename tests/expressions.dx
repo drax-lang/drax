@@ -1,0 +1,4 @@
+expect = Os.cmd_with_status("./bin/drax ./tests/expressions.line_break.dx")
+assert(List.at(expect, 0) == 1, "epression fail: do not accept invalid expression")
+
+print("expressions done!")

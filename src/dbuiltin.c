@@ -530,6 +530,14 @@ static drax_value __d_gc_swap(d_vm* vm, int* stat) {
   return DRAX_NIL_VAL;
 }
 
+static drax_value __gc_meta_info(d_vm* vm, int* stat) {
+  drax_frame* nf = new_dframe(vm, 2);
+  put_value_dframe(nf, (char*) "num_cycles", NUMBER_VAL(vm->gc_meta->n_cycles));
+  put_value_dframe(nf, (char*) "num_free_structs", NUMBER_VAL(vm->gc_meta->n_free_structs));
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nf);
+}
+
 /**
   * Number module
 */
@@ -1197,9 +1205,13 @@ void create_native_modules(d_vm* vm) {
   /**
    * Core module
   */
-  drax_native_module* mcore = new_native_module(vm, "Core", 2);
+  drax_native_module* mcore = new_native_module(vm, "Core", 3);
   const drax_native_module_helper core_helper[] = {
+    /**
+     * Garbage collector
+     */
     {0, "gc_swap", __d_gc_swap },
+    {0, "gc_meta_info", __gc_meta_info },
     {1, "exit", __d_exit },
   };
 

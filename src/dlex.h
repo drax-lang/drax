@@ -43,7 +43,7 @@ typedef enum dlex_types {
   DTK_ERROR,
   
   /* break line */
-  DTK_BREAK_LINE,
+  DTK_LB,
 
   /* last element */
   DTK_EOF
