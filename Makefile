@@ -124,7 +124,11 @@ config:
 	mkdir bin
 
 test:
+ifeq ($(TARGET_OS),WIN32)
+	tests\run-test.bat
+else
 	sh tests/run-test.sh
+endif
 
 clean:
 	rm -rf ./bin/$(APP)

@@ -916,8 +916,7 @@ static int get_realpath(const char* path, char* resolved_path) {
 
     return 1;
   #else
-    char* r = realpath(path, resolved_path);
-    return r != NULL;
+    return realpath(path, resolved_path);
   #endif
 }
 

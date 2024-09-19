@@ -9,10 +9,67 @@
 
 #ifdef _WIN32
   drax_value start_http_server(d_vm* vm, char *options[], int* fail) {
-    UNUSED(vm);
-    UNUSED(options);
-    UNUSED(fail);
-    return -1;
+    dhttp_server* configs = (dhttp_server*) malloc(sizeof(dhttp_server));
+    configs->server_fd = INVALID_SOCKET;
+    configs->new_socket = INVALID_SOCKET;
+    configs->address = (struct addrinfo*) malloc(sizeof(struct addrinfo));
+
+    WSADATA wsaData;
+    int iResult;
+
+    struct addrinfo *result = NULL;
+    struct addrinfo hints;
+
+    iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (iResult != 0) {
+      perror("WSAStartup failed with error");
+      return 1;
+    }
+
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
+
+    char* port = options[0];
+    char* host = options[1];
+
+    iResult = getaddrinfo(host, port, &hints, &result);
+    if (iResult != 0) {
+      perror("Fail to get address");
+      WSACleanup();
+      return 1;
+    }
+
+    configs->server_fd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    if (configs->server_fd == INVALID_SOCKET) {
+      perror("Fail to configure");
+      WSACleanup();
+      return 1;
+    }
+
+    iResult = bind(configs->server_fd, result->ai_addr, (int) result->ai_addrlen);
+    if (iResult == SOCKET_ERROR) {
+      closesocket(configs->server_fd);
+      WSACleanup();
+      *fail = 1;
+      return DS_VAL(new_derror(vm, (char *) "server error, fail to bind!"));
+    }
+
+    /*freeaddrinfo(result);*/
+    iResult = listen(configs->server_fd, SOMAXCONN);
+    if (iResult == SOCKET_ERROR) {
+      closesocket(configs->server_fd);
+      WSACleanup();
+      *fail = 1;
+      return DS_VAL(new_derror(vm, (char *) "server error, fail to listen!"));
+    }
+
+    configs->address = result;
+
+    *fail = 0;
+    return (drax_value) configs;
   }
 #else
   drax_value start_http_server(d_vm* vm, char *options[], int* fail) {
@@ -72,10 +129,18 @@
 
 #ifdef _WIN32
   int accept_http_server(d_vm* vm, drax_value aconf, drax_value* res) {
-    UNUSED(vm);
-    UNUSED(aconf);
-    UNUSED(res);
-    return -1;
+    if(!aconf) { return 0; }
+
+    dhttp_server* configs = (dhttp_server*) aconf;
+    configs->new_socket = accept(configs->server_fd, NULL, NULL);
+
+    if (configs->new_socket == INVALID_SOCKET) {
+        closesocket(configs->new_socket);
+        *res = DS_VAL(new_derror(vm, (char *) "server error, fail to accept connection!"));
+      return 0;
+    }
+
+    return 1;
   }
 #else
   int accept_http_server(d_vm* vm, drax_value aconf, drax_value* res) {
@@ -98,8 +163,16 @@
 #ifdef _WIN32
   char* receive_http_server(d_vm* vm, drax_value aconf) {
     UNUSED(vm);
-    UNUSED(aconf);
-    return "";
+    if(!aconf) { return 0; }
+    int bffsz = 16384;
+    char* buffer = (char*) malloc(bffsz * sizeof(char));
+
+    dhttp_server* configs = (dhttp_server*) aconf;
+    recv(configs->new_socket, buffer, bffsz, 0);
+    char* nc = replace_special_char(buffer);
+    free(buffer);
+
+    return nc;
   }
 #else
   char* receive_http_server(d_vm* vm, drax_value aconf) {
@@ -120,9 +193,11 @@
 #ifdef _WIN32
   ssize_t send_http_server(d_vm* vm, drax_value aconf, char* s) {
     UNUSED(vm);
-    UNUSED(s);
-    UNUSED(aconf);
-    return -1;
+    if(!aconf) { return 0; }
+    dhttp_server* configs = (dhttp_server*) aconf;
+    char* data = str_format_output(s);
+    ssize_t r = send(configs->new_socket, data, strlen(data), 0 );
+    return -1 != r ;
   }
 #else
   ssize_t send_http_server(d_vm* vm, drax_value aconf, char* s) {
@@ -139,7 +214,9 @@
 #ifdef _WIN32
   int disconnect_client_http_server(d_vm* vm, drax_value v) {
     UNUSED(vm);
-    UNUSED(v);
+    if(!v) { return 0; }
+    dhttp_server* configs = (dhttp_server*) v;
+    closesocket(configs->new_socket);
     return 1;
   }
 #else
@@ -154,9 +231,12 @@
 
 #ifdef _WIN32
   int stop_http_server(d_vm* vm, drax_value v) {
-  UNUSED(vm);
-  UNUSED(v);
-  return 1;
+    UNUSED(vm);
+    if(!v) { return 0; }
+    dhttp_server* configs = (dhttp_server*) v;
+    closesocket(configs->server_fd);
+    WSACleanup();
+    return 1;
 }
 #else
   int stop_http_server(d_vm* vm, drax_value v) {

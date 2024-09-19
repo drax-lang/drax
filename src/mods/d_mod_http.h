@@ -16,8 +16,11 @@
 #ifdef _WIN32
     #include <windows.h>
     #define snprintf _snprintf
+    #undef _WIN32_WINNT
+    #define _WIN32_WINNT 0x0501
 
     #include <winsock2.h>
+    #include <winsock.h>
     #include <ws2tcpip.h>
 #else
     #include <sys/types.h>
@@ -29,11 +32,13 @@
 #include "../dvm.h"
 
 typedef struct dhttp_server {
-  int new_socket;
-  int server_fd;
   #ifdef _WIN32
-    void* address;
+    struct addrinfo* address;
+    SOCKET new_socket;
+    SOCKET server_fd;
   #else
+    int new_socket;
+    int server_fd;
     struct sockaddr_in* address;
   #endif
 } dhttp_server;
