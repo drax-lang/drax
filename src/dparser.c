@@ -169,6 +169,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_RETURN,    process_return,      NULL,           iNONE),
   make_op_line(DTK_IMPORT,    process_import,      NULL,           iNONE),
   make_op_line(DTK_EXPORT,    process_export,      NULL,           iNONE),
+  make_op_line(DTK_LB,        process_line_break,  NULL,           iNONE),
 };
 
 #define GET_PRIORITY(v) (&op_lines[v])
@@ -600,23 +601,10 @@ void process_variable(d_vm* vm, bool v) {
 
 void process_import(d_vm* vm, bool v) {
   UNUSED(v);
-  get_next_token();
-
-  d_token ctk = parser.prev;
-  char* path = (char*) malloc(sizeof(char) * (ctk.length));
-  strncpy(path, ctk.first +1, ctk.length -2);
-  path[ctk.length -2] = '\0';
-
-  put_pair(vm, OP_IMPORT, (drax_value) path);
-  process_token(DTK_AS, "Expect 'as' after path.");
-
-  get_next_token();
-  ctk = parser.prev;
-  char* alias = (char*) malloc(sizeof(char) * (ctk.length + 1));
-  strncpy(alias, ctk.first, ctk.length);
-  alias[ctk.length] = '\0';
-
-  put_instruction(vm, (drax_value) alias);
+  process_token(DTK_PAR_OPEN, "Expect '(' after import.");
+  expression(vm);
+  process_token(DTK_PAR_CLOSE, "Expect ')' before expression on import.");
+  put_instruction(vm, OP_IMPORT);
 }
 
 void process_return(d_vm* vm, bool v) {
@@ -627,10 +615,17 @@ void process_return(d_vm* vm, bool v) {
 
 void process_export(d_vm* vm, bool v) {
   UNUSED(v);
-  
+  process_token(DTK_PAR_OPEN, "Expect '(' after export.");
   create_function(vm, true, true);
+  process_token(DTK_PAR_CLOSE, "Expect ')' before expression on export.");
   put_pair(vm, OP_D_CALL, 0);
   put_instruction(vm, (drax_value) OP_EXPORT);
+}
+
+void process_line_break(d_vm* vm, bool v) {
+  UNUSED(v);
+  UNUSED(vm);
+  get_next_token();
 }
 
 /* end of processors functions */
@@ -668,9 +663,32 @@ static void expression(d_vm* vm) {
   parse_priorities(vm, iASSIGNMENT);
 }
 
+static void expression_with_lb(d_vm* vm) {
+  int cl = parser.current.line;
+    
+  expression(vm);
+  
+  if (
+    cl == parser.current.line &&
+    get_current_token() != DTK_EOF
+  ) {
+    FATAL("unspected expression.");
+  }
+}
+
 static void block(d_vm* vm) {
   while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
+    int cl = parser.current.line;
+    
     expression(vm);
+    
+    if (
+      cl == parser.current.line &&
+      get_current_token() != DTK_EOF &&
+      get_current_token() != DTK_END
+    ) {
+      FATAL("unspected expression.");
+    }
   }
 
   process_token(DTK_END, "Expect 'end' after block.");
@@ -867,7 +885,17 @@ void process_dot(d_vm* vm, bool v) {
 void process_do(d_vm* vm, bool v) {
   UNUSED(v);
   while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
+    int cl = parser.current.line;
+    
     expression(vm);
+    
+    if (
+      cl == parser.current.line &&
+      get_current_token() != DTK_EOF &&
+      get_current_token() != DTK_END
+    ) {
+      FATAL("unspected expression.");
+    }
   }
 }
 
@@ -949,7 +977,7 @@ int __build__(d_vm* vm, const char* input, char* path) {
   get_next_token();
 
   while (get_current_token() != DTK_EOF) {
-    expression(vm);
+    expression_with_lb(vm);
     /*put_instruction(vm, OP_POP);*/
   }
 

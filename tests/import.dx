@@ -1,8 +1,10 @@
 test_val = 10
 
-import './export.dx' as lib
-import './export.dx' as lib2
-import './export.dx' as lib3
+path = './export.dx'
+
+lib = import('./export.dx')
+lib2 = import(path)
+lib3 = import('./export.dx')
 
 assert(test_val == 10, "the global scope is being changed")
 
@@ -19,3 +21,5 @@ assert(List.at(lib.key3, 0) == 123, "lib.key3[0] == 123")
 assert(List.at(lib.key3, 1) == 456, "lib.key3[1] == 456")
 
 assert(lib.key4.k == 'v', "lib.key4.k == 'v'")
+
+print('Import done!')

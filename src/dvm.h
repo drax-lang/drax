@@ -73,7 +73,6 @@
 typedef struct dt_envs {
   d_mod_table* modules;
   d_fun_table* native;
-  d_fun_table* functions;
   d_generic_var_table* global;
   d_local_var_table* local; /* Local definitions inside functions */
 } dt_envs;

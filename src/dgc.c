@@ -86,6 +86,7 @@ static void dgc_mark(drax_value v) {
         dgc_mark(f->values[i]);
       }
     } else if (IS_FUNCTION(v)) {
+      DEBUG(printf("  --marked function\n"));
       drax_function* f = CAST_FUNCTION(v);
       int i;
       for (i = 0; i < f->instructions->instr_count; i++) {
@@ -103,7 +104,7 @@ static void dgc_mark(drax_value v) {
  * cycle through all elements from the final
  */
 static int dgc_swap_locals(d_local_var_table* t) {
-  DEBUG(printf("--dcloc swap\n"));
+  DEBUG(printf("--dc::locals swap\n"));
   if (t->count <= 0) return 1;
 
   int i;
@@ -111,12 +112,12 @@ static int dgc_swap_locals(d_local_var_table* t) {
     if (t->array[i - 1] == NULL) continue;
     dgc_mark(t->array[i - 1]->value);
   }
-  DEBUG(printf("--dcloc end\n\n"));
+  DEBUG(printf("--dc::locals end\n\n"));
   return 1;
 }
 
 static int dgc_swap_generic_table(d_generic_var_table* t) {
-  DEBUG(printf("--dcgl swap\n"));
+  DEBUG(printf("--dc::global swap\n"));
   if (t->size <= 0) return 1;
 
   int i;
@@ -130,19 +131,36 @@ static int dgc_swap_generic_table(d_generic_var_table* t) {
       }
     }
   }
-  DEBUG(printf("--dcgl end\n\n"));
+  DEBUG(printf("--dc::global end\n\n"));
   return 1;
 }
 
-static int dgc_swap_function(d_fun_table* t) {
-  DEBUG(printf("--dcfn swap\n"));
-  if (t->count <= 0) return 1;
+static void dgc_swap_ip(drax_value* ip) {
+  DEBUG(printf("--dcgIP swap\n"));
+  drax_value* c_ip = ip;
+
+  while (true) {
+    if (
+      c_ip == NULL || 
+      ((*(c_ip) == 0) && (*(c_ip + 1) == 0) &&(*(c_ip + 2) == 0))
+    ) break;
+
+    dgc_mark((*c_ip));
+    c_ip++;
+  }
+
+  DEBUG(printf("--dcgIP end\n"));
+}
+
+static int dgc_swap_call_stack(d_vm* vm) {
+  DEBUG(printf("--dccallstk swap\n"));
+  if (vm->call_stack->count <= 0) return 1;
 
   int i;
-  for (i = 0; i < t->count; i++) {
-    dgc_mark(t->pairs[i].value);
+  for (i = 0; i < vm->call_stack->count; i++) {
+    dgc_swap_ip(vm->call_stack->values[i]->values);
   }
-  DEBUG(printf("--dcfn end\n\n"));
+  DEBUG(printf("--dccallstk end\n\n"));
   return 1;
 }
 
@@ -159,26 +177,26 @@ static int dgc_swap_stack(d_vm* vm) {
 }
 
 static int dgc_swap_native(d_fun_table* t) {
-  DEBUG(printf("--dcnat swap\n"));
+  DEBUG(printf("--dc::native swap\n"));
   if (t->count <= 0) return 1;
 
   int i;
   for (i = 0; i < t->count; i++) {
     dgc_mark(t->pairs[i].value);
   }
-  DEBUG(printf("--dcnat end\n\n"));
+  DEBUG(printf("--dc::native end\n\n"));
   return 1;
 }
 
 static int dgc_swap_modules(d_mod_table* t) {
-  DEBUG(printf("--dcmod swap\n"));
+  DEBUG(printf("--dc::modules swap\n"));
   if (t->count <= 0) return 1;
 
   int i;
   for (i = 0; i < t->count; i++) {
       dgc_mark(t->modules[i]);
   }
-  DEBUG(printf("--dcmod end\n\n"));
+  DEBUG(printf("--dc::modules end\n\n"));
   return 1;
 }
 
@@ -196,13 +214,15 @@ int dgc_swap(d_vm* vm) {
 
   dgc_swap_generic_table(vm->envs->global);
 
-  dgc_swap_function(vm->envs->functions);
-
   dgc_swap_native(vm->envs->native);
 
   dgc_swap_modules(vm->envs->modules);
  
   dgc_swap_stack(vm);
+
+  dgc_swap_ip(vm->ip);
+  
+  dgc_swap_call_stack(vm);
 
   while (d != NULL) {
     if (d->checked) {
