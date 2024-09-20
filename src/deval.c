@@ -4,6 +4,8 @@
 #include "deval.h"
 #include "dstring.h"
 
+#define D_NUMBER_STR_PRINT "%.17g"
+
 static void print_list(drax_list* l) {
   putchar('[');
   int i;
@@ -15,12 +17,69 @@ static void print_list(drax_list* l) {
   putchar(']');
 }
 
+static void print_scalar_type(d_internal_types v) {
+  switch (v) {
+    case DIT_UNDEFINED: {
+      printf("undefined");
+      break;
+    }
+    case DIT_DOUBLE: {
+      printf("double");
+      break;
+    }
+    case DIT_LIST: {
+      printf("list");
+      break;
+    }
+    case DIT_SCALAR: {
+      printf("scalar");
+      break;
+    }
+    case DIT_FUNCTION:
+    case DIT_NATIVE: {
+      printf("function");
+      break;
+    }
+    case DIT_FRAME: {
+      printf("frame");
+      break;
+    }
+    case DIT_MODULE: {
+      printf("module");
+      break;
+    }
+    case DIT_TID: {
+      printf("tid");
+      break;
+    }
+    case DIT_STRING: {
+      printf("string");
+      break;
+    }
+    default: {
+      printf("undefined");
+      break;
+    }
+  }
+}
+
 static void print_scalar(drax_scalar* l) {
-  putchar('<');
-  putchar('<');
+  printf("<<");
+  print_scalar_type(l->_stype);
+  printf(" : ");
+
   int i;
+  double* _d_el;
+
+  if (DIT_DOUBLE == l->_stype) {
+    _d_el = (double*) l->elems;
+  }
   for (i = 0; i < l->length; i++) {
-    print_drax(l->elems[i], 1);
+    if (DIT_DOUBLE == l->_stype) {
+      printf("%.15f", _d_el[i]);
+    } else {
+      print_drax(l->elems[i], 1);
+    }
 
     if ((i+1) < l->length) printf(", ");
   }
@@ -104,7 +163,7 @@ void print_drax(drax_value value, int formated) {
   } else if (IS_NIL(value)) {
     printf("nil");
   } else if (IS_NUMBER(value)) {
-    printf("%.17g", CAST_NUMBER(value));
+    printf(D_NUMBER_STR_PRINT, CAST_NUMBER(value));
   } else if(IS_MODULE(value)) {
     printf("<module:%s>", CAST_MODULE(value)->name);
   } else if (IS_STRUCT(value)) {

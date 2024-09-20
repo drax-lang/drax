@@ -11,10 +11,6 @@ val = Scalar.concat(<<1, 2, 3>>, <<4, 5, 6>>)
 
 assert(Scalar.length(val) == 6, "scalar error: concat length")
 
-
-print(Scalar.tail(ll))
-print(<<2, 3, 4, 5, 6>>)
-print(Scalar.tail(ll) == <<2, 3, 4, 5, 6>>)
 assert(Scalar.tail(ll) == <<2, 3, 4, 5, 6>>, "scalar error: tail")
 
 assert(<<{ a: 1 }>> != <<{ b: 1 }>>, "scalar error: scalar comparison")

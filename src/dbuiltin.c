@@ -1075,7 +1075,7 @@ static drax_value __d_scalar_at(d_vm* vm, int* stat) {
   return_if_is_not_scalar(a, stat);
   return_if_is_not_number(b, stat);
 
-  double n = draxvalue_to_num(b);
+  double n = CAST_NUMBER(b);
   drax_scalar* ll = CAST_SCALAR(a);
 
   if (n < 0) { n = ll->length + n; }
@@ -1086,6 +1086,12 @@ static drax_value __d_scalar_at(d_vm* vm, int* stat) {
   }
 
   DX_SUCESS_FN(stat);
+
+  if (DIT_DOUBLE == ll->_stype) {
+    double* _dv = (double*) ll->elems;
+    return num_to_draxvalue(_dv[(int) n]);
+  }
+
   return ll->elems[(int) n];
 }
 
@@ -1098,12 +1104,27 @@ static drax_value __d_scalar_concat(d_vm* vm, int* stat) {
 
   drax_scalar* l1 = CAST_SCALAR(a);
   drax_scalar* l2 = CAST_SCALAR(b);
+  
+  if (l1->_stype != l2->_stype) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char *) "Scalar concat with different types."));
+  }
 
   drax_scalar* l = new_dscalar(vm, l1->length + l2->length, l1->_stype);
   l->length = l1->length + l2->length;
+  l->cap = l->length;
 
-  memcpy(l->elems, l1->elems, l1->length * sizeof(drax_value));
-  memcpy(l->elems + l1->length, l2->elems, l2->length * sizeof(drax_value));
+  if (DIT_DOUBLE == l1->_stype) {
+    double* _dv1 = (double*) l1->elems;
+    double* _dv2 = (double*) l2->elems;
+    double* _dv3 = (double*) l->elems;
+
+    memcpy(_dv3, _dv1, l1->length * sizeof(double));
+    memcpy(_dv3 + l1->length, _dv2, l2->length * sizeof(double));
+  } else {
+    memcpy(l->elems, l1->elems, l1->length * sizeof(drax_value));
+    memcpy(l->elems + l1->length, l2->elems, l2->length * sizeof(drax_value));
+  }
 
   DX_SUCESS_FN(stat);
   return DS_VAL(l);
@@ -1116,6 +1137,12 @@ static drax_value __d_scalar_head(d_vm* vm, int* stat) {
   drax_scalar* l1 = CAST_SCALAR(a);
 
   DX_SUCESS_FN(stat);
+  
+  if (DIT_DOUBLE == l1->_stype) {
+    double* _dv = (double*) l1->elems;
+    return l1->length > 0 ? num_to_draxvalue(_dv[0]) : DRAX_NIL_VAL;
+  }
+
   return l1->length > 0 ? l1->elems[0] : DRAX_NIL_VAL;
 }
 
@@ -1177,8 +1204,16 @@ static drax_value __d_scalar_remove_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length - 1, l->_stype);
   nl->length = l->length - 1;
 
-  memcpy(nl->elems, l->elems, at * sizeof(drax_value));
-  memcpy(nl->elems + at, l->elems + at + 1, (nl->length - at) * sizeof(drax_value));
+  if (DIT_DOUBLE == l->_stype) {
+    double* _dv1 = (double*) l->elems;
+    double* _dv2 = (double*) nl->elems;
+
+    memcpy(_dv2, _dv1, at * sizeof(double));
+    memcpy(_dv2 + at, _dv1 + at + 1, (nl->length - at) * sizeof(double));
+  } else {
+    memcpy(nl->elems, l->elems, at * sizeof(drax_value));
+    memcpy(nl->elems + at, l->elems + at + 1, (nl->length - at) * sizeof(drax_value));
+  }
 
   DX_SUCESS_FN(stat);
   return DS_VAL(nl);
@@ -1203,9 +1238,19 @@ static drax_value __d_scalar_insert_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length + 1, l->_stype);
   nl->length = l->length + 1;
 
-  memcpy(nl->elems, l->elems, at * sizeof(drax_value));
-  memcpy(&nl->elems[at], &c, sizeof(drax_value));
-  memcpy(nl->elems + at + 1, l->elems + at, (l->length - at) * sizeof(drax_value));
+  if (DIT_DOUBLE == l->_stype) {
+    double* _dv1 = (double*) l->elems;
+    double* _dv2 = (double*) nl->elems;
+
+    double nc = CAST_NUMBER(c);
+    memcpy(_dv2, _dv1, at * sizeof(double));
+    memcpy(&_dv2[at], &nc, sizeof(double));
+    memcpy(_dv2 + at + 1, _dv1 + at, (l->length - at) * sizeof(double));
+  } else {
+    memcpy(nl->elems, l->elems, at * sizeof(drax_value));
+    memcpy(&nl->elems[at], &c, sizeof(drax_value));
+    memcpy(nl->elems + at + 1, l->elems + at, (l->length - at) * sizeof(drax_value));
+  }
 
   DX_SUCESS_FN(stat);
   return DS_VAL(nl);
@@ -1230,9 +1275,18 @@ static drax_value __d_scalar_replace_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length, l->_stype);
   nl->length = l->length;
 
-  memcpy(nl->elems, l->elems, at * sizeof(drax_value));
-  memcpy(&nl->elems[at], &c, sizeof(drax_value));
-  memcpy(nl->elems + at + 1, l->elems + at + 1, (l->length - at - 1) * sizeof(drax_value));
+  if (DIT_DOUBLE == l->_stype) {
+    double* _dv1 = (double*) l->elems;
+    double* _dv2 = (double*) nl->elems;
+    double nc = CAST_NUMBER(c);
+    memcpy(_dv2, _dv1, at * sizeof(double));
+    memcpy(&_dv2[at], &nc, sizeof(double));
+    memcpy(_dv2 + at + 1, _dv1 + at + 1, (l->length - at - 1) * sizeof(double));
+  } else {
+    memcpy(nl->elems, l->elems, at * sizeof(drax_value));
+    memcpy(&nl->elems[at], &c, sizeof(drax_value));
+    memcpy(nl->elems + at + 1, l->elems + at + 1, (l->length  - at - 1) * sizeof(drax_value));
+  }
   
   DX_SUCESS_FN(stat);
   return DS_VAL(nl);
@@ -1260,7 +1314,13 @@ static drax_value __d_scalar_slice(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, abs(to - from), l->_stype);
   nl->length = abs(to - from);
 
-  memcpy(nl->elems, l->elems + from, abs(to - from) * sizeof(drax_value));
+  if (DIT_DOUBLE == l->_stype) {
+    double* _dv1 = (double*) l->elems;
+    double* _dv2 = (double*) nl->elems;
+    memcpy(_dv2, _dv1 + from, abs(to - from) * sizeof(double));
+  } else {
+    memcpy(nl->elems, l->elems + from, abs(to - from) * sizeof(drax_value));
+  }
 
   DX_SUCESS_FN(stat);
   return DS_VAL(nl);
@@ -1284,8 +1344,10 @@ static drax_value __d_scalar_sum(d_vm* vm, int* stat) {
   
   double res = 0;
   int i;
-  for(i = 0; i < l->length; i++) {
-    res += CAST_NUMBER(l->elems[i]);
+  double* _v = (double*) l->elems;
+
+  for (i = 0; i < l->length; i++) {
+    res += _v[i];
   }
 
   DX_SUCESS_FN(stat);

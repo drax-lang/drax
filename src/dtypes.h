@@ -66,6 +66,13 @@ typedef enum drax_nanbox_def {
           (F_BIT | 0x7ffc000000000000 | (unsigned long) (uintptr_t) (d_struct))
 
 /**
+ * For "POINTER_TO_DRAXVAL" conversion you must be sure
+ * of the type you are accessing.
+ */
+#define POINTER_TO_DRAXVAL(v)  (drax_value) (uintptr_t) v;
+#define POINTER_TO_PDRAXVAL(v)  (drax_value*) (uintptr_t) v;
+
+/**
  * Instructions
 */
 typedef enum d_op_code {
