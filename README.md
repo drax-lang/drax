@@ -5,10 +5,14 @@
 
 Drax is a lightweight project, dynamically typed, functional programming language with a focus on integrations. <br/>
 
-### Documentation
-drax documentation is available in [docs](./docs/index.md)
+
+### Learning
+
+Know the language in [Documentation](https://drax-lang.org/documentation/)
 
 ### Contributing
+
+drax documentation is available in [docs](./docs/index.md)
 
 Run initial environment settings with:
 
