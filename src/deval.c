@@ -15,6 +15,19 @@ static void print_list(drax_list* l) {
   putchar(']');
 }
 
+static void print_scalar(drax_scalar* l) {
+  putchar('<');
+  putchar('<');
+  int i;
+  for (i = 0; i < l->length; i++) {
+    print_drax(l->elems[i], 1);
+
+    if ((i+1) < l->length) printf(", ");
+  }
+  putchar('>');
+  putchar('>');
+}
+
 static void print_frame(drax_frame* f) {
   putchar('{');
   int i;
@@ -45,6 +58,10 @@ static void print_d_struct(drax_value value, int formated) {
   switch (DRAX_STYPEOF(value)) {
     case DS_LIST:
       print_list(CAST_LIST(value));
+      break;
+
+    case DS_SCALAR:
+      print_scalar(CAST_SCALAR(value));
       break;
 
     case DS_FRAME:

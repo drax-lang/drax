@@ -21,6 +21,8 @@ typedef enum dlex_types {
   DTK_LS, DTK_BG, DTK_LE, DTK_BE,
   DTK_EQ, DTK_DEQ, DTK_BNG, DTK_BNG_EQ,
 
+  DTK_LL, DTK_GG,
+
   /* pipe */
   DTK_PIPE,
   

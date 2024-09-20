@@ -147,6 +147,21 @@ static bool values_equal(drax_value a, drax_value b) {
       return true;
     }
 
+    case DS_SCALAR: {
+      drax_scalar* s1 = CAST_SCALAR(a);
+      drax_scalar* s2 = CAST_SCALAR(b);
+
+      if(s1->_stype != s2->_stype) { return false; }
+      if(s1->length != s2->length) { return false; }
+
+      for(i = 0; i < s1->length; i++) {
+        if(!values_equal(s1->elems[i], s2->elems[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+
     case DS_FRAME: {
       drax_frame* f1 = CAST_FRAME(a);
       drax_frame* f2 = CAST_FRAME(b);
@@ -506,6 +521,24 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         push(vm, DS_VAL(l));
         break;
       }
+      VMCase(OP_SCALAR) {
+        drax_value lc = pop(vm);
+        int limit = (int) CAST_NUMBER(lc);
+        drax_scalar* l = new_dscalar(vm, limit, DIT_UNDEFINED);
+
+        int i;
+        drax_value _er;
+        for (i = 0; i < limit; i++) {
+          if(!put_value_dscalar(vm, l, peek(vm, (limit -1) - i), &_er)) {
+            raise_drax_error(vm, CAST_ERROR(_er)->chars);
+            return 1;
+          }
+        }
+
+        pop_times(vm, limit);
+        push(vm, DS_VAL(l));
+        break;
+      }
       VMCase(OP_FRAME) {
         drax_value lc = pop(vm);
         int limit = (int) CAST_NUMBER(lc);
@@ -627,7 +660,24 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           drax_string* result = new_dstring(vm, n_str, length);
           pop_times(vm, 2);
           push(vm, DS_VAL(result));
-        } else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
+        } else if (IS_SCALAR(peek(vm, 0)) && IS_SCALAR(peek(vm, 1))) {
+          drax_scalar* b = CAST_SCALAR(peek(vm, 0));
+          drax_scalar* a = CAST_SCALAR(peek(vm, 1));
+
+          if (b->_stype != a->_stype) {
+            raise_drax_error(vm, "Scalar concat with different types.");
+            return 1;
+          }
+
+          int length = a->length + b->length;
+          drax_scalar* result = new_dscalar(vm, length, a->_stype);
+          memcpy(result->elems, a->elems, a->length * sizeof(drax_value));
+          memcpy(result->elems + a->length, b->elems, b->length * sizeof(drax_value));
+
+          result->length = length;
+          pop_times(vm, 2);
+          push(vm, DS_VAL(result));
+        }  else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
           drax_list* b = CAST_LIST(peek(vm, 0));
           drax_list* a = CAST_LIST(peek(vm, 1));
           int length = a->length + b->length;

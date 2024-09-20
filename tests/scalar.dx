@@ -1,0 +1,77 @@
+ll = <<1, 2, 3>> ++ <<4, 5, 6>>
+
+assert(Scalar.length(ll) == 6, "scalar error: concat length")
+assert(ll == <<1, 2, 3, 4, 5, 6>>, "scalar error: concat scalar")
+
+assert(Scalar.at(Scalar.at(<< <<1>>,<<2>>,<<42>>,<<2>> >>, 2), 0) == 42, "scalar error: nested scalar access")
+
+### module scalar
+
+val = Scalar.concat(<<1, 2, 3>>, <<4, 5, 6>>)
+
+assert(Scalar.length(val) == 6, "scalar error: concat length")
+
+
+print(Scalar.tail(ll))
+print(<<2, 3, 4, 5, 6>>)
+print(Scalar.tail(ll) == <<2, 3, 4, 5, 6>>)
+assert(Scalar.tail(ll) == <<2, 3, 4, 5, 6>>, "scalar error: tail")
+
+assert(<<{ a: 1 }>> != <<{ b: 1 }>>, "scalar error: scalar comparison")
+
+ll = <<1, 2, 3, 4, 5>>
+
+# Delete at
+expected = <<2, 3, 4, 5>>
+assert(Scalar.remove_at(ll, 0) == expected, "scalar error: scalar remove_at(ll, 0)")
+
+expected = <<1, 2, 4, 5>>
+assert(Scalar.remove_at(ll, 2) == expected, "scalar error: scalar remove_at(ll, 2)")
+
+expected = <<1, 2, 3, 4>>
+assert(Scalar.remove_at(ll, 4) == expected, "scalar error: scalar remove_at(ll, 4)")
+
+expected = <<1, 3, 4, 5>>
+assert(Scalar.remove_at(ll, 1) == expected, "scalar error: scalar remove_at(ll, 1)")
+
+result = Scalar.remove_at(ll, 0)
+|> Scalar.remove_at(0)
+|> Scalar.remove_at(0)
+|> Scalar.remove_at(0)
+|> Scalar.remove_at(0)
+assert(Scalar.is_empty(result), "scalar error: expected empty scalar")
+
+# Insert at
+expected = <<101, 1, 2, 3, 4, 5>>
+assert(Scalar.insert_at(ll, 0, 101) == expected, "scalar error: scalar insert_at(ll, 0, 101)")
+
+# Replace at
+expected = <<101, 2, 3, 4, 5>>
+assert(Scalar.replace_at(ll, 0, 101) == expected, "scalar error: scalar replace_at(ll, 0, 101)")
+
+# Slice
+expected = <<1, 2>>
+assert(Scalar.slice(ll, 0, 2) == expected, "scalar error: slice(ll, 0, 2)")
+
+expected = <<2>>
+assert(Scalar.slice(ll, 1, 2) == expected, "scalar error: replace_at(ll, 1, 2)")
+
+expected = <<1, 2, 3, 4, 5>>
+assert(Scalar.slice(ll, 0, 5) == expected, "scalar error: slice(ll, 0, 5)")
+
+expected = <<2, 3>>
+assert(Scalar.slice(ll, -4, -2) == expected, "scalar error: slice(ll, -4, -2)")
+
+assert(Scalar.is_empty(Scalar.slice(ll, 0, 0)), "scalar error: replace_at(ll, 1, { a: '101' }) expected empty scalar")
+
+# Sum
+expected = 15
+assert(Scalar.sum(ll) == expected, "scalar error: sum(ll) is different of 15")
+
+expected = 0
+assert(Scalar.sum(<<>>) == expected, "scalar error: sum(<<>>) is different of 0")
+
+expected = -15
+assert(Scalar.sum(<<-1, -2, -3, -4, -5>>) == expected, "scalar error: sum(<<-1, -2, -3, -4, -5>>) is different of -15")
+
+print("Scalar done!")

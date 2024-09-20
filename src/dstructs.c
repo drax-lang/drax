@@ -52,6 +52,51 @@ void put_value_dlist(drax_list* l, drax_value v) {
   l->length++;
 }
 
+/**
+ * Uniq
+ */
+#define SCALAR_PRE_SIZE 20
+
+static d_internal_types get_scalar_type(drax_value v) {
+  if (IS_NUMBER(v)) return DIT_DOUBLE;
+
+  if (IS_STRING(v)) return DIT_STRING;
+
+  if (IS_STRUCT(v)) {
+    return (d_internal_types) DRAX_STYPEOF(v);
+  }
+
+  return DIT_UNDEFINED;
+}
+
+drax_scalar* new_dscalar(d_vm* vm, int cap, d_internal_types type) {
+  drax_scalar* l = ALLOCATE_DSTRUCT(vm, drax_scalar, DS_SCALAR);
+  l->_stype = type;
+  l->length = 0;
+  l->cap = cap == 0 ? SCALAR_PRE_SIZE : cap;
+  l->elems = malloc(sizeof(drax_value) * l->cap);
+
+  return l;
+}
+
+int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
+  if (DIT_UNDEFINED == l->_stype) {
+    l->_stype = get_scalar_type(v); 
+  } else if (get_scalar_type(v) != l->_stype) {
+    *r = DS_VAL(new_derror(vm, (char*) "Insertion of elements with different types in uniq."));
+    return 0;
+  }
+
+  if (l->cap <= l->length) {
+    l->cap = (l->cap + SCALAR_PRE_SIZE);
+    l->elems = realloc(l->elems, sizeof(drax_value) * l->cap);
+  }
+
+  l->elems[l->length] = v;
+  l->length++;
+  return 1;
+}
+
 drax_error* new_derror(d_vm* vm, char* msg) {
   drax_error* v = ALLOCATE_DSTRUCT(vm, drax_error, DS_ERROR);
   int sz = strlen(msg);

@@ -235,6 +235,11 @@ d_token next_token() {
         return dmake_symbol(DTK_EQ);
 
       case '<':
+        if(CURR_TOKEN() == '<') {
+          next_char();
+          return dmake_symbol(DTK_LL);
+        }
+
         if(CURR_TOKEN() == '=') {
           next_char();
           return dmake_symbol(DTK_LE);
@@ -242,6 +247,11 @@ d_token next_token() {
         return dmake_symbol(DTK_LS);
 
       case '>':
+        if(CURR_TOKEN() == '>') {
+          next_char();
+          return dmake_symbol(DTK_GG);
+        }
+
         if(CURR_TOKEN() == '=') {
           next_char();
           return dmake_symbol(DTK_BE);

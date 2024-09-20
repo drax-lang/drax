@@ -148,6 +148,8 @@ static operation_line op_lines[] = {
   make_op_line(DTK_BE,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LS,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LE,        NULL,                process_binary, iDIFF),
+  make_op_line(DTK_LL,        process_scalar,        process_binary, iCALL),
+  make_op_line(DTK_GG,        NULL,                NULL,           iNONE),
   make_op_line(DTK_PIPE,      NULL,                process_pipe,   iTERM),
   make_op_line(DTK_AMP,       process_amper,       NULL,           iNONE),
   make_op_line(DTK_STRING,    process_string,      NULL,           iNONE),
@@ -434,6 +436,26 @@ void process_list(d_vm* vm, bool v) {
   process_token(DTK_BKT_CLOSE, "Expect ']' after elements.");
   put_const(vm, NUMBER_VAL(lc));
   put_instruction(vm, OP_LIST);
+}
+
+void process_scalar(d_vm* vm, bool v) {
+  UNUSED(v);
+
+  if (eq_and_next(DTK_GG)) {
+    put_const(vm, NUMBER_VAL(0));
+    put_instruction(vm, OP_SCALAR);
+    return;
+  }
+
+  double lc = 0;
+  do {
+    expression(vm);
+    lc++;
+  } while (eq_and_next(DTK_COMMA));
+
+  process_token(DTK_GG, "Expect '>>' after elements.");
+  put_const(vm, NUMBER_VAL(lc));
+  put_instruction(vm, OP_SCALAR);
 }
 
 void process_frame(d_vm* vm, bool v) {
