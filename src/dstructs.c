@@ -53,13 +53,11 @@ void put_value_dlist(drax_list* l, drax_value v) {
 }
 
 /**
- * Uniq
+ * Scalar 
  */
 #define SCALAR_PRE_SIZE 20
 
 static d_internal_types get_scalar_type(drax_value v) {
-  if (IS_NUMBER(v)) return DIT_f64;
-
   if (IS_STRING(v)) return DIT_STRING;
 
   if (IS_STRUCT(v)) {
@@ -67,6 +65,23 @@ static d_internal_types get_scalar_type(drax_value v) {
   }
 
   return DIT_UNDEFINED;
+}
+
+static int is_scalar_tp_valid(drax_value v, d_internal_types _stype) {
+  if (
+    IS_NUMBER(v) &&
+    (
+      DIT_f32 == _stype ||
+      DIT_f64 == _stype ||
+      DIT_i16 == _stype ||
+      DIT_i32 == _stype ||
+      DIT_i64 == _stype
+    )
+  ) {
+    return 1;
+  }
+  
+  return get_scalar_type(v) == _stype;
 }
 
 drax_scalar* new_dscalar(d_vm* vm, int cap, d_internal_types type) {
@@ -86,11 +101,19 @@ drax_scalar* new_dscalar(d_vm* vm, int cap, d_internal_types type) {
 }
 
 int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
+  #define REALLOC_FOR_TYPE(_l, _tp) \
+    _tp* _dv = (_tp*) _l->elems;\
+    _dv = realloc(_dv, sizeof(_tp) * _l->cap);
+
+  #define CAST_FOR_TYPE(_l, _tp, _val) \
+    _tp* _dv = (_tp*) _l->elems;\
+    _dv[l->length] = (_tp) CAST_NUMBER(_val);
+
   if (DIT_UNDEFINED == l->_stype) {
-    l->_stype = get_scalar_type(v); 
+      l->_stype = IS_NUMBER(v) ? DIT_f64 : get_scalar_type(v);
   }
 
-  if (get_scalar_type(v) != l->_stype) {
+  if (!is_scalar_tp_valid(v, l->_stype)) {
     *r = DS_VAL(new_derror(vm, (char*) "Insertion of elements with different types in scalar."));
     return 0;
   }
@@ -98,20 +121,27 @@ int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
   if (l->cap <= l->length) {
     l->cap = (l->cap + SCALAR_PRE_SIZE);
 
-    if (DIT_f64 == l->_stype) {
-      double* _dv = (double*) l->elems;
-      _dv = realloc(_dv, sizeof(double) * l->cap);
-    } else {
-      l->elems = realloc(l->elems, sizeof(drax_value) * l->cap);
+    switch (l->_stype) {
+      case DIT_f64:
+        REALLOC_FOR_TYPE(l, double);
+        break;
+      
+      default:
+        l->elems = realloc(l->elems, sizeof(drax_value) * l->cap);
+        break;
     }
   }
 
-  if (DIT_f64 == l->_stype) {
-    double* _dv = (double*) l->elems;
-    _dv[l->length] = CAST_NUMBER(v);
-  } else {
-    l->elems[l->length] = v;
+  switch (l->_stype) {
+    case DIT_f64:
+      CAST_FOR_TYPE(l, double, v)
+      break;
+    
+    default:
+      l->elems[l->length] = v;
+      break;
   }
+
   l->length++;
   return 1;
 }
