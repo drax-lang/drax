@@ -89,7 +89,7 @@ assert(Scalar.insert_at(<<f32::1,2,3>>, 1, 5) |> Scalar.at(1) == 5, "fail to ins
 
 assert(Scalar.replace_at(<<f32::1,2,3,4>>, 0, -1) |> Scalar.at(0) == -1, "fail to replace_at f32")
 
-assert(Scalar.sum(<<f32::1,2,3,4>>) == 10, "fail to sum scalar f32")
+assert(<<i32::1,2.55,3.555>> |> Scalar.sum() == 6, "fail to sum scalar i32")
 
 print("Scalar done!")
 

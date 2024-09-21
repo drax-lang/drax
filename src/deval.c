@@ -85,9 +85,14 @@ static void print_scalar(drax_scalar* l) {
   printf(" :: ");
 
   int i;
-  if (DIT_f32 == l->_stype) {
+  if (DIT_i32 == l->_stype) {
+    int32_t* _i32 = (int32_t*) l->elems;
+    for (i = 0; i < l->length; i++) {
+      printf("%i", (int32_t) _i32[i]);
+      if ((i+1) < l->length) printf(", ");
+    }
+  } else if (DIT_f32 == l->_stype) {
     float* _f32 = (float*) l->elems;
-
     for (i = 0; i < l->length; i++) {
       printf("%f", (double) _f32[i]);
       if ((i+1) < l->length) printf(", ");

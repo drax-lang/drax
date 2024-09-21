@@ -27,6 +27,10 @@ drax_value __d_scalar_at(d_vm* vm, int* stat) {
 
   DX_SUCESS_FN(stat);
 
+  if (DIT_i32 == ll->_stype) {
+    RETURN_AT_TO_TYPE(int32_t, _i32, ll, n);
+  }
+
   if (DIT_f32 == ll->_stype) {
     RETURN_AT_TO_TYPE(float, _f32, ll, n);
   }
@@ -62,7 +66,9 @@ drax_value __d_scalar_concat(d_vm* vm, int* stat) {
   l->length = l1->length + l2->length;
   l->cap = l->length;
 
-  if (DIT_f32 == l1->_stype) {
+  if (DIT_i32 == l1->_stype) {
+    DO_MEMCPY_TO_TYPE(int32_t, l1, l2, l);
+  } else if (DIT_f32 == l1->_stype) {
     DO_MEMCPY_TO_TYPE(float, l1, l2, l);
   } else if (DIT_f64 == l1->_stype) {
     DO_MEMCPY_TO_TYPE(double, l1, l2, l);
@@ -86,6 +92,10 @@ drax_value __d_scalar_head(d_vm* vm, int* stat) {
   drax_scalar* l = CAST_SCALAR(a);
 
   DX_SUCESS_FN(stat);
+
+  if (DIT_i32 == l->_stype) {
+    RETURN_VAL_TO_TYPE(int32_t, l);
+  }
 
   if (DIT_f32 == l->_stype) {
     RETURN_VAL_TO_TYPE(float, l);
@@ -112,7 +122,9 @@ drax_value __d_scalar_tail(d_vm* vm, int* stat) {
   drax_scalar* l = new_dscalar(vm, l1->length -1, l1->_stype);
   l->length = l1->length - 1;
 
-  if (DIT_f32 == l->_stype) {
+  if (DIT_i32 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_TAIL(int32_t, l1, l);
+  } else if (DIT_f32 == l->_stype) {
     REMOVE_VAL_TO_TYPE_TAIL(float, l1, l);
   } else if (DIT_f64 == l->_stype) {
     REMOVE_VAL_TO_TYPE_TAIL(double, l1, l);
@@ -175,7 +187,9 @@ drax_value __d_scalar_remove_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length - 1, l->_stype);
   nl->length = l->length - 1;
 
-  if (DIT_f32 == l->_stype) {
+  if (DIT_i32 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_R_AT(int32_t, l, nl);
+  } else if (DIT_f32 == l->_stype) {
     REMOVE_VAL_TO_TYPE_R_AT(float, l, nl);
   } else if (DIT_f64 == l->_stype) {
     REMOVE_VAL_TO_TYPE_R_AT(double, l, nl);
@@ -215,7 +229,9 @@ drax_value __d_scalar_insert_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length + 1, l->_stype);
   nl->length = l->length + 1;
 
-  if (DIT_f32 == l->_stype) {
+  if (DIT_i32 == l->_stype) {
+    INSET_AT_TO_TYPE(int32_t, l, nl);
+  } else if (DIT_f32 == l->_stype) {
     INSET_AT_TO_TYPE(float, l, nl);
   } else if (DIT_f64 == l->_stype) {
     INSET_AT_TO_TYPE(double, l, nl);
@@ -256,7 +272,9 @@ drax_value __d_scalar_replace_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length, l->_stype);
   nl->length = l->length;
 
-  if (DIT_f32 == l->_stype) {
+  if (DIT_i32 == l->_stype) {
+    REPLACE_AT_TO_TYPE(int32_t, l, nl);
+  } else if (DIT_f32 == l->_stype) {
     REPLACE_AT_TO_TYPE(float, l, nl);
   } else if (DIT_f64 == l->_stype) {
     REPLACE_AT_TO_TYPE(double, l, nl);
@@ -297,7 +315,9 @@ drax_value __d_scalar_slice(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, abs(to - from), l->_stype);
   nl->length = abs(to - from);
 
-  if (DIT_f32 == l->_stype) {
+  if (DIT_i32 == l->_stype) {
+    S_SLICE_TO_TYPE(int32_t, l, nl);
+  } else if (DIT_f32 == l->_stype) {
     S_SLICE_TO_TYPE(float, l, nl);
   } else if (DIT_f64 == l->_stype) {
     S_SLICE_TO_TYPE(double, l, nl);
@@ -320,13 +340,24 @@ drax_value __d_scalar_sum(d_vm* vm, int* stat) {
     return AS_VALUE(0);
   }
 
-  if (l->_stype != DIT_f32 && l->_stype != DIT_f64) {
+  if (
+    l->_stype != DIT_i32 &&
+    l->_stype != DIT_f32 &&
+    l->_stype != DIT_f64
+  ) {
     DX_ERROR_FN(stat);
     return DS_VAL(new_derror(vm, (char *) "Expected scalar of number as argument"));
   }
   
   double res = 0;
   int i;
+
+  if (DIT_i32 == l->_stype) {
+    int32_t i32res = 0;
+    int32_t* _i32 = (int32_t*) l->elems;
+    for (i = 0; i < l->length; i++) i32res += _i32[i];
+    res = (double) i32res;
+  }
 
   if (DIT_f32 == l->_stype) {
     float f32res = 0;
