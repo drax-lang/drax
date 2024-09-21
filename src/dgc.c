@@ -59,6 +59,12 @@ static void dgc_safe_free(d_vm* vm, drax_value v) {
       free(ff->instructions->values);
       free(ff->instructions);
       free(ff->instructions->extrn_ref);
+    } else if (IS_SCALAR(v)) {
+      DEBUG(printf("    -- dgc scalar free\n"));
+
+      drax_scalar* ff = CAST_SCALAR(v);
+      void* _fval = (void*) ff->elems;
+      free(_fval);
     }
 
     free(sct);

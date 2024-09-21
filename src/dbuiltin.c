@@ -1165,7 +1165,8 @@ static drax_value __d_scalar_head(d_vm* vm, int* stat) {
 static drax_value __d_scalar_tail(d_vm* vm, int* stat) {
   #define REMOVE_VAL_TO_TYPE_TAIL(_tp, _l1, _l2)\
     _tp* _dv1 = (_tp*) _l1->elems;\
-    _l2->elems = POINTER_TO_PDRAXVAL(&_dv1[1]);
+    _tp* _dv2 = (_tp*) _l2->elems;\
+    memcpy(_dv2, &_dv1[1], _l2->length * sizeof(_tp));
 
   drax_value a = pop(vm);
 
