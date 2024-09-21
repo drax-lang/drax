@@ -23,8 +23,24 @@ static void print_scalar_type(d_internal_types v) {
       printf("undefined");
       break;
     }
+    case DIT_f32: {
+      printf("f32");
+      break;
+    }
     case DIT_f64: {
       printf("f64");
+      break;
+    }
+    case DIT_i16: {
+      printf("i16");
+      break;
+    }
+    case DIT_i32: {
+      printf("i32");
+      break;
+    }
+    case DIT_i64: {
+      printf("i64");
       break;
     }
     case DIT_LIST: {
