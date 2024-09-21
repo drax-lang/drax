@@ -397,6 +397,56 @@ static drax_value __d_tanh(d_vm* vm, int* stat) {
   return num_to_draxvalue(tanh(num));
 }
 
+static drax_value __d_hypot(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+  return_if_is_not_number(b, stat);
+
+  double n1 = CAST_NUMBER(a);
+  double n2 = CAST_NUMBER(b);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue(sqrt(pow(n1, 2) + pow(n2, 2)));
+}
+
+static drax_value __d_number_is_even(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  int n1 = (int) CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+  return (n1 & 1) == 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
+}
+
+static drax_value __d_number_is_odd(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+
+  int n1 = (int) CAST_NUMBER(a);
+
+  DX_SUCESS_FN(stat);
+  return (n1 & 1) == 1 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
+}
+
+static drax_value __d_number_floor_div(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_number(a, stat);
+  return_if_is_not_number(b, stat);
+
+  double n1 = CAST_NUMBER(a);
+  double n2 = CAST_NUMBER(b);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue(floor(n1 / n2));
+}
+
 /* Module OS */
 
 static drax_value __d_get_env(d_vm* vm, int* stat) {
@@ -455,6 +505,7 @@ static int create_directory(const char* path, mode_t mode) {
     return mkdir(path, mode);
 #endif
 }
+
 
 static drax_value __d_mkdir(d_vm* vm, int* stat, int permission) {
   drax_value b = permission ? pop(vm) : DRAX_NIL_VAL;
@@ -556,6 +607,38 @@ static drax_value __d_number_to_string(d_vm* vm, int* stat) {
 
   DX_SUCESS_FN(stat);
   return DS_VAL(str);
+}
+
+static drax_value __d_number_rand(d_vm* vm, int* stat) {
+  UNUSED(vm);
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue((double) rand());
+}
+
+static drax_value __d_number_max(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_number(a, stat);
+  return_if_is_not_number(b, stat);
+
+  double n1 = CAST_NUMBER(a);
+  double n2 = CAST_NUMBER(b);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue(n1 > n2 ? n1 : n2);
+}
+
+static drax_value __d_number_min(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_number(a, stat);
+  return_if_is_not_number(b, stat);
+
+  double n1 = CAST_NUMBER(a);
+  double n2 = CAST_NUMBER(b);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue(n1 < n2 ? n1 : n2);
 }
 
 /**
@@ -1432,6 +1515,121 @@ static drax_value __d_scalar_sparse(d_vm* vm, int* stat) {
   DX_SUCESS_FN(stat);
   return DS_VAL(ll);
 }
+static drax_value __d_list_hypot(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+
+  double result = 0.0;
+
+  drax_list* ll = CAST_LIST(a);
+
+  int i;
+  for(i = 0; i < ll->length; i++) {
+    return_if_is_not_number(ll->elems[i], stat);
+    double n = CAST_NUMBER(ll->elems[i]);
+    result += n * n;
+  }
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue(sqrt(result));
+}
+
+static drax_value __d_list_dot(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+  return_if_is_not_list(b, stat);
+
+  double result = 0.0;
+
+  drax_list* l1 = CAST_LIST(a);
+  drax_list* l2 = CAST_LIST(b);
+
+  if(l1->length != l2->length) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char*) "expected lists with the same size"));
+  }
+
+  int i;
+  for(i = 0; i < l1->length; i++) {
+    return_if_is_not_number(l1->elems[i], stat);
+    return_if_is_not_number(l2->elems[i], stat);
+    result += CAST_NUMBER(l1->elems[i]) * CAST_NUMBER(l2->elems[i]);
+  }
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue(result);
+}
+
+static drax_value __d_list_pop(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+
+  drax_list* l1 = CAST_LIST(a);
+
+  if(l1->length == 0) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(l1);
+  }
+
+  drax_list* nl = new_dlist(vm, l1->length - 1);
+  nl->length = l1->length - 1;
+
+  memcpy(nl->elems, l1->elems, sizeof(drax_value) * nl->length);
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_list_shift(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_list(a, stat);
+
+  drax_list* l1 = CAST_LIST(a);
+
+  if(l1->length == 0) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(l1);
+  }
+
+  drax_list* nl = new_dlist(vm, l1->length - 1);
+  nl->length = l1->length - 1;
+
+  memcpy(nl->elems, l1->elems + 1, sizeof(drax_value) * nl->length);
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_list_zip(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_list(a, stat);
+  return_if_is_not_list(b, stat);
+
+  drax_list* l1 = CAST_LIST(a);
+  drax_list* l2 = CAST_LIST(b);
+
+  if(l1->length != l2->length) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char*) "expected lists with the same size"));
+  }
+
+  drax_list* nl = new_dlist(vm, l1->length);
+
+  int i;
+  for(i = 0; i < l1->length; i++) {
+    drax_list* in = new_dlist(vm, 2);
+    put_value_dlist(in, l1->elems[i]);
+    put_value_dlist(in, l2->elems[i]);
+
+    put_value_dlist(nl, DS_VAL(in));
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
 
 /**
  * TCPServer calls
@@ -1590,9 +1788,15 @@ void create_native_modules(d_vm* vm) {
   /**
    * Number module
    */
-  drax_native_module* number = new_native_module(vm, "Number", 1);
+  drax_native_module* number = new_native_module(vm, "Number", 7);
   const drax_native_module_helper number_helper[] = {
-    {1, "to_string", __d_number_to_string }
+    {1, "to_string", __d_number_to_string },
+    {0, "rand", __d_number_rand },
+    {2, "max", __d_number_max },
+    {2, "min", __d_number_min },
+    {1, "is_even", __d_number_is_even },
+    {1, "is_odd", __d_number_is_odd },
+    {2, "floor_div", __d_number_floor_div },
   };
 
   put_fun_on_module(number, number_helper, sizeof(number_helper) / sizeof(drax_native_module_helper)); 
@@ -1642,7 +1846,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * List Module
    */ 
-  drax_native_module* list = new_native_module(vm, "List", 13);
+  drax_native_module* list = new_native_module(vm, "List", 18);
   const drax_native_module_helper list_helper[] = {
     {2, "concat", __d_list_concat },
     {1, "head", __d_list_head},
@@ -1656,7 +1860,12 @@ void create_native_modules(d_vm* vm) {
     {3, "slice", __d_list_slice},
     {1, "sum", __d_list_sum},
     {2, "at", __d_list_at},
-    {1, "sparse", __d_list_sparse}
+    {1, "sparse", __d_list_sparse},
+    {1, "hypot", __d_list_hypot},
+    {2, "dot", __d_list_dot},
+    {2, "zip", __d_list_zip},
+    {1, "pop", __d_list_pop},
+    {1, "shift", __d_list_shift},
   };
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
@@ -1701,7 +1910,7 @@ void create_native_modules(d_vm* vm) {
   put_fun_on_module(http, http_helper, sizeof(http_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(http));
 
-  drax_native_module* math = new_native_module(vm, "Math", 22);
+  drax_native_module* math = new_native_module(vm, "Math", 24);
     const drax_native_module_helper math_helper[] = {
       {1, "cos", __d_cos},
       {1, "cosh", __d_cosh},
@@ -1715,7 +1924,7 @@ void create_native_modules(d_vm* vm) {
       {1, "atan", __d_atan},
       {2, "atan2", __d_atan2},
       {1, "exp", __d_exp},
-      {1, "fabs", __d_fabs}, 
+      {1, "fabs", __d_fabs},
       {1, "frexp", __d_frexp},
       {2, "ldexp", __d_ldexp},
       {1, "log", __d_log},
@@ -1724,6 +1933,7 @@ void create_native_modules(d_vm* vm) {
       {1, "sin", __d_sin},
       {1, "sinh", __d_sinh},
       {1, "asin", __d_asin},
+      {2, "hypot", __d_hypot}
   };
 
   put_fun_on_module(math, math_helper, sizeof(math_helper) / sizeof(drax_native_module_helper)); 

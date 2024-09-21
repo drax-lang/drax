@@ -58,4 +58,7 @@ assert(Math.sinh(0) == 0, "math error: sinh(0)")
 assert(Math.asin(1) == 1.5707963267948966, "math error: asin(1)")
 assert(Math.asin(0) == 0, "math error: asin(0)")
 
+assert(Math.hypot(5, 5) == 7.0710678118654755, "math error: expected 5 as result")
+assert(Math.hypot(0, 0) == 0, "math error: expected 0 as result")
+
 print("Math done!")
