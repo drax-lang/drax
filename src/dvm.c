@@ -662,35 +662,13 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           pop_times(vm, 2);
           push(vm, DS_VAL(result));
         } else if (IS_SCALAR(peek(vm, 0)) && IS_SCALAR(peek(vm, 1))) {
-          drax_scalar* b = CAST_SCALAR(peek(vm, 0));
-          drax_scalar* a = CAST_SCALAR(peek(vm, 1));
-
-          if (b->_stype != a->_stype) {
-            raise_drax_error(vm, "Scalar concat with different types.");
+          int stat = 0;
+          drax_value _rs = __d_scalar_concat(vm, &stat);
+          if (!stat) {
+            raise_drax_error(vm, CAST_ERROR(_rs)->chars );
             return 1;
           }
-
-          int length = a->length + b->length;
-          drax_scalar* result = new_dscalar(vm, length, a->_stype);
-
-          if (DIT_f64 == a->_stype) {
-            double* _dv1 = (double*) a->elems;
-            double* _dv2 = (double*) b->elems;
-            double* _dv3 = (double*) result->elems;
-
-            memcpy(_dv3, _dv1, a->length * sizeof(double));
-            memcpy(_dv3 + a->length, _dv2, b->length * sizeof(double));
-          } else {
-            memcpy(result->elems, a->elems, a->length * sizeof(drax_value));
-            memcpy(result->elems + a->length, b->elems, b->length * sizeof(drax_value));
-          }
-
-          memcpy(result->elems, a->elems, a->length * sizeof(drax_value));
-          memcpy(result->elems + a->length, b->elems, b->length * sizeof(drax_value));
-
-          result->length = length;
-          pop_times(vm, 2);
-          push(vm, DS_VAL(result));
+          push(vm, DS_VAL(_rs));
         }  else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
           drax_list* b = CAST_LIST(peek(vm, 0));
           drax_list* a = CAST_LIST(peek(vm, 1));

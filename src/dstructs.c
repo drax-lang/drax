@@ -101,11 +101,11 @@ drax_scalar* new_dscalar(d_vm* vm, int cap, d_internal_types type) {
 }
 
 int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
-  #define REALLOC_FOR_TYPE(_l, _tp) \
+  #define REALLOC_FOR_TYPE(_dv, _l, _tp)\
     _tp* _dv = (_tp*) _l->elems;\
     _dv = realloc(_dv, sizeof(_tp) * _l->cap);
 
-  #define CAST_FOR_TYPE(_l, _tp, _val) \
+  #define APPEND_VAL_FOR_TYPE(_dv, _l, _tp, _val)\
     _tp* _dv = (_tp*) _l->elems;\
     _dv[l->length] = (_tp) CAST_NUMBER(_val);
 
@@ -122,9 +122,14 @@ int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
     l->cap = (l->cap + SCALAR_PRE_SIZE);
 
     switch (l->_stype) {
-      case DIT_f64:
-        REALLOC_FOR_TYPE(l, double);
+      case DIT_f32: {
+        REALLOC_FOR_TYPE(_f32, l, float);
         break;
+      }
+      case DIT_f64: {
+        REALLOC_FOR_TYPE(_f64, l, double);
+        break;
+      }
       
       default:
         l->elems = realloc(l->elems, sizeof(drax_value) * l->cap);
@@ -133,8 +138,12 @@ int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
   }
 
   switch (l->_stype) {
+    case DIT_f32:
+      APPEND_VAL_FOR_TYPE(_f32, l, float, v)
+      break;
+
     case DIT_f64:
-      CAST_FOR_TYPE(l, double, v)
+      APPEND_VAL_FOR_TYPE(_f64, l, double, v)
       break;
     
     default:

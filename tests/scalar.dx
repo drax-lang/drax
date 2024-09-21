@@ -70,7 +70,26 @@ assert(Scalar.sum(<<>>) == expected, "scalar error: sum(<<>>) is different of 0"
 expected = -15
 assert(Scalar.sum(<<-1, -2, -3, -4, -5>>) == expected, "scalar error: sum(<<-1, -2, -3, -4, -5>>) is different of -15")
 
+## types tests
+
 val = <<f64 :: 1,2,3>>
 assert(<<f64 :: 1,2,3>> == val, "fail to mount f64 = <<f64 :: 1,2,3>> == val")
 
+assert(Scalar.at(<<f32::1,2,3>>, 1) == 2, "fail to mount get f32 = Scalar.at(<<f32::1,2,3>>, 1)")
+
+assert(Scalar.at(Scalar.concat(<<f32::1,2,3>>, <<f32::4,5,6>>), 5) == 6, "fail to mount get concat f32.")
+
+assert(Scalar.at(<<f32::1,2,3>> ++ <<f32::4,5,6>>, 5) == 6, "fail to mount get concat(++) f32.")
+
+assert(<<f32::1,2,3>> |> Scalar.head() == 1, "fail to get head on f32")
+
+assert(<<f32::1,2,3>> |> Scalar.tail() == <<f32::2,3>>, "fail to get tail on f32")
+
+assert(Scalar.insert_at(<<f32::1,2,3>>, 1, 5) |> Scalar.at(1) == 5, "fail to insert_at f32")
+
+assert(Scalar.replace_at(<<f32::1,2,3,4>>, 0, -1) |> Scalar.at(0) == -1, "fail to replace_at f32")
+
+assert(Scalar.sum(<<f32::1,2,3,4>>) == 10, "fail to sum scalar f32")
+
 print("Scalar done!")
+
