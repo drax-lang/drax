@@ -70,4 +70,7 @@ assert(Scalar.sum(<<>>) == expected, "scalar error: sum(<<>>) is different of 0"
 expected = -15
 assert(Scalar.sum(<<-1, -2, -3, -4, -5>>) == expected, "scalar error: sum(<<-1, -2, -3, -4, -5>>) is different of -15")
 
+val = <<f64 :: 1,2,3>>
+assert(<<f64 :: 1,2,3>> == val, "fail to mount f64 = <<f64 :: 1,2,3>> == val")
+
 print("Scalar done!")

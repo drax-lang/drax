@@ -33,10 +33,13 @@ typedef enum dlex_types {
 
   DTK_ID, DTK_STRING, DTK_DSTRING, DTK_MSTRING, 
   DTK_NUMBER, DTK_COMMA,
-  DTK_DOT, DTK_COLON, DTK_AMP,
+  DTK_DOT, DTK_COLON, DTK_DCOLON, DTK_AMP,
 
   /* modules */
   DTK_IMPORT, DTK_EXPORT,
+
+  /* types */
+  DTK_T_f32, DTK_T_f64, DTK_T_i16, DTK_T_i32, DTK_T_i64,
 
   /* return */
   DTK_RETURN,

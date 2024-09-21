@@ -23,8 +23,8 @@ static void print_scalar_type(d_internal_types v) {
       printf("undefined");
       break;
     }
-    case DIT_DOUBLE: {
-      printf("double");
+    case DIT_f64: {
+      printf("f64");
       break;
     }
     case DIT_LIST: {
@@ -66,16 +66,16 @@ static void print_scalar_type(d_internal_types v) {
 static void print_scalar(drax_scalar* l) {
   printf("<<");
   print_scalar_type(l->_stype);
-  printf(" : ");
+  printf(" :: ");
 
   int i;
   double* _d_el;
 
-  if (DIT_DOUBLE == l->_stype) {
+  if (DIT_f64 == l->_stype) {
     _d_el = (double*) l->elems;
   }
   for (i = 0; i < l->length; i++) {
-    if (DIT_DOUBLE == l->_stype) {
+    if (DIT_f64 == l->_stype) {
       printf("%.15f", _d_el[i]);
     } else {
       print_drax(l->elems[i], 1);

@@ -14,6 +14,11 @@ curr_lex_state clexs;
 #define NUM_ELEMS(x)  (sizeof(x) / sizeof((x)[0]))
 
 static const drax_tokens drax_t[] = {
+  {"f32",    DTK_T_f32},
+  {"f64",    DTK_T_f64},
+  {"i16",    DTK_T_i16},
+  {"i32",    DTK_T_i32},
+  {"i64",    DTK_T_i64},
   {"and",    DTK_AND},
   {"as",     DTK_AS},
   {"do",     DTK_DO},
@@ -208,7 +213,13 @@ d_token next_token() {
       case '{': return dmake_symbol(DTK_CBR_OPEN);
       case '}': return dmake_symbol(DTK_CBR_CLOSE);
       case ',': return dmake_symbol(DTK_COMMA);
-      case ':': return dmake_symbol(DTK_COLON);
+      case ':': {
+        if(CURR_TOKEN() == ':') {
+          next_char();
+          return dmake_symbol(DTK_DCOLON);
+        }        
+        return dmake_symbol(DTK_COLON);
+      }
       case '|': {
         if(CURR_TOKEN() == '>') {
           next_char();

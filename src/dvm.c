@@ -522,21 +522,22 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_SCALAR) {
+        drax_value a = GET_VALUE(vm);
         drax_value lc = pop(vm);
         int limit = (int) CAST_NUMBER(lc);
-        drax_scalar* l = new_dscalar(vm, limit, DIT_UNDEFINED);
+        drax_scalar* scl = new_dscalar(vm, limit, (d_internal_types) a);
 
         int i;
         drax_value _er;
         for (i = 0; i < limit; i++) {
-          if(!put_value_dscalar(vm, l, peek(vm, (limit -1) - i), &_er)) {
+          if(!put_value_dscalar(vm, scl, peek(vm, (limit -1) - i), &_er)) {
             raise_drax_error(vm, CAST_ERROR(_er)->chars);
             return 1;
           }
         }
 
         pop_times(vm, limit);
-        push(vm, DS_VAL(l));
+        push(vm, DS_VAL(scl));
         break;
       }
       VMCase(OP_FRAME) {
@@ -671,6 +672,19 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
 
           int length = a->length + b->length;
           drax_scalar* result = new_dscalar(vm, length, a->_stype);
+
+          if (DIT_f64 == a->_stype) {
+            double* _dv1 = (double*) a->elems;
+            double* _dv2 = (double*) b->elems;
+            double* _dv3 = (double*) result->elems;
+
+            memcpy(_dv3, _dv1, a->length * sizeof(double));
+            memcpy(_dv3 + a->length, _dv2, b->length * sizeof(double));
+          } else {
+            memcpy(result->elems, a->elems, a->length * sizeof(drax_value));
+            memcpy(result->elems + a->length, b->elems, b->length * sizeof(drax_value));
+          }
+
           memcpy(result->elems, a->elems, a->length * sizeof(drax_value));
           memcpy(result->elems + a->length, b->elems, b->length * sizeof(drax_value));
 

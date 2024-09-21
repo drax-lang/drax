@@ -1087,7 +1087,7 @@ static drax_value __d_scalar_at(d_vm* vm, int* stat) {
 
   DX_SUCESS_FN(stat);
 
-  if (DIT_DOUBLE == ll->_stype) {
+  if (DIT_f64 == ll->_stype) {
     double* _dv = (double*) ll->elems;
     return num_to_draxvalue(_dv[(int) n]);
   }
@@ -1114,7 +1114,7 @@ static drax_value __d_scalar_concat(d_vm* vm, int* stat) {
   l->length = l1->length + l2->length;
   l->cap = l->length;
 
-  if (DIT_DOUBLE == l1->_stype) {
+  if (DIT_f64 == l1->_stype) {
     double* _dv1 = (double*) l1->elems;
     double* _dv2 = (double*) l2->elems;
     double* _dv3 = (double*) l->elems;
@@ -1138,7 +1138,7 @@ static drax_value __d_scalar_head(d_vm* vm, int* stat) {
 
   DX_SUCESS_FN(stat);
   
-  if (DIT_DOUBLE == l1->_stype) {
+  if (DIT_f64 == l1->_stype) {
     double* _dv = (double*) l1->elems;
     return l1->length > 0 ? num_to_draxvalue(_dv[0]) : DRAX_NIL_VAL;
   }
@@ -1204,7 +1204,7 @@ static drax_value __d_scalar_remove_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length - 1, l->_stype);
   nl->length = l->length - 1;
 
-  if (DIT_DOUBLE == l->_stype) {
+  if (DIT_f64 == l->_stype) {
     double* _dv1 = (double*) l->elems;
     double* _dv2 = (double*) nl->elems;
 
@@ -1238,7 +1238,7 @@ static drax_value __d_scalar_insert_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length + 1, l->_stype);
   nl->length = l->length + 1;
 
-  if (DIT_DOUBLE == l->_stype) {
+  if (DIT_f64 == l->_stype) {
     double* _dv1 = (double*) l->elems;
     double* _dv2 = (double*) nl->elems;
 
@@ -1275,7 +1275,7 @@ static drax_value __d_scalar_replace_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length, l->_stype);
   nl->length = l->length;
 
-  if (DIT_DOUBLE == l->_stype) {
+  if (DIT_f64 == l->_stype) {
     double* _dv1 = (double*) l->elems;
     double* _dv2 = (double*) nl->elems;
     double nc = CAST_NUMBER(c);
@@ -1314,7 +1314,7 @@ static drax_value __d_scalar_slice(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, abs(to - from), l->_stype);
   nl->length = abs(to - from);
 
-  if (DIT_DOUBLE == l->_stype) {
+  if (DIT_f64 == l->_stype) {
     double* _dv1 = (double*) l->elems;
     double* _dv2 = (double*) nl->elems;
     memcpy(_dv2, _dv1 + from, abs(to - from) * sizeof(double));
@@ -1337,7 +1337,7 @@ static drax_value __d_scalar_sum(d_vm* vm, int* stat) {
     return AS_VALUE(0);
   }
 
-  if (l->_stype != DIT_DOUBLE) {
+  if (l->_stype != DIT_f64) {
     DX_ERROR_FN(stat);
     return DS_VAL(new_derror(vm, (char *) "Expected scalar of number as argument"));
   }
@@ -1365,13 +1365,14 @@ static drax_value __d_scalar_sparse(d_vm* vm, int* stat) {
     return DS_VAL(new_dscalar(vm, 0, DIT_UNDEFINED));
   }
 
-  drax_scalar* ll = new_dscalar(vm, n, DIT_DOUBLE);
+  drax_scalar* ll = new_dscalar(vm, n, DIT_f64);
   ll->length = n;
-  drax_value v = num_to_draxvalue(0.0);
+  double v = 0;
+  double* _v = (double*) ll->elems;
 
   int i;
   for(i = 0; i < ll->length; i++) {
-    ll->elems[i] = v;
+    _v[i] = v;
   }
 
   DX_SUCESS_FN(stat);

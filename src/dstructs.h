@@ -47,8 +47,12 @@ typedef enum d_internal_types {
   /**
    * Native types
    */
-  DIT_UNDEFINED = -1,
-  DIT_DOUBLE    = -2,
+  DIT_UNDEFINED = 99,
+  DIT_f32       = 98,
+  DIT_f64       = 97,
+  DIT_i16       = 96,
+  DIT_i32       = 95,
+  DIT_i64       = 94,
 
   DIT_LIST     = DS_LIST, /* == 3*/
   DIT_SCALAR   = DS_SCALAR,

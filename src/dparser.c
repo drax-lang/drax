@@ -441,9 +441,46 @@ void process_list(d_vm* vm, bool v) {
 void process_scalar(d_vm* vm, bool v) {
   UNUSED(v);
 
+  d_internal_types _tp = DIT_UNDEFINED;
+
+  switch (parser.current.type) {
+    case DTK_T_f32: {
+      _tp = DIT_f32;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+    case DTK_T_f64: {
+      _tp = DIT_f64;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+    case DTK_T_i16: {
+      _tp = DIT_i16;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+    case DTK_T_i32: {
+      _tp = DIT_i32;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+    case DTK_T_i64: {
+      _tp = DIT_i64;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+  default:
+    _tp = DIT_UNDEFINED;
+  }
+
   if (eq_and_next(DTK_GG)) {
     put_const(vm, NUMBER_VAL(0));
-    put_instruction(vm, OP_SCALAR);
+    put_pair(vm, OP_SCALAR, (drax_value) _tp);
     return;
   }
 
@@ -455,7 +492,7 @@ void process_scalar(d_vm* vm, bool v) {
 
   process_token(DTK_GG, "Expect '>>' after elements.");
   put_const(vm, NUMBER_VAL(lc));
-  put_instruction(vm, OP_SCALAR);
+  put_pair(vm, OP_SCALAR, (drax_value) _tp);
 }
 
 void process_frame(d_vm* vm, bool v) {
