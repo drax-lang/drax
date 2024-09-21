@@ -16,6 +16,8 @@
 
 #include "doutopcode.h"
 
+#include "mods/d_mod_scalar.h"
+
 /* validation only number */
 #define binary_op(vm, op) \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
