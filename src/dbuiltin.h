@@ -26,6 +26,4 @@ void load_callback_fn(d_vm* vm, vm_builtin_setter* reg);
 
 void create_native_modules(d_vm* vm);
 
-drax_value __d_scalar_concat(d_vm* vm, int* stat);
-
 #endif

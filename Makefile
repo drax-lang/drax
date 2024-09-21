@@ -23,7 +23,8 @@ FILES= ./src/dvm.c \
 	   ./src/dscheduler.c \
 	   ./src/doutopcode.c \
 	   ./src/mods/d_mod_os.c \
-	   ./src/mods/d_mod_http.c
+	   ./src/mods/d_mod_http.c \
+	   ./src/mods/d_mod_scalar.c
 
 DEBUGF= -ggdb \
 		-g
