@@ -4,6 +4,8 @@
 #include "deval.h"
 #include "dstring.h"
 
+#define D_NUMBER_STR_PRINT "%.17g"
+
 static void print_list(drax_list* l) {
   putchar('[');
   int i;
@@ -13,6 +15,101 @@ static void print_list(drax_list* l) {
     if ((i+1) < l->length) printf(", ");
   }
   putchar(']');
+}
+
+static void print_scalar_type(d_internal_types v) {
+  switch (v) {
+    case DIT_UNDEFINED: {
+      printf("undefined");
+      break;
+    }
+    case DIT_f32: {
+      printf("f32");
+      break;
+    }
+    case DIT_f64: {
+      printf("f64");
+      break;
+    }
+    case DIT_i16: {
+      printf("i16");
+      break;
+    }
+    case DIT_i32: {
+      printf("i32");
+      break;
+    }
+    case DIT_i64: {
+      printf("i64");
+      break;
+    }
+    case DIT_LIST: {
+      printf("list");
+      break;
+    }
+    case DIT_SCALAR: {
+      printf("scalar");
+      break;
+    }
+    case DIT_FUNCTION:
+    case DIT_NATIVE: {
+      printf("function");
+      break;
+    }
+    case DIT_FRAME: {
+      printf("frame");
+      break;
+    }
+    case DIT_MODULE: {
+      printf("module");
+      break;
+    }
+    case DIT_TID: {
+      printf("tid");
+      break;
+    }
+    case DIT_STRING: {
+      printf("string");
+      break;
+    }
+    default: {
+      printf("undefined");
+      break;
+    }
+  }
+}
+
+static void print_scalar(drax_scalar* l) {
+  printf("<<");
+  print_scalar_type(l->_stype);
+  printf(" :: ");
+
+  int i;
+  if (DIT_f32 == l->_stype) {
+    float* _f32 = (float*) l->elems;
+
+    for (i = 0; i < l->length; i++) {
+      printf("%f", (double) _f32[i]);
+      if ((i+1) < l->length) printf(", ");
+    }
+  } else if (DIT_f64 == l->_stype) {
+    double* _f64 = (double*) l->elems;
+
+    for (i = 0; i < l->length; i++) {
+      printf("%.15f", _f64[i]);
+      if ((i+1) < l->length) printf(", ");
+    }
+  } else {
+    for (i = 0; i < l->length; i++) {
+      print_drax(l->elems[i], 1);
+      if ((i+1) < l->length) printf(", ");
+    }
+  }
+
+
+
+  putchar('>');
+  putchar('>');
 }
 
 static void print_frame(drax_frame* f) {
@@ -45,6 +142,10 @@ static void print_d_struct(drax_value value, int formated) {
   switch (DRAX_STYPEOF(value)) {
     case DS_LIST:
       print_list(CAST_LIST(value));
+      break;
+
+    case DS_SCALAR:
+      print_scalar(CAST_SCALAR(value));
       break;
 
     case DS_FRAME:
@@ -87,7 +188,7 @@ void print_drax(drax_value value, int formated) {
   } else if (IS_NIL(value)) {
     printf("nil");
   } else if (IS_NUMBER(value)) {
-    printf("%.17g", CAST_NUMBER(value));
+    printf(D_NUMBER_STR_PRINT, CAST_NUMBER(value));
   } else if(IS_MODULE(value)) {
     printf("<module:%s>", CAST_MODULE(value)->name);
   } else if (IS_STRUCT(value)) {

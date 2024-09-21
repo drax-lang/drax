@@ -5,15 +5,26 @@
 #include "dtypes.h"
 #include "dvm.h"
 
+#ifndef _WIN32
+  #include <sys/ioctl.h>
+#else
+  #include <windows.h>
+#endif
+
 typedef struct d_vm d_vm;
 
 #define DRAX_STYPEOF(v)   (CAST_STRUCT(v)->type)
 
 #define IS_ST_TYPE(v, t)  (IS_STRUCT(v) && DRAX_STYPEOF(v) == t)
 
+#ifdef IS_ERROR
+  #undef IS_ERROR
+#endif
+
 #define IS_ERROR(v)       IS_ST_TYPE(v, DS_ERROR)
 #define IS_FRAME(v)       IS_ST_TYPE(v, DS_FRAME)
 #define IS_LIST(v)        IS_ST_TYPE(v, DS_LIST)
+#define IS_SCALAR(v)      IS_ST_TYPE(v, DS_SCALAR)
 #define IS_FUNCTION(v)    IS_ST_TYPE(v, DS_FUNCTION)
 #define IS_NATIVE(v)      IS_ST_TYPE(v, DS_NATIVE)
 #define IS_MODULE(v)      IS_ST_TYPE(v, DS_MODULE)
@@ -26,10 +37,32 @@ typedef struct d_vm d_vm;
 #define CAST_MODULE(v)    ((drax_native_module*) CAST_STRUCT(v))
 #define CAST_STRING(v)    ((drax_string*) CAST_STRUCT(v))
 #define CAST_LIST(v)      ((drax_list*) CAST_STRUCT(v))
+#define CAST_SCALAR(v)      ((drax_scalar*) CAST_STRUCT(v))
 #define CAST_FRAME(v)     ((drax_frame*) CAST_STRUCT(v))
 #define CAST_TID(v)       ((drax_tid*) CAST_STRUCT(v))
 
 typedef drax_value (low_level_callback) (d_vm* g, int* stat);
+
+typedef enum d_internal_types {
+  /**
+   * Native types
+   */
+  DIT_UNDEFINED = 99,
+  DIT_f32       = 98,
+  DIT_f64       = 97,
+  DIT_i16       = 96,
+  DIT_i32       = 95,
+  DIT_i64       = 94,
+
+  DIT_LIST     = DS_LIST, /* == 3*/
+  DIT_SCALAR   = DS_SCALAR,
+  DIT_FUNCTION = DS_FUNCTION,
+  DIT_NATIVE   = DS_NATIVE,
+  DIT_FRAME    = DS_FRAME,
+  DIT_MODULE   = DS_MODULE,
+  DIT_TID      = DS_TID,
+  DIT_STRING   = DS_STRING,
+} d_internal_types;
 
 /**
  * Modules definitions
@@ -65,6 +98,14 @@ typedef struct drax_list {
   int cap;
   drax_value* elems;
 } drax_list;
+
+typedef struct drax_scalar {
+  d_struct d_struct;
+  int length;
+  int cap;
+  d_internal_types _stype;
+  drax_value* elems;
+} drax_scalar;
 
 typedef struct drax_frame {
   d_struct d_struct;
@@ -105,6 +146,10 @@ void put_value_dlist(drax_list* l, drax_value v);
 drax_error* new_derror(d_vm* vm, char* msg);
 
 drax_list* new_dlist(d_vm* vm, int cap);
+
+drax_scalar* new_dscalar(d_vm* vm, int cap, d_internal_types type);
+
+int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r);
 
 drax_function* new_function(d_vm* vm);
 

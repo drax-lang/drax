@@ -148,6 +148,8 @@ static operation_line op_lines[] = {
   make_op_line(DTK_BE,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LS,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LE,        NULL,                process_binary, iDIFF),
+  make_op_line(DTK_LL,        process_scalar,        process_binary, iCALL),
+  make_op_line(DTK_GG,        NULL,                NULL,           iNONE),
   make_op_line(DTK_PIPE,      NULL,                process_pipe,   iTERM),
   make_op_line(DTK_AMP,       process_amper,       NULL,           iNONE),
   make_op_line(DTK_STRING,    process_string,      NULL,           iNONE),
@@ -311,7 +313,7 @@ static void put_const(d_vm* vm, drax_value value) {
 static void patch_jump(d_vm* vm, int offset) {
   int jump = GET_INSTRUCTION(vm)->instr_count - offset - 2;
 
-  if (jump > UINT16_MAX) {
+  if ((unsigned int) jump > UINT16_MAX) {
     FATAL("Too much code to jump over.");
   }
 
@@ -434,6 +436,63 @@ void process_list(d_vm* vm, bool v) {
   process_token(DTK_BKT_CLOSE, "Expect ']' after elements.");
   put_const(vm, NUMBER_VAL(lc));
   put_instruction(vm, OP_LIST);
+}
+
+void process_scalar(d_vm* vm, bool v) {
+  UNUSED(v);
+
+  d_internal_types _tp = DIT_UNDEFINED;
+
+  switch (parser.current.type) {
+    case DTK_T_f32: {
+      _tp = DIT_f32;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+    case DTK_T_f64: {
+      _tp = DIT_f64;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+    case DTK_T_i16: {
+      _tp = DIT_i16;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+    case DTK_T_i32: {
+      _tp = DIT_i32;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+    case DTK_T_i64: {
+      _tp = DIT_i64;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
+  default:
+    _tp = DIT_UNDEFINED;
+  }
+
+  if (eq_and_next(DTK_GG)) {
+    put_const(vm, NUMBER_VAL(0));
+    put_pair(vm, OP_SCALAR, (drax_value) _tp);
+    return;
+  }
+
+  double lc = 0;
+  do {
+    expression(vm);
+    lc++;
+  } while (eq_and_next(DTK_COMMA));
+
+  process_token(DTK_GG, "Expect '>>' after elements.");
+  put_const(vm, NUMBER_VAL(lc));
+  put_pair(vm, OP_SCALAR, (drax_value) _tp);
 }
 
 void process_frame(d_vm* vm, bool v) {
@@ -936,14 +995,34 @@ void process_if(d_vm* vm, bool v) {
   process_token(DTK_END, "Expect 'end' after if definition.");
 }
 
+static int get_realpath(const char* path, char* resolved_path) {
+  #ifdef _WIN32
+      if (GetFullPathName(path, _PC_PATH_MAX, resolved_path, NULL) == 0) {
+        return 0;
+    }
+
+    return 1;
+  #else
+    return realpath(path, resolved_path);
+  #endif
+}
+
+static long get_path_max(const char* path) {
+  #ifdef _WIN32
+      return _PC_PATH_MAX;
+  #else
+      return pathconf(path, _PC_PATH_MAX);
+  #endif
+}
+
 int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_parser(vm);
 
   if (path != NULL) {
-    long path_max = pathconf(path, _PC_PATH_MAX);
+    long path_max = get_path_max(path);
     parser.file = (char*) malloc(sizeof(char) * path_max);
-    if (realpath(path, parser.file) == 0) {
+    if (get_realpath(path, parser.file) == 0) {
       fprintf(stderr, "fail to make full path: '%s'.\n", path);
     }
     vm->active_instr->file = (char*) malloc(sizeof(char) * strlen(parser.file) + 1);

@@ -76,6 +76,12 @@ typedef uint8_t d_byte_def;
     return DS_VAL(new_derror(vm, (char *) "Expected list as argument")); \
   }
 
+#define return_if_is_not_scalar(v, s) \
+  if (!IS_SCALAR(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected scalar as argument")); \
+  }
+
 #define return_if_is_not_module(v, s) \
   if (!IS_MODULE(v)) { \
     DX_ERROR_FN(s); \

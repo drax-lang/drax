@@ -18,7 +18,8 @@
 #define EXPAND_CAPACITY(limit) ((limit) < 8 ? 8 : (limit) * 2)
 
 typedef enum dstruct_type{
-  DS_LIST,
+  DS_LIST = 3,
+  DS_SCALAR,
   DS_FUNCTION,
   DS_NATIVE,
   DS_STRING,
@@ -65,6 +66,13 @@ typedef enum drax_nanbox_def {
           (F_BIT | 0x7ffc000000000000 | (unsigned long) (uintptr_t) (d_struct))
 
 /**
+ * For "POINTER_TO_DRAXVAL" conversion you must be sure
+ * of the type you are accessing.
+ */
+#define POINTER_TO_DRAXVAL(v)  (drax_value) (uintptr_t) v;
+#define POINTER_TO_PDRAXVAL(v)  (drax_value*) (uintptr_t) v;
+
+/**
  * Instructions
 */
 typedef enum d_op_code {
@@ -72,6 +80,7 @@ typedef enum d_op_code {
   OP_NIL, 
   OP_TRUE,
   OP_FALSE,
+  OP_SCALAR,
   OP_LIST,
   OP_FRAME,
   OP_DSTR,
@@ -112,7 +121,11 @@ typedef enum d_op_code {
  * Drax Value definitions
 */
 
-typedef unsigned long drax_value;
+#ifndef _WIN_32
+  typedef uint64_t drax_value;
+#else
+  typedef unsigned long drax_value;
+#endif
 
 typedef enum bimode {
   BI_NONE,

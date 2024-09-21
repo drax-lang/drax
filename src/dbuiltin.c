@@ -100,6 +100,7 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_FUNCTION: MSR(vm, "function");
       case DS_STRING: MSR(vm, "string");
       case DS_LIST: MSR(vm, "list");
+      case DS_SCALAR: MSR(vm, "scalar");
       case DS_FRAME: MSR(vm, "frame");
       case DS_MODULE: MSR(vm, "module");
       case DS_TID: MSR(vm, "tid");
@@ -496,6 +497,15 @@ static drax_value __d_cmd_with_status(d_vm* vm, int* stat) {
   return DS_VAL(l);
 }
 
+static int create_directory(const char* path, mode_t mode) {
+#ifdef _WIN32
+    (void) mode;
+    return CreateDirectory(path, NULL) ? 0 : -1;
+#else
+    return mkdir(path, mode);
+#endif
+}
+
 
 static drax_value __d_mkdir(d_vm* vm, int* stat, int permission) {
   drax_value b = permission ? pop(vm) : DRAX_NIL_VAL;
@@ -522,7 +532,7 @@ static drax_value __d_mkdir(d_vm* vm, int* stat, int permission) {
      */
   }
 
-  int r = mkdir(CAST_STRING(a)->chars, mode);
+  int r = create_directory(CAST_STRING(a)->chars, mode);
 
   if (r == -1) {
     DX_SUCESS_FN(stat);
@@ -572,6 +582,14 @@ static drax_value __d_gc_swap(d_vm* vm, int* stat) {
   return DRAX_NIL_VAL;
 }
 
+static drax_value __gc_meta_info(d_vm* vm, int* stat) {
+  drax_frame* nf = new_dframe(vm, 2);
+  put_value_dframe(nf, (char*) "num_cycles", NUMBER_VAL(vm->gc_meta->n_cycles));
+  put_value_dframe(nf, (char*) "num_free_structs", NUMBER_VAL(vm->gc_meta->n_free_structs));
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nf);
+}
+
 /**
   * Number module
 */
@@ -580,7 +598,7 @@ static drax_value __d_number_to_string(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
   return_if_is_not_number(a, stat);
 
-  char *s = (char *) malloc(50 * sizeof(char));
+  char *s = (char *) calloc(50, sizeof(char));
   double num = CAST_NUMBER(a);
   
   snprintf(s, sizeof(s), "%g", num);
@@ -1129,6 +1147,374 @@ static drax_value __d_list_sparse(d_vm* vm, int* stat) {
   return DS_VAL(ll);
 }
 
+/**
+ * Scalar Module
+ */
+
+static drax_value __d_scalar_at(d_vm* vm, int* stat) {
+  #define RETURN_AT_TO_TYPE(_tp, _dv, _ll, _n)\
+    _tp* _dv = (_tp*) _ll->elems;\
+    return num_to_draxvalue((_tp) _dv[(int) _n]);
+
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_scalar(a, stat);
+  return_if_is_not_number(b, stat);
+
+  double n = CAST_NUMBER(b);
+  drax_scalar* ll = CAST_SCALAR(a);
+
+  if (n < 0) { n = ll->length + n; }
+
+  if (n < 0 || n >= ll->length) {
+    DX_SUCESS_FN(stat);
+    return DRAX_NIL_VAL;
+  }
+
+  DX_SUCESS_FN(stat);
+
+  if (DIT_f32 == ll->_stype) {
+    RETURN_AT_TO_TYPE(float, _f32, ll, n);
+  }
+
+  if (DIT_f64 == ll->_stype) {
+    RETURN_AT_TO_TYPE(double, _f64, ll, n);
+  }
+
+  return ll->elems[(int) n];
+}
+
+drax_value __d_scalar_concat(d_vm* vm, int* stat) {
+  #define DO_MEMCPY_TO_TYPE(_tp, _l1, _l2, _l3)\
+    _tp* _dv3 = (_tp*) _l3->elems;\
+    memcpy(_dv3, (_tp*) _l1->elems, _l1->length * sizeof(_tp));\
+    memcpy(_dv3 + _l1->length, (_tp*) _l2->elems, _l2->length * sizeof(_tp));
+
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_scalar(a, stat);
+  return_if_is_not_scalar(b, stat);
+
+  drax_scalar* l1 = CAST_SCALAR(a);
+  drax_scalar* l2 = CAST_SCALAR(b);
+  
+  if (l1->_stype != l2->_stype) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char *) "Scalar concat with different types."));
+  }
+
+  drax_scalar* l = new_dscalar(vm, l1->length + l2->length, l1->_stype);
+  l->length = l1->length + l2->length;
+  l->cap = l->length;
+
+  if (DIT_f32 == l1->_stype) {
+    DO_MEMCPY_TO_TYPE(float, l1, l2, l);
+  } else if (DIT_f64 == l1->_stype) {
+    DO_MEMCPY_TO_TYPE(double, l1, l2, l);
+  } else {
+    memcpy(l->elems, l1->elems, l1->length * sizeof(drax_value));
+    memcpy(l->elems + l1->length, l2->elems, l2->length * sizeof(drax_value));
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l);
+}
+
+static drax_value __d_scalar_head(d_vm* vm, int* stat) {
+  #define RETURN_VAL_TO_TYPE(_tp, _l1)\
+    _tp* _dv = (_tp*) _l1->elems;\
+    return _l1->length > 0 ? num_to_draxvalue(_dv[0]) : DRAX_NIL_VAL;
+
+  drax_value a = pop(vm);
+
+  return_if_is_not_scalar(a, stat);
+  drax_scalar* l = CAST_SCALAR(a);
+
+  DX_SUCESS_FN(stat);
+
+  if (DIT_f32 == l->_stype) {
+    RETURN_VAL_TO_TYPE(float, l);
+  }
+
+  if (DIT_f64 == l->_stype) {
+    RETURN_VAL_TO_TYPE(double, l);
+  }
+
+  return l->length > 0 ? l->elems[0] : DRAX_NIL_VAL;
+}
+
+static drax_value __d_scalar_tail(d_vm* vm, int* stat) {
+  #define REMOVE_VAL_TO_TYPE_TAIL(_tp, _l1, _l2)\
+    _tp* _dv1 = (_tp*) _l1->elems;\
+    _tp* _dv2 = (_tp*) _l2->elems;\
+    memcpy(_dv2, &_dv1[1], _l2->length * sizeof(_tp));
+
+  drax_value a = pop(vm);
+
+  return_if_is_not_scalar(a, stat);
+  drax_scalar* l1 = CAST_SCALAR(a);
+
+  drax_scalar* l = new_dscalar(vm, l1->length -1, l1->_stype);
+  l->length = l1->length - 1;
+
+  if (DIT_f32 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_TAIL(float, l1, l);
+  } else if (DIT_f64 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_TAIL(double, l1, l);
+  } else {
+    l->elems = l1->elems + 1;
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l);
+}
+
+static drax_value __d_scalar_length(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_scalar(a, stat);
+  drax_scalar* l = CAST_SCALAR(a);
+
+  DX_SUCESS_FN(stat);
+  return AS_VALUE(l->length);
+}
+
+static drax_value __d_scalar_is_empty(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_scalar(a, stat);
+  drax_scalar* l = CAST_SCALAR(a);
+
+  DX_SUCESS_FN(stat);
+  return l->length ? DRAX_FALSE_VAL : DRAX_TRUE_VAL;
+}
+
+static drax_value __d_scalar_is_present(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_scalar(a, stat);
+  drax_scalar* l = CAST_SCALAR(a);
+
+  DX_SUCESS_FN(stat);
+  return l->length ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
+}
+
+static drax_value __d_scalar_remove_at(d_vm* vm, int* stat) {
+  #define REMOVE_VAL_TO_TYPE_R_AT(_tp, _l1, _l2)\
+    _tp* _dv1 = (_tp*) _l1->elems;\
+    _tp* _dv2 = (_tp*) _l2->elems;\
+    memcpy(_dv2, _dv1, at * sizeof(_tp));\
+    memcpy(_dv2 + at, _dv1 + at + 1, (_l2->length - at) * sizeof(_tp));
+
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_scalar(a, stat);
+  return_if_is_not_number(b, stat);
+
+  drax_scalar* l = CAST_SCALAR(a);
+  int at = (int) CAST_NUMBER(b);
+  at = at < 0 ? l->length + at : at;
+
+  if(at >= l->length) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dscalar(vm, 0, DIT_UNDEFINED));
+  }
+
+  drax_scalar* nl = new_dscalar(vm, l->length - 1, l->_stype);
+  nl->length = l->length - 1;
+
+  if (DIT_f32 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_R_AT(float, l, nl);
+  } else if (DIT_f64 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_R_AT(double, l, nl);
+  } else {
+    memcpy(nl->elems, l->elems, at * sizeof(drax_value));
+    memcpy(nl->elems + at, l->elems + at + 1, (nl->length - at) * sizeof(drax_value));
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_scalar_insert_at(d_vm* vm, int* stat) {
+  #define INSET_AT_TO_TYPE(_tp, _l1, _l2)\
+    _tp* _dv1 = (_tp*) _l1->elems;\
+    _tp* _dv2 = (_tp*) _l2->elems;\
+    _tp nc = (_tp) CAST_NUMBER(c);\
+    memcpy(_dv2, _dv1, at * sizeof(_tp));\
+    memcpy(&_dv2[at], &nc, sizeof(_tp));\
+    memcpy(_dv2 + at + 1, _dv1 + at, (_l1->length - at) * sizeof(_tp));
+
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_scalar(a, stat);
+  return_if_is_not_number(b, stat);
+
+  drax_scalar* l = CAST_SCALAR(a);
+  int at = (int) CAST_NUMBER(b);
+  at = at < 0 ? l->length + at : at;
+
+  if(at >= l->length) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dscalar(vm, 0, DIT_UNDEFINED));
+  }
+
+  drax_scalar* nl = new_dscalar(vm, l->length + 1, l->_stype);
+  nl->length = l->length + 1;
+
+  if (DIT_f32 == l->_stype) {
+    INSET_AT_TO_TYPE(float, l, nl);
+  } else if (DIT_f64 == l->_stype) {
+    INSET_AT_TO_TYPE(double, l, nl);
+  } else {
+    memcpy(nl->elems, l->elems, at * sizeof(drax_value));
+    memcpy(&nl->elems[at], &c, sizeof(drax_value));
+    memcpy(nl->elems + at + 1, l->elems + at, (l->length - at) * sizeof(drax_value));
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_scalar_replace_at(d_vm* vm, int* stat) {
+  #define REPLACE_AT_TO_TYPE(_tp, _l1, _l2)\
+    _tp* _dv1 = (_tp*) _l1->elems;\
+    _tp* _dv2 = (_tp*) _l2->elems;\
+    _tp nc = (_tp) CAST_NUMBER(c);\
+    memcpy(_dv2, _dv1, at * sizeof(_tp));\
+    memcpy(&_dv2[at], &nc, sizeof(_tp));\
+    memcpy(_dv2 + at + 1, _dv1 + at + 1, (_l1->length - at - 1) * sizeof(_tp));
+
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_scalar(a, stat);
+  return_if_is_not_number(b, stat);
+
+  drax_scalar* l = CAST_SCALAR(a);
+  int at = (int) CAST_NUMBER(b);
+  at = at < 0 ? l->length + at : at;
+
+  if(at >= l->length) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dscalar(vm, 0, DIT_UNDEFINED));
+  }
+  
+  drax_scalar* nl = new_dscalar(vm, l->length, l->_stype);
+  nl->length = l->length;
+
+  if (DIT_f32 == l->_stype) {
+    REPLACE_AT_TO_TYPE(float, l, nl);
+  } else if (DIT_f64 == l->_stype) {
+    REPLACE_AT_TO_TYPE(double, l, nl);
+  } else {
+    memcpy(nl->elems, l->elems, at * sizeof(drax_value));
+    memcpy(&nl->elems[at], &c, sizeof(drax_value));
+    memcpy(nl->elems + at + 1, l->elems + at + 1, (l->length  - at - 1) * sizeof(drax_value));
+  }
+  
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_scalar_slice(d_vm* vm, int* stat) {
+  #define S_SLICE_TO_TYPE(_tp, _l1, _l2)\
+    _tp* _dv1 = (_tp*) _l1->elems;\
+    _tp* _dv2 = (_tp*) _l2->elems;\
+    memcpy(_dv2, _dv1 + from, abs(to - from) * sizeof(_tp));
+
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_scalar(a, stat);
+  return_if_is_not_number(b, stat);
+
+  drax_scalar* l = CAST_SCALAR(a);
+  int from = (int) CAST_NUMBER(b);
+  int to = (int) CAST_NUMBER(c);
+
+  from = from < 0 ? l->length + from : from;
+  to = to < 0 ? l->length + to : to;
+
+  if(to <= from || from >= l->length || to > l->length) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dscalar(vm, 0, DIT_UNDEFINED));
+  }
+
+  drax_scalar* nl = new_dscalar(vm, abs(to - from), l->_stype);
+  nl->length = abs(to - from);
+
+  if (DIT_f32 == l->_stype) {
+    S_SLICE_TO_TYPE(float, l, nl);
+  } else if (DIT_f64 == l->_stype) {
+    S_SLICE_TO_TYPE(double, l, nl);
+  } else {
+    memcpy(nl->elems, l->elems + from, abs(to - from) * sizeof(drax_value));
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}
+
+static drax_value __d_scalar_sum(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_scalar(a, stat);
+  
+  drax_scalar* l = CAST_SCALAR(a);
+
+  if(l->length == 0) {
+    DX_SUCESS_FN(stat);
+    return AS_VALUE(0);
+  }
+
+  if (l->_stype != DIT_f32 && l->_stype != DIT_f64) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char *) "Expected scalar of number as argument"));
+  }
+  
+  double res = 0;
+  int i;
+
+  if (DIT_f32 == l->_stype) {
+    float f32res = 0;
+    float* _f32 = (float*) l->elems;
+    for (i = 0; i < l->length; i++) f32res += _f32[i];
+    res = (double) f32res;
+  }
+
+  if (DIT_f64 == l->_stype) {
+    double* _f64 = (double*) l->elems;
+    for (i = 0; i < l->length; i++) res += _f64[i];
+  }
+
+  DX_SUCESS_FN(stat);
+  return AS_VALUE(res);
+}
+
+static drax_value __d_scalar_sparse(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_number(a, stat);
+
+  int n = (int) CAST_NUMBER(a);
+
+  if(n < 0) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dscalar(vm, 0, DIT_f64));
+  }
+
+  drax_scalar* ll = new_dscalar(vm, n, DIT_f64);
+  ll->length = n;
+  double v = 0;
+  double* _v = (double*) ll->elems;
+
+  int i;
+  for(i = 0; i < ll->length; i++) {
+    _v[i] = v;
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(ll);
+}
 static drax_value __d_list_hypot(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
   return_if_is_not_list(a, stat);
@@ -1386,9 +1772,13 @@ void create_native_modules(d_vm* vm) {
   /**
    * Core module
   */
-  drax_native_module* mcore = new_native_module(vm, "Core", 2);
+  drax_native_module* mcore = new_native_module(vm, "Core", 3);
   const drax_native_module_helper core_helper[] = {
+    /**
+     * Garbage collector
+     */
     {0, "gc_swap", __d_gc_swap },
+    {0, "gc_meta_info", __gc_meta_info },
     {1, "exit", __d_exit },
   };
 
@@ -1480,6 +1870,29 @@ void create_native_modules(d_vm* vm) {
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(list));
+
+  /**
+   * Scalar Module
+   */ 
+  drax_native_module* scalar = new_native_module(vm, "Scalar", 13);
+  const drax_native_module_helper scalar_helper[] = {
+    {2, "concat", __d_scalar_concat },
+    {1, "head", __d_scalar_head},
+    {1, "tail", __d_scalar_tail},
+    {1, "length", __d_scalar_length},
+    {1, "is_empty", __d_scalar_is_empty},
+    {1, "is_present", __d_scalar_is_present},
+    {2, "remove_at", __d_scalar_remove_at},
+    {3, "insert_at", __d_scalar_insert_at},
+    {3, "replace_at", __d_scalar_replace_at},
+    {3, "slice", __d_scalar_slice},
+    {1, "sum", __d_scalar_sum},
+    {2, "at", __d_scalar_at},
+    {1, "sparse", __d_scalar_sparse}
+  };
+  
+  put_fun_on_module(scalar, scalar_helper, sizeof(scalar_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(scalar));
 
   /**
    * Socket Module

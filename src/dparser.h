@@ -9,6 +9,17 @@
 #include "dvm.h"
 #include "ddefs.h"
 
+
+#ifdef _WIN32
+  #include <windows.h>
+
+  #define _PC_PATH_MAX 260
+#endif
+
+#ifndef UINT16_MAX
+  #define UINT16_MAX 65535
+#endif
+
 #define callback_table(n) void n(d_vm* vm, bool b);
 
 #define make_op_line(i, l, m, r) [i] = {l, m, r}
@@ -98,6 +109,7 @@ callback_table(process_if);
 callback_table(process_do);
 callback_table(process_return);
 callback_table(process_line_break);
+callback_table(process_scalar);
 
 void dfatal(d_token* token, const char* message);
 

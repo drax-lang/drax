@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
 #include <math.h>
 
@@ -51,6 +50,109 @@ void put_value_dlist(drax_list* l, drax_value v) {
 
   l->elems[l->length] = v;
   l->length++;
+}
+
+/**
+ * Scalar 
+ */
+#define SCALAR_PRE_SIZE 20
+
+static d_internal_types get_scalar_type(drax_value v) {
+  if (IS_STRING(v)) return DIT_STRING;
+
+  if (IS_STRUCT(v)) {
+    return (d_internal_types) DRAX_STYPEOF(v);
+  }
+
+  return DIT_UNDEFINED;
+}
+
+static int is_scalar_tp_valid(drax_value v, d_internal_types _stype) {
+  if (
+    IS_NUMBER(v) &&
+    (
+      DIT_f32 == _stype ||
+      DIT_f64 == _stype ||
+      DIT_i16 == _stype ||
+      DIT_i32 == _stype ||
+      DIT_i64 == _stype
+    )
+  ) {
+    return 1;
+  }
+  
+  return get_scalar_type(v) == _stype;
+}
+
+drax_scalar* new_dscalar(d_vm* vm, int cap, d_internal_types type) {
+  drax_scalar* l = ALLOCATE_DSTRUCT(vm, drax_scalar, DS_SCALAR);
+  l->_stype = type;
+  l->length = 0;
+  l->cap = cap == 0 ? SCALAR_PRE_SIZE : cap;
+
+  if (DIT_f64 == l->_stype) {
+    double* _dv = malloc(sizeof(double) * l->cap);
+    l->elems = POINTER_TO_PDRAXVAL(_dv);
+  } else {
+    l->elems = malloc(sizeof(drax_value) * l->cap);
+  }
+
+  return l;
+}
+
+int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
+  #define REALLOC_FOR_TYPE(_dv, _l, _tp)\
+    _tp* _dv = (_tp*) _l->elems;\
+    _dv = realloc(_dv, sizeof(_tp) * _l->cap);
+
+  #define APPEND_VAL_FOR_TYPE(_dv, _l, _tp, _val)\
+    _tp* _dv = (_tp*) _l->elems;\
+    _dv[l->length] = (_tp) CAST_NUMBER(_val);
+
+  if (DIT_UNDEFINED == l->_stype) {
+      l->_stype = IS_NUMBER(v) ? DIT_f64 : get_scalar_type(v);
+  }
+
+  if (!is_scalar_tp_valid(v, l->_stype)) {
+    *r = DS_VAL(new_derror(vm, (char*) "Insertion of elements with different types in scalar."));
+    return 0;
+  }
+
+  if (l->cap <= l->length) {
+    l->cap = (l->cap + SCALAR_PRE_SIZE);
+
+    switch (l->_stype) {
+      case DIT_f32: {
+        REALLOC_FOR_TYPE(_f32, l, float);
+        break;
+      }
+      case DIT_f64: {
+        REALLOC_FOR_TYPE(_f64, l, double);
+        break;
+      }
+      
+      default:
+        l->elems = realloc(l->elems, sizeof(drax_value) * l->cap);
+        break;
+    }
+  }
+
+  switch (l->_stype) {
+    case DIT_f32:
+      APPEND_VAL_FOR_TYPE(_f32, l, float, v)
+      break;
+
+    case DIT_f64:
+      APPEND_VAL_FOR_TYPE(_f64, l, double, v)
+      break;
+    
+    default:
+      l->elems[l->length] = v;
+      break;
+  }
+
+  l->length++;
+  return 1;
 }
 
 drax_error* new_derror(d_vm* vm, char* msg) {
@@ -213,39 +315,79 @@ int get_fun_on_module(drax_native_module* m, const char* n) {
 }
 
 void print_funcs_on_module(drax_native_module* m) {
+  #ifdef _WIN32
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    int columns;
 
-  struct winsize w;
-  ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-
-  int max_distance = 0;
-  int i, j;
-
-  for (i = 0; i < m->count; i++) {
-    int str_len = strlen(m->fn_names[i]);
-    max_distance = str_len > max_distance ? str_len : max_distance;
-  }
-  max_distance += 5;
-
-  int num_cols = (int) floor(w.ws_col / max_distance);
-  int curr_col = 0;
-
-  for (i = 0; i < m->count; i++) {
-    curr_col++;
-
-    printf("%s/%i", m->fn_names[i], m->arity[i]);
-
-    if (curr_col == num_cols) {
-      curr_col = 0;
-      putchar('\n');
-      continue;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi)) {
+        columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    } else {
+        columns = 80;
     }
 
-      int spaces = (max_distance -1) - strlen(m->fn_names[i]);
-      for(j = 0; j < spaces; j++) {
-        putchar(' ');
+    int max_distance = 0;
+    int i, j;
+
+    for (i = 0; i < m->count; i++) {
+      int str_len = strlen(m->fn_names[i]);
+      max_distance = str_len > max_distance ? str_len : max_distance;
+    }
+    max_distance += 5;
+
+    int num_cols = (int) floor(columns / max_distance);
+    int curr_col = 0;
+
+    for (i = 0; i < m->count; i++) {
+      curr_col++;
+
+      printf("%s/%i", m->fn_names[i], m->arity[i]);
+
+      if (curr_col == num_cols) {
+        curr_col = 0;
+        putchar('\n');
+        continue;
       }
 
-  }
+        int spaces = (max_distance -1) - strlen(m->fn_names[i]);
+        for(j = 0; j < spaces; j++) {
+          putchar(' ');
+        }
+
+    }
+  #else
+    struct winsize w;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+
+    int max_distance = 0;
+    int i, j;
+
+    for (i = 0; i < m->count; i++) {
+      int str_len = strlen(m->fn_names[i]);
+      max_distance = str_len > max_distance ? str_len : max_distance;
+    }
+    max_distance += 5;
+
+    int num_cols = (int) floor(w.ws_col / max_distance);
+    int curr_col = 0;
+
+    for (i = 0; i < m->count; i++) {
+      curr_col++;
+
+      printf("%s/%i", m->fn_names[i], m->arity[i]);
+
+      if (curr_col == num_cols) {
+        curr_col = 0;
+        putchar('\n');
+        continue;
+      }
+
+        int spaces = (max_distance -1) - strlen(m->fn_names[i]);
+        for(j = 0; j < spaces; j++) {
+          putchar(' ');
+        }
+
+    }
+  #endif
 
   putchar('\n');
 }

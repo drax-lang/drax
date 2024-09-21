@@ -133,7 +133,7 @@ static bool values_equal(drax_value a, drax_value b) {
     case DS_STRING:
       return CAST_STRING(a)->hash == CAST_STRING(b)->hash;
       
-    case DS_LIST:
+    case DS_LIST: {
       drax_list* l1 = CAST_LIST(a);
       drax_list* l2 = CAST_LIST(b);
 
@@ -145,20 +145,37 @@ static bool values_equal(drax_value a, drax_value b) {
         }
       }
       return true;
+    }
 
-    case DS_FRAME:
+    case DS_SCALAR: {
+      drax_scalar* s1 = CAST_SCALAR(a);
+      drax_scalar* s2 = CAST_SCALAR(b);
+
+      if(s1->_stype != s2->_stype) { return false; }
+      if(s1->length != s2->length) { return false; }
+
+      for(i = 0; i < s1->length; i++) {
+        if(!values_equal(s1->elems[i], s2->elems[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    case DS_FRAME: {
       drax_frame* f1 = CAST_FRAME(a);
       drax_frame* f2 = CAST_FRAME(b);
 
       if(f1->length != f2->length) { return false; }
 
       for(i = 0; i < f1->length; i++) {
-        if(!values_equal(f1->values[i], f2->values[i]) ||
-          strcmp(f1->literals[i], f2->literals[i]) != 0) {
+        if(f1->keys[i] != f2->keys[i] || 
+          !values_equal(f1->values[i], f2->values[i])) {
           return false;
         }
       }
       return true;
+    }
 
 
     case DS_FUNCTION:
@@ -264,7 +281,7 @@ static int import_file(d_vm* vm, drax_value v) {
     push(vm, itvm->exported[0]);
     vm->d_ls = itvm->d_ls;
     __clean_vm_tmp__(itvm);
-    /*dgc_swap(vm);*/
+    /*if (-1 == vm->vid) dgc_swap(vm);*/
     return stat;
 }
 
@@ -504,6 +521,25 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         push(vm, DS_VAL(l));
         break;
       }
+      VMCase(OP_SCALAR) {
+        drax_value a = GET_VALUE(vm);
+        drax_value lc = pop(vm);
+        int limit = (int) CAST_NUMBER(lc);
+        drax_scalar* scl = new_dscalar(vm, limit, (d_internal_types) a);
+
+        int i;
+        drax_value _er;
+        for (i = 0; i < limit; i++) {
+          if(!put_value_dscalar(vm, scl, peek(vm, (limit -1) - i), &_er)) {
+            raise_drax_error(vm, CAST_ERROR(_er)->chars);
+            return 1;
+          }
+        }
+
+        pop_times(vm, limit);
+        push(vm, DS_VAL(scl));
+        break;
+      }
       VMCase(OP_FRAME) {
         drax_value lc = pop(vm);
         int limit = (int) CAST_NUMBER(lc);
@@ -547,9 +583,8 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_SET_L_ID) {
-        drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
-        put_local_table(vm->envs->local, k, v);
+        put_local_table(vm->envs->local, k, pop(vm));
         break;
       }
       VMCase(OP_GET_L_ID) {
@@ -626,7 +661,15 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           drax_string* result = new_dstring(vm, n_str, length);
           pop_times(vm, 2);
           push(vm, DS_VAL(result));
-        } else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
+        } else if (IS_SCALAR(peek(vm, 0)) && IS_SCALAR(peek(vm, 1))) {
+          int stat = 0;
+          drax_value _rs = __d_scalar_concat(vm, &stat);
+          if (!stat) {
+            raise_drax_error(vm, CAST_ERROR(_rs)->chars );
+            return 1;
+          }
+          push(vm, DS_VAL(_rs));
+        }  else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
           drax_list* b = CAST_LIST(peek(vm, 0));
           drax_list* a = CAST_LIST(peek(vm, 1));
           int length = a->length + b->length;
@@ -873,6 +916,10 @@ d_vm* createMainVM() {
   vm->stack_size = MAX_STACK_SIZE;
   vm->stack_count = 0;
   vm->envs = new_environment(0, 0, 0);
+
+  vm->gc_meta = (dgc_meta*) malloc(sizeof(dgc_meta));
+  vm->gc_meta->n_cycles = 0;
+  vm->gc_meta->n_free_structs = 0;
 
   /**
    * Created on builtin definitions

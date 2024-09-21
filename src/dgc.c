@@ -6,7 +6,7 @@
  * value from the memory, checking if the value
  * is a drax value or a native value.
 */
-static void dgc_safe_free(drax_value v) {
+static void dgc_safe_free(d_vm* vm, drax_value v) {
   if (v == 0) return;
 
   if (IS_NUMBER(v) || IS_BOOL(v) || IS_NIL(v)) return;
@@ -14,6 +14,7 @@ static void dgc_safe_free(drax_value v) {
   /* check if is char* */
 
   if (IS_STRUCT(v)) {
+    vm->gc_meta->n_free_structs++;
     /**
      * If is checked then the value is used
     */
@@ -58,6 +59,12 @@ static void dgc_safe_free(drax_value v) {
       free(ff->instructions->values);
       free(ff->instructions);
       free(ff->instructions->extrn_ref);
+    } else if (IS_SCALAR(v)) {
+      DEBUG(printf("    -- dgc scalar free\n"));
+
+      drax_scalar* ff = CAST_SCALAR(v);
+      void* _fval = (void*) ff->elems;
+      free(_fval);
     }
 
     free(sct);
@@ -201,10 +208,7 @@ static int dgc_swap_modules(d_mod_table* t) {
 }
 
 int dgc_swap(d_vm* vm) {
-  /**
-   * disabled
-  return 1;
-   */
+  vm->gc_meta->n_cycles++;
   DEBUG(printf("[GC] swap\n"));
   d_struct *d = vm->d_ls->next;
   d_struct* u = NULL; /* Unused struct */
@@ -231,7 +235,7 @@ int dgc_swap(d_vm* vm) {
       u = d;
       d = d->next;
       p->next = d;
-      dgc_safe_free(DS_VAL(u));
+      dgc_safe_free(vm, DS_VAL(u));
       continue;
     }
 
