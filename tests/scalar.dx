@@ -89,7 +89,46 @@ assert(Scalar.insert_at(<<f32::1,2,3>>, 1, 5) |> Scalar.at(1) == 5, "fail to ins
 
 assert(Scalar.replace_at(<<f32::1,2,3,4>>, 0, -1) |> Scalar.at(0) == -1, "fail to replace_at f32")
 
-assert(<<i32::1,2.55,3.555>> |> Scalar.sum() == 6, "fail to sum scalar i32")
+# i16 tests
+assert(<<i16::1,2.55,3.555>> |> Scalar.sum() == 6, "fail to sum scalar i16")
+list_i16 = <<i16::32767, -32768, 123, -123>>
+
+assert(Scalar.at(list_i16, 0) == 32767, "i16 max value invalid.")
+
+assert(Scalar.at(list_i16, 1) == -32768, "i16 min value invalid")
+
+assert(Scalar.at(list_i16, 2) == 123, "i16 positive value invalid")
+
+assert(Scalar.at(list_i16, 3) == -123, "i16 negative value invalid")
+
+# Sum test for i32 scalar values
+assert(<<i32::1, 2.55, 3.555>> |> Scalar.sum() == 6, "fail to sum scalar i32")
+
+list_i32 = <<i32::2147483647, -2147483648, 100000, -100000>>
+
+# Max and min value tests for i32
+assert(Scalar.at(list_i32, 0) == 2147483647, "i32 max value invalid.")
+
+assert(Scalar.at(list_i32, 1) == -2147483648, "i32 min value invalid")
+
+assert(Scalar.at(list_i32, 2) == 100000, "i32 positive value invalid")
+
+assert(Scalar.at(list_i32, 3) == -100000, "i32 negative value invalid")
+
+## Sum test for i64 scalar values
+assert(<<i64::1, 2.55, 3.555>> |> Scalar.sum() == 6, "fail to sum scalar i64")
+
+max_i_double = 9007199254740991  # 2^53 - 1
+list_i64 = <<i64::max_i_double, -max_i_double, 10000000000, -10000000000>>
+
+# Max and min value tests for i64
+assert(Scalar.at(list_i64, 0) == 9007199254740991, "i64 max value invalid.")
+
+assert(Scalar.at(list_i64, 1) == -9007199254740991, "i64 min value invalid")
+
+assert(Scalar.at(list_i64, 2) == 10000000000, "i64 positive value invalid")
+
+assert(Scalar.at(list_i64, 3) == -10000000000, "i64 negative value invalid")
 
 print("Scalar done!")
 

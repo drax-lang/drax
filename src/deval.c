@@ -85,10 +85,22 @@ static void print_scalar(drax_scalar* l) {
   printf(" :: ");
 
   int i;
-  if (DIT_i32 == l->_stype) {
+  if (DIT_i16 == l->_stype) {
+    int16_t* _i16 = (int16_t*) l->elems;
+    for (i = 0; i < l->length; i++) {
+      printf("%i", (int16_t) _i16[i]);
+      if ((i+1) < l->length) printf(", ");
+    }
+  } else if (DIT_i32 == l->_stype) {
     int32_t* _i32 = (int32_t*) l->elems;
     for (i = 0; i < l->length; i++) {
       printf("%i", (int32_t) _i32[i]);
+      if ((i+1) < l->length) printf(", ");
+    }
+  } else if (DIT_i64 == l->_stype) {
+    int64_t* _i64 = (int64_t*) l->elems;
+    for (i = 0; i < l->length; i++) {
+      printf("%li", (int64_t) _i64[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_f32 == l->_stype) {

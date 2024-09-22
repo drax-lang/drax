@@ -27,8 +27,16 @@ drax_value __d_scalar_at(d_vm* vm, int* stat) {
 
   DX_SUCESS_FN(stat);
 
+  if (DIT_i16 == ll->_stype) {
+    RETURN_AT_TO_TYPE(int16_t, _i16, ll, n);
+  }
+
   if (DIT_i32 == ll->_stype) {
     RETURN_AT_TO_TYPE(int32_t, _i32, ll, n);
+  }
+
+  if (DIT_i64 == ll->_stype) {
+    RETURN_AT_TO_TYPE(int64_t, _i64, ll, n);
   }
 
   if (DIT_f32 == ll->_stype) {
@@ -66,8 +74,12 @@ drax_value __d_scalar_concat(d_vm* vm, int* stat) {
   l->length = l1->length + l2->length;
   l->cap = l->length;
 
-  if (DIT_i32 == l1->_stype) {
+  if (DIT_i16 == l1->_stype) {
+    DO_MEMCPY_TO_TYPE(int16_t, l1, l2, l);
+  } else if (DIT_i32 == l1->_stype) {
     DO_MEMCPY_TO_TYPE(int32_t, l1, l2, l);
+  } else if (DIT_i64 == l1->_stype) {
+    DO_MEMCPY_TO_TYPE(int64_t, l1, l2, l);
   } else if (DIT_f32 == l1->_stype) {
     DO_MEMCPY_TO_TYPE(float, l1, l2, l);
   } else if (DIT_f64 == l1->_stype) {
@@ -93,8 +105,16 @@ drax_value __d_scalar_head(d_vm* vm, int* stat) {
 
   DX_SUCESS_FN(stat);
 
+  if (DIT_i16 == l->_stype) {
+    RETURN_VAL_TO_TYPE(int16_t, l);
+  }
+
   if (DIT_i32 == l->_stype) {
     RETURN_VAL_TO_TYPE(int32_t, l);
+  }
+
+  if (DIT_i64 == l->_stype) {
+    RETURN_VAL_TO_TYPE(int64_t, l);
   }
 
   if (DIT_f32 == l->_stype) {
@@ -122,8 +142,12 @@ drax_value __d_scalar_tail(d_vm* vm, int* stat) {
   drax_scalar* l = new_dscalar(vm, l1->length -1, l1->_stype);
   l->length = l1->length - 1;
 
-  if (DIT_i32 == l->_stype) {
+  if (DIT_i16 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_TAIL(int16_t, l1, l);
+  } else if (DIT_i32 == l->_stype) {
     REMOVE_VAL_TO_TYPE_TAIL(int32_t, l1, l);
+  } else if (DIT_i64 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_TAIL(int64_t, l1, l);
   } else if (DIT_f32 == l->_stype) {
     REMOVE_VAL_TO_TYPE_TAIL(float, l1, l);
   } else if (DIT_f64 == l->_stype) {
@@ -187,8 +211,12 @@ drax_value __d_scalar_remove_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length - 1, l->_stype);
   nl->length = l->length - 1;
 
-  if (DIT_i32 == l->_stype) {
+  if (DIT_i16 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_R_AT(int16_t, l, nl);
+  } else if (DIT_i32 == l->_stype) {
     REMOVE_VAL_TO_TYPE_R_AT(int32_t, l, nl);
+  } else if (DIT_i64 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_R_AT(int64_t, l, nl);
   } else if (DIT_f32 == l->_stype) {
     REMOVE_VAL_TO_TYPE_R_AT(float, l, nl);
   } else if (DIT_f64 == l->_stype) {
@@ -229,8 +257,12 @@ drax_value __d_scalar_insert_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length + 1, l->_stype);
   nl->length = l->length + 1;
 
-  if (DIT_i32 == l->_stype) {
+  if (DIT_i16 == l->_stype) {
+    INSET_AT_TO_TYPE(int16_t, l, nl);
+  } else if (DIT_i32 == l->_stype) {
     INSET_AT_TO_TYPE(int32_t, l, nl);
+  } else if (DIT_i64 == l->_stype) {
+    INSET_AT_TO_TYPE(int64_t, l, nl);
   } else if (DIT_f32 == l->_stype) {
     INSET_AT_TO_TYPE(float, l, nl);
   } else if (DIT_f64 == l->_stype) {
@@ -272,8 +304,12 @@ drax_value __d_scalar_replace_at(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, l->length, l->_stype);
   nl->length = l->length;
 
-  if (DIT_i32 == l->_stype) {
+  if (DIT_i16 == l->_stype) {
+    REPLACE_AT_TO_TYPE(int16_t, l, nl);
+  } else if (DIT_i32 == l->_stype) {
     REPLACE_AT_TO_TYPE(int32_t, l, nl);
+  } else if (DIT_i64 == l->_stype) {
+    REPLACE_AT_TO_TYPE(int64_t, l, nl);
   } else if (DIT_f32 == l->_stype) {
     REPLACE_AT_TO_TYPE(float, l, nl);
   } else if (DIT_f64 == l->_stype) {
@@ -315,8 +351,12 @@ drax_value __d_scalar_slice(d_vm* vm, int* stat) {
   drax_scalar* nl = new_dscalar(vm, abs(to - from), l->_stype);
   nl->length = abs(to - from);
 
-  if (DIT_i32 == l->_stype) {
+  if (DIT_i16 == l->_stype) {
+    S_SLICE_TO_TYPE(int16_t, l, nl);
+  } else if (DIT_i32 == l->_stype) {
     S_SLICE_TO_TYPE(int32_t, l, nl);
+  } else if (DIT_i64 == l->_stype) {
+    S_SLICE_TO_TYPE(int64_t, l, nl);
   } else if (DIT_f32 == l->_stype) {
     S_SLICE_TO_TYPE(float, l, nl);
   } else if (DIT_f64 == l->_stype) {
@@ -341,7 +381,9 @@ drax_value __d_scalar_sum(d_vm* vm, int* stat) {
   }
 
   if (
+    l->_stype != DIT_i16 &&
     l->_stype != DIT_i32 &&
+    l->_stype != DIT_i64 &&
     l->_stype != DIT_f32 &&
     l->_stype != DIT_f64
   ) {
@@ -352,11 +394,25 @@ drax_value __d_scalar_sum(d_vm* vm, int* stat) {
   double res = 0;
   int i;
 
+  if (DIT_i16 == l->_stype) {
+    int16_t i16res = 0;
+    int16_t* _i16 = (int16_t*) l->elems;
+    for (i = 0; i < l->length; i++) i16res += _i16[i];
+    res = (double) i16res;
+  }
+
   if (DIT_i32 == l->_stype) {
     int32_t i32res = 0;
     int32_t* _i32 = (int32_t*) l->elems;
     for (i = 0; i < l->length; i++) i32res += _i32[i];
     res = (double) i32res;
+  }
+
+  if (DIT_i64 == l->_stype) {
+    int64_t i64res = 0;
+    int64_t* _i64 = (int64_t*) l->elems;
+    for (i = 0; i < l->length; i++) i64res += _i64[i];
+    res = (double) i64res;
   }
 
   if (DIT_f32 == l->_stype) {

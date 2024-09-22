@@ -122,8 +122,16 @@ int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
     l->cap = (l->cap + SCALAR_PRE_SIZE);
 
     switch (l->_stype) {
+      case DIT_i16: {
+        REALLOC_FOR_TYPE(_i16, l, int16_t);
+        break;
+      }
       case DIT_i32: {
         REALLOC_FOR_TYPE(_i32, l, int32_t);
+        break;
+      }
+      case DIT_i64: {
+        REALLOC_FOR_TYPE(_i64, l, int64_t);
         break;
       }
       case DIT_f32: {
@@ -142,8 +150,16 @@ int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
   }
 
   switch (l->_stype) {
+    case DIT_i16:
+      APPEND_VAL_FOR_TYPE(_i16, l, int16_t, v)
+      break;
+
     case DIT_i32:
       APPEND_VAL_FOR_TYPE(_i32, l, int32_t, v)
+      break;
+
+    case DIT_i64:
+      APPEND_VAL_FOR_TYPE(_i64, l, int64_t, v)
       break;
 
     case DIT_f32:
