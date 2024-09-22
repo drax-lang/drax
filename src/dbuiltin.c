@@ -16,7 +16,7 @@
 
 #include "mods/d_mod_os.h"
 #include "mods/d_mod_http.h"
-#include "mods/d_mod_scalar.h"
+#include "mods/d_mod_tensor.h"
 
 static drax_value __d_assert(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
@@ -101,7 +101,7 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_FUNCTION: MSR(vm, "function");
       case DS_STRING: MSR(vm, "string");
       case DS_LIST: MSR(vm, "list");
-      case DS_SCALAR: MSR(vm, "scalar");
+      case DS_TENSOR: MSR(vm, "tensor");
       case DS_FRAME: MSR(vm, "frame");
       case DS_MODULE: MSR(vm, "module");
       case DS_TID: MSR(vm, "tid");
@@ -1505,27 +1505,27 @@ void create_native_modules(d_vm* vm) {
   put_mod_table(vm->envs->modules, DS_VAL(list));
 
   /**
-   * Scalar Module
+   * Tensor Module
    */ 
-  drax_native_module* scalar = new_native_module(vm, "Scalar", 13);
-  const drax_native_module_helper scalar_helper[] = {
-    {2, "concat", __d_scalar_concat },
-    {1, "head", __d_scalar_head},
-    {1, "tail", __d_scalar_tail},
-    {1, "length", __d_scalar_length},
-    {1, "is_empty", __d_scalar_is_empty},
-    {1, "is_present", __d_scalar_is_present},
-    {2, "remove_at", __d_scalar_remove_at},
-    {3, "insert_at", __d_scalar_insert_at},
-    {3, "replace_at", __d_scalar_replace_at},
-    {3, "slice", __d_scalar_slice},
-    {1, "sum", __d_scalar_sum},
-    {2, "at", __d_scalar_at},
-    {1, "sparse", __d_scalar_sparse}
+  drax_native_module* tensor = new_native_module(vm, "Tensor", 13);
+  const drax_native_module_helper tensor_helper[] = {
+    {2, "concat", __d_tensor_concat },
+    {1, "head", __d_tensor_head},
+    {1, "tail", __d_tensor_tail},
+    {1, "length", __d_tensor_length},
+    {1, "is_empty", __d_tensor_is_empty},
+    {1, "is_present", __d_tensor_is_present},
+    {2, "remove_at", __d_tensor_remove_at},
+    {3, "insert_at", __d_tensor_insert_at},
+    {3, "replace_at", __d_tensor_replace_at},
+    {3, "slice", __d_tensor_slice},
+    {1, "sum", __d_tensor_sum},
+    {2, "at", __d_tensor_at},
+    {1, "sparse", __d_tensor_sparse}
   };
   
-  put_fun_on_module(scalar, scalar_helper, sizeof(scalar_helper) / sizeof(drax_native_module_helper)); 
-  put_mod_table(vm->envs->modules, DS_VAL(scalar));
+  put_fun_on_module(tensor, tensor_helper, sizeof(tensor_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(tensor));
 
   /**
    * Socket Module

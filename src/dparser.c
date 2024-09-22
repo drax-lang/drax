@@ -148,7 +148,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_BE,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LS,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LE,        NULL,                process_binary, iDIFF),
-  make_op_line(DTK_LL,        process_scalar,        process_binary, iCALL),
+  make_op_line(DTK_LL,        process_tensor,        process_binary, iCALL),
   make_op_line(DTK_GG,        NULL,                NULL,           iNONE),
   make_op_line(DTK_PIPE,      NULL,                process_pipe,   iTERM),
   make_op_line(DTK_AMP,       process_amper,       NULL,           iNONE),
@@ -438,7 +438,7 @@ void process_list(d_vm* vm, bool v) {
   put_instruction(vm, OP_LIST);
 }
 
-void process_scalar(d_vm* vm, bool v) {
+void process_tensor(d_vm* vm, bool v) {
   UNUSED(v);
 
   d_internal_types _tp = DIT_UNDEFINED;
@@ -480,7 +480,7 @@ void process_scalar(d_vm* vm, bool v) {
 
   if (eq_and_next(DTK_GG)) {
     put_const(vm, NUMBER_VAL(0));
-    put_pair(vm, OP_SCALAR, (drax_value) _tp);
+    put_pair(vm, OP_TENSOR, (drax_value) _tp);
     return;
   }
 
@@ -492,7 +492,7 @@ void process_scalar(d_vm* vm, bool v) {
 
   process_token(DTK_GG, "Expect '>>' after elements.");
   put_const(vm, NUMBER_VAL(lc));
-  put_pair(vm, OP_SCALAR, (drax_value) _tp);
+  put_pair(vm, OP_TENSOR, (drax_value) _tp);
 }
 
 void process_frame(d_vm* vm, bool v) {

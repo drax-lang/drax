@@ -53,11 +53,11 @@ void put_value_dlist(drax_list* l, drax_value v) {
 }
 
 /**
- * Scalar 
+ * Tensor 
  */
-#define SCALAR_PRE_SIZE 20
+#define TENSOR_PRE_SIZE 20
 
-static d_internal_types get_scalar_type(drax_value v) {
+static d_internal_types get_tensor_type(drax_value v) {
   if (IS_STRING(v)) return DIT_STRING;
 
   if (IS_STRUCT(v)) {
@@ -67,7 +67,7 @@ static d_internal_types get_scalar_type(drax_value v) {
   return DIT_UNDEFINED;
 }
 
-static int is_scalar_tp_valid(drax_value v, d_internal_types _stype) {
+static int is_tensor_tp_valid(drax_value v, d_internal_types _stype) {
   if (
     IS_NUMBER(v) &&
     (
@@ -81,14 +81,14 @@ static int is_scalar_tp_valid(drax_value v, d_internal_types _stype) {
     return 1;
   }
   
-  return get_scalar_type(v) == _stype;
+  return get_tensor_type(v) == _stype;
 }
 
-drax_scalar* new_dscalar(d_vm* vm, int cap, d_internal_types type) {
-  drax_scalar* l = ALLOCATE_DSTRUCT(vm, drax_scalar, DS_SCALAR);
+drax_tensor* new_dtensor(d_vm* vm, int cap, d_internal_types type) {
+  drax_tensor* l = ALLOCATE_DSTRUCT(vm, drax_tensor, DS_TENSOR);
   l->_stype = type;
   l->length = 0;
-  l->cap = cap == 0 ? SCALAR_PRE_SIZE : cap;
+  l->cap = cap == 0 ? TENSOR_PRE_SIZE : cap;
 
   if (DIT_f64 == l->_stype) {
     double* _dv = malloc(sizeof(double) * l->cap);
@@ -100,7 +100,7 @@ drax_scalar* new_dscalar(d_vm* vm, int cap, d_internal_types type) {
   return l;
 }
 
-int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
+int put_value_dtensor(d_vm* vm, drax_tensor* l, drax_value v, drax_value* r) {
   #define REALLOC_FOR_TYPE(_dv, _l, _tp)\
     _tp* _dv = (_tp*) _l->elems;\
     _dv = realloc(_dv, sizeof(_tp) * _l->cap);
@@ -110,16 +110,16 @@ int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r) {
     _dv[l->length] = (_tp) CAST_NUMBER(_val);
 
   if (DIT_UNDEFINED == l->_stype) {
-      l->_stype = IS_NUMBER(v) ? DIT_f64 : get_scalar_type(v);
+      l->_stype = IS_NUMBER(v) ? DIT_f64 : get_tensor_type(v);
   }
 
-  if (!is_scalar_tp_valid(v, l->_stype)) {
-    *r = DS_VAL(new_derror(vm, (char*) "Insertion of elements with different types in scalar."));
+  if (!is_tensor_tp_valid(v, l->_stype)) {
+    *r = DS_VAL(new_derror(vm, (char*) "Insertion of elements with different types in tensor."));
     return 0;
   }
 
   if (l->cap <= l->length) {
-    l->cap = (l->cap + SCALAR_PRE_SIZE);
+    l->cap = (l->cap + TENSOR_PRE_SIZE);
 
     switch (l->_stype) {
       case DIT_i16: {

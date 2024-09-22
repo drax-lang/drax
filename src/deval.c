@@ -17,7 +17,7 @@ static void print_list(drax_list* l) {
   putchar(']');
 }
 
-static void print_scalar_type(d_internal_types v) {
+static void print_tensor_type(d_internal_types v) {
   switch (v) {
     case DIT_UNDEFINED: {
       printf("undefined");
@@ -47,8 +47,8 @@ static void print_scalar_type(d_internal_types v) {
       printf("list");
       break;
     }
-    case DIT_SCALAR: {
-      printf("scalar");
+    case DIT_TENSOR: {
+      printf("tensor");
       break;
     }
     case DIT_FUNCTION:
@@ -79,9 +79,9 @@ static void print_scalar_type(d_internal_types v) {
   }
 }
 
-static void print_scalar(drax_scalar* l) {
+static void print_tensor(drax_tensor* l) {
   printf("<<");
-  print_scalar_type(l->_stype);
+  print_tensor_type(l->_stype);
   printf(" :: ");
 
   int i;
@@ -123,10 +123,7 @@ static void print_scalar(drax_scalar* l) {
     }
   }
 
-
-
-  putchar('>');
-  putchar('>');
+  printf(">>");
 }
 
 static void print_frame(drax_frame* f) {
@@ -161,8 +158,8 @@ static void print_d_struct(drax_value value, int formated) {
       print_list(CAST_LIST(value));
       break;
 
-    case DS_SCALAR:
-      print_scalar(CAST_SCALAR(value));
+    case DS_TENSOR:
+      print_tensor(CAST_TENSOR(value));
       break;
 
     case DS_FRAME:

@@ -1,10 +1,10 @@
-#include "d_mod_scalar.h"
+#include "d_mod_tensor.h"
 
 /**
- * Scalar Module
+ * Tensor Module
  */
 
-drax_value __d_scalar_at(d_vm* vm, int* stat) {
+drax_value __d_tensor_at(d_vm* vm, int* stat) {
   #define RETURN_AT_TO_TYPE(_tp, _dv, _ll, _n)\
     _tp* _dv = (_tp*) _ll->elems;\
     return num_to_draxvalue((_tp) _dv[(int) _n]);
@@ -12,11 +12,11 @@ drax_value __d_scalar_at(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
   drax_value a = pop(vm);
 
-  return_if_is_not_scalar(a, stat);
+  return_if_is_not_tensor(a, stat);
   return_if_is_not_number(b, stat);
 
   double n = CAST_NUMBER(b);
-  drax_scalar* ll = CAST_SCALAR(a);
+  drax_tensor* ll = CAST_TENSOR(a);
 
   if (n < 0) { n = ll->length + n; }
 
@@ -50,7 +50,7 @@ drax_value __d_scalar_at(d_vm* vm, int* stat) {
   return ll->elems[(int) n];
 }
 
-drax_value __d_scalar_concat(d_vm* vm, int* stat) {
+drax_value __d_tensor_concat(d_vm* vm, int* stat) {
   #define DO_MEMCPY_TO_TYPE(_tp, _l1, _l2, _l3)\
     _tp* _dv3 = (_tp*) _l3->elems;\
     memcpy(_dv3, (_tp*) _l1->elems, _l1->length * sizeof(_tp));\
@@ -59,18 +59,18 @@ drax_value __d_scalar_concat(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
   drax_value a = pop(vm);
 
-  return_if_is_not_scalar(a, stat);
-  return_if_is_not_scalar(b, stat);
+  return_if_is_not_tensor(a, stat);
+  return_if_is_not_tensor(b, stat);
 
-  drax_scalar* l1 = CAST_SCALAR(a);
-  drax_scalar* l2 = CAST_SCALAR(b);
+  drax_tensor* l1 = CAST_TENSOR(a);
+  drax_tensor* l2 = CAST_TENSOR(b);
   
   if (l1->_stype != l2->_stype) {
     DX_ERROR_FN(stat);
-    return DS_VAL(new_derror(vm, (char *) "Scalar concat with different types."));
+    return DS_VAL(new_derror(vm, (char *) "Tensor concat with different types."));
   }
 
-  drax_scalar* l = new_dscalar(vm, l1->length + l2->length, l1->_stype);
+  drax_tensor* l = new_dtensor(vm, l1->length + l2->length, l1->_stype);
   l->length = l1->length + l2->length;
   l->cap = l->length;
 
@@ -93,15 +93,15 @@ drax_value __d_scalar_concat(d_vm* vm, int* stat) {
   return DS_VAL(l);
 }
 
-drax_value __d_scalar_head(d_vm* vm, int* stat) {
+drax_value __d_tensor_head(d_vm* vm, int* stat) {
   #define RETURN_VAL_TO_TYPE(_tp, _l1)\
     _tp* _dv = (_tp*) _l1->elems;\
     return _l1->length > 0 ? num_to_draxvalue(_dv[0]) : DRAX_NIL_VAL;
 
   drax_value a = pop(vm);
 
-  return_if_is_not_scalar(a, stat);
-  drax_scalar* l = CAST_SCALAR(a);
+  return_if_is_not_tensor(a, stat);
+  drax_tensor* l = CAST_TENSOR(a);
 
   DX_SUCESS_FN(stat);
 
@@ -128,7 +128,7 @@ drax_value __d_scalar_head(d_vm* vm, int* stat) {
   return l->length > 0 ? l->elems[0] : DRAX_NIL_VAL;
 }
 
-drax_value __d_scalar_tail(d_vm* vm, int* stat) {
+drax_value __d_tensor_tail(d_vm* vm, int* stat) {
   #define REMOVE_VAL_TO_TYPE_TAIL(_tp, _l1, _l2)\
     _tp* _dv1 = (_tp*) _l1->elems;\
     _tp* _dv2 = (_tp*) _l2->elems;\
@@ -136,10 +136,10 @@ drax_value __d_scalar_tail(d_vm* vm, int* stat) {
 
   drax_value a = pop(vm);
 
-  return_if_is_not_scalar(a, stat);
-  drax_scalar* l1 = CAST_SCALAR(a);
+  return_if_is_not_tensor(a, stat);
+  drax_tensor* l1 = CAST_TENSOR(a);
 
-  drax_scalar* l = new_dscalar(vm, l1->length -1, l1->_stype);
+  drax_tensor* l = new_dtensor(vm, l1->length -1, l1->_stype);
   l->length = l1->length - 1;
 
   if (DIT_i16 == l->_stype) {
@@ -160,34 +160,34 @@ drax_value __d_scalar_tail(d_vm* vm, int* stat) {
   return DS_VAL(l);
 }
 
-drax_value __d_scalar_length(d_vm* vm, int* stat) {
+drax_value __d_tensor_length(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
-  return_if_is_not_scalar(a, stat);
-  drax_scalar* l = CAST_SCALAR(a);
+  return_if_is_not_tensor(a, stat);
+  drax_tensor* l = CAST_TENSOR(a);
 
   DX_SUCESS_FN(stat);
   return AS_VALUE(l->length);
 }
 
-drax_value __d_scalar_is_empty(d_vm* vm, int* stat) {
+drax_value __d_tensor_is_empty(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
-  return_if_is_not_scalar(a, stat);
-  drax_scalar* l = CAST_SCALAR(a);
+  return_if_is_not_tensor(a, stat);
+  drax_tensor* l = CAST_TENSOR(a);
 
   DX_SUCESS_FN(stat);
   return l->length ? DRAX_FALSE_VAL : DRAX_TRUE_VAL;
 }
 
-drax_value __d_scalar_is_present(d_vm* vm, int* stat) {
+drax_value __d_tensor_is_present(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
-  return_if_is_not_scalar(a, stat);
-  drax_scalar* l = CAST_SCALAR(a);
+  return_if_is_not_tensor(a, stat);
+  drax_tensor* l = CAST_TENSOR(a);
 
   DX_SUCESS_FN(stat);
   return l->length ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
 }
 
-drax_value __d_scalar_remove_at(d_vm* vm, int* stat) {
+drax_value __d_tensor_remove_at(d_vm* vm, int* stat) {
   #define REMOVE_VAL_TO_TYPE_R_AT(_tp, _l1, _l2)\
     _tp* _dv1 = (_tp*) _l1->elems;\
     _tp* _dv2 = (_tp*) _l2->elems;\
@@ -196,19 +196,19 @@ drax_value __d_scalar_remove_at(d_vm* vm, int* stat) {
 
   drax_value b = pop(vm);
   drax_value a = pop(vm);
-  return_if_is_not_scalar(a, stat);
+  return_if_is_not_tensor(a, stat);
   return_if_is_not_number(b, stat);
 
-  drax_scalar* l = CAST_SCALAR(a);
+  drax_tensor* l = CAST_TENSOR(a);
   int at = (int) CAST_NUMBER(b);
   at = at < 0 ? l->length + at : at;
 
   if(at >= l->length) {
     DX_SUCESS_FN(stat);
-    return DS_VAL(new_dscalar(vm, 0, DIT_UNDEFINED));
+    return DS_VAL(new_dtensor(vm, 0, DIT_UNDEFINED));
   }
 
-  drax_scalar* nl = new_dscalar(vm, l->length - 1, l->_stype);
+  drax_tensor* nl = new_dtensor(vm, l->length - 1, l->_stype);
   nl->length = l->length - 1;
 
   if (DIT_i16 == l->_stype) {
@@ -230,7 +230,7 @@ drax_value __d_scalar_remove_at(d_vm* vm, int* stat) {
   return DS_VAL(nl);
 }
 
-drax_value __d_scalar_insert_at(d_vm* vm, int* stat) {
+drax_value __d_tensor_insert_at(d_vm* vm, int* stat) {
   #define INSET_AT_TO_TYPE(_tp, _l1, _l2)\
     _tp* _dv1 = (_tp*) _l1->elems;\
     _tp* _dv2 = (_tp*) _l2->elems;\
@@ -242,19 +242,19 @@ drax_value __d_scalar_insert_at(d_vm* vm, int* stat) {
   drax_value c = pop(vm);
   drax_value b = pop(vm);
   drax_value a = pop(vm);
-  return_if_is_not_scalar(a, stat);
+  return_if_is_not_tensor(a, stat);
   return_if_is_not_number(b, stat);
 
-  drax_scalar* l = CAST_SCALAR(a);
+  drax_tensor* l = CAST_TENSOR(a);
   int at = (int) CAST_NUMBER(b);
   at = at < 0 ? l->length + at : at;
 
   if(at >= l->length) {
     DX_SUCESS_FN(stat);
-    return DS_VAL(new_dscalar(vm, 0, DIT_UNDEFINED));
+    return DS_VAL(new_dtensor(vm, 0, DIT_UNDEFINED));
   }
 
-  drax_scalar* nl = new_dscalar(vm, l->length + 1, l->_stype);
+  drax_tensor* nl = new_dtensor(vm, l->length + 1, l->_stype);
   nl->length = l->length + 1;
 
   if (DIT_i16 == l->_stype) {
@@ -277,7 +277,7 @@ drax_value __d_scalar_insert_at(d_vm* vm, int* stat) {
   return DS_VAL(nl);
 }
 
-drax_value __d_scalar_replace_at(d_vm* vm, int* stat) {
+drax_value __d_tensor_replace_at(d_vm* vm, int* stat) {
   #define REPLACE_AT_TO_TYPE(_tp, _l1, _l2)\
     _tp* _dv1 = (_tp*) _l1->elems;\
     _tp* _dv2 = (_tp*) _l2->elems;\
@@ -289,19 +289,19 @@ drax_value __d_scalar_replace_at(d_vm* vm, int* stat) {
   drax_value c = pop(vm);
   drax_value b = pop(vm);
   drax_value a = pop(vm);
-  return_if_is_not_scalar(a, stat);
+  return_if_is_not_tensor(a, stat);
   return_if_is_not_number(b, stat);
 
-  drax_scalar* l = CAST_SCALAR(a);
+  drax_tensor* l = CAST_TENSOR(a);
   int at = (int) CAST_NUMBER(b);
   at = at < 0 ? l->length + at : at;
 
   if(at >= l->length) {
     DX_SUCESS_FN(stat);
-    return DS_VAL(new_dscalar(vm, 0, DIT_UNDEFINED));
+    return DS_VAL(new_dtensor(vm, 0, DIT_UNDEFINED));
   }
   
-  drax_scalar* nl = new_dscalar(vm, l->length, l->_stype);
+  drax_tensor* nl = new_dtensor(vm, l->length, l->_stype);
   nl->length = l->length;
 
   if (DIT_i16 == l->_stype) {
@@ -324,7 +324,7 @@ drax_value __d_scalar_replace_at(d_vm* vm, int* stat) {
   return DS_VAL(nl);
 }
 
-drax_value __d_scalar_slice(d_vm* vm, int* stat) {
+drax_value __d_tensor_slice(d_vm* vm, int* stat) {
   #define S_SLICE_TO_TYPE(_tp, _l1, _l2)\
     _tp* _dv1 = (_tp*) _l1->elems;\
     _tp* _dv2 = (_tp*) _l2->elems;\
@@ -333,10 +333,10 @@ drax_value __d_scalar_slice(d_vm* vm, int* stat) {
   drax_value c = pop(vm);
   drax_value b = pop(vm);
   drax_value a = pop(vm);
-  return_if_is_not_scalar(a, stat);
+  return_if_is_not_tensor(a, stat);
   return_if_is_not_number(b, stat);
 
-  drax_scalar* l = CAST_SCALAR(a);
+  drax_tensor* l = CAST_TENSOR(a);
   int from = (int) CAST_NUMBER(b);
   int to = (int) CAST_NUMBER(c);
 
@@ -345,10 +345,10 @@ drax_value __d_scalar_slice(d_vm* vm, int* stat) {
 
   if(to <= from || from >= l->length || to > l->length) {
     DX_SUCESS_FN(stat);
-    return DS_VAL(new_dscalar(vm, 0, DIT_UNDEFINED));
+    return DS_VAL(new_dtensor(vm, 0, DIT_UNDEFINED));
   }
 
-  drax_scalar* nl = new_dscalar(vm, abs(to - from), l->_stype);
+  drax_tensor* nl = new_dtensor(vm, abs(to - from), l->_stype);
   nl->length = abs(to - from);
 
   if (DIT_i16 == l->_stype) {
@@ -369,11 +369,11 @@ drax_value __d_scalar_slice(d_vm* vm, int* stat) {
   return DS_VAL(nl);
 }
 
-drax_value __d_scalar_sum(d_vm* vm, int* stat) {
+drax_value __d_tensor_sum(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
-  return_if_is_not_scalar(a, stat);
+  return_if_is_not_tensor(a, stat);
   
-  drax_scalar* l = CAST_SCALAR(a);
+  drax_tensor* l = CAST_TENSOR(a);
 
   if(l->length == 0) {
     DX_SUCESS_FN(stat);
@@ -388,7 +388,7 @@ drax_value __d_scalar_sum(d_vm* vm, int* stat) {
     l->_stype != DIT_f64
   ) {
     DX_ERROR_FN(stat);
-    return DS_VAL(new_derror(vm, (char *) "Expected scalar of number as argument"));
+    return DS_VAL(new_derror(vm, (char *) "Expected tensor of number as argument"));
   }
   
   double res = 0;
@@ -431,7 +431,7 @@ drax_value __d_scalar_sum(d_vm* vm, int* stat) {
   return AS_VALUE(res);
 }
 
-drax_value __d_scalar_sparse(d_vm* vm, int* stat) {
+drax_value __d_tensor_sparse(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
   return_if_is_not_number(a, stat);
 
@@ -439,10 +439,10 @@ drax_value __d_scalar_sparse(d_vm* vm, int* stat) {
 
   if(n < 0) {
     DX_SUCESS_FN(stat);
-    return DS_VAL(new_dscalar(vm, 0, DIT_f64));
+    return DS_VAL(new_dtensor(vm, 0, DIT_f64));
   }
 
-  drax_scalar* ll = new_dscalar(vm, n, DIT_f64);
+  drax_tensor* ll = new_dtensor(vm, n, DIT_f64);
   ll->length = n;
   double v = 0;
   double* _v = (double*) ll->elems;

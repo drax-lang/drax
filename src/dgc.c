@@ -59,10 +59,10 @@ static void dgc_safe_free(d_vm* vm, drax_value v) {
       free(ff->instructions->values);
       free(ff->instructions);
       free(ff->instructions->extrn_ref);
-    } else if (IS_SCALAR(v)) {
-      DEBUG(printf("    -- dgc scalar free\n"));
+    } else if (IS_TENSOR(v)) {
+      DEBUG(printf("    -- dgc tensor free\n"));
 
-      drax_scalar* ff = CAST_SCALAR(v);
+      drax_tensor* ff = CAST_TENSOR(v);
       void* _fval = (void*) ff->elems;
       free(_fval);
     }

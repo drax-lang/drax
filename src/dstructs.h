@@ -24,7 +24,7 @@ typedef struct d_vm d_vm;
 #define IS_ERROR(v)       IS_ST_TYPE(v, DS_ERROR)
 #define IS_FRAME(v)       IS_ST_TYPE(v, DS_FRAME)
 #define IS_LIST(v)        IS_ST_TYPE(v, DS_LIST)
-#define IS_SCALAR(v)      IS_ST_TYPE(v, DS_SCALAR)
+#define IS_TENSOR(v)      IS_ST_TYPE(v, DS_TENSOR)
 #define IS_FUNCTION(v)    IS_ST_TYPE(v, DS_FUNCTION)
 #define IS_NATIVE(v)      IS_ST_TYPE(v, DS_NATIVE)
 #define IS_MODULE(v)      IS_ST_TYPE(v, DS_MODULE)
@@ -37,7 +37,7 @@ typedef struct d_vm d_vm;
 #define CAST_MODULE(v)    ((drax_native_module*) CAST_STRUCT(v))
 #define CAST_STRING(v)    ((drax_string*) CAST_STRUCT(v))
 #define CAST_LIST(v)      ((drax_list*) CAST_STRUCT(v))
-#define CAST_SCALAR(v)      ((drax_scalar*) CAST_STRUCT(v))
+#define CAST_TENSOR(v)      ((drax_tensor*) CAST_STRUCT(v))
 #define CAST_FRAME(v)     ((drax_frame*) CAST_STRUCT(v))
 #define CAST_TID(v)       ((drax_tid*) CAST_STRUCT(v))
 
@@ -55,7 +55,7 @@ typedef enum d_internal_types {
   DIT_i64       = 94,
 
   DIT_LIST     = DS_LIST, /* == 3*/
-  DIT_SCALAR   = DS_SCALAR,
+  DIT_TENSOR   = DS_TENSOR,
   DIT_FUNCTION = DS_FUNCTION,
   DIT_NATIVE   = DS_NATIVE,
   DIT_FRAME    = DS_FRAME,
@@ -99,13 +99,13 @@ typedef struct drax_list {
   drax_value* elems;
 } drax_list;
 
-typedef struct drax_scalar {
+typedef struct drax_tensor {
   d_struct d_struct;
   int length;
   int cap;
   d_internal_types _stype;
   drax_value* elems;
-} drax_scalar;
+} drax_tensor;
 
 typedef struct drax_frame {
   d_struct d_struct;
@@ -147,9 +147,9 @@ drax_error* new_derror(d_vm* vm, char* msg);
 
 drax_list* new_dlist(d_vm* vm, int cap);
 
-drax_scalar* new_dscalar(d_vm* vm, int cap, d_internal_types type);
+drax_tensor* new_dtensor(d_vm* vm, int cap, d_internal_types type);
 
-int put_value_dscalar(d_vm* vm, drax_scalar* l, drax_value v, drax_value* r);
+int put_value_dtensor(d_vm* vm, drax_tensor* l, drax_value v, drax_value* r);
 
 drax_function* new_function(d_vm* vm);
 

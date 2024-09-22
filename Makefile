@@ -24,7 +24,7 @@ FILES= ./src/dvm.c \
 	   ./src/doutopcode.c \
 	   ./src/mods/d_mod_os.c \
 	   ./src/mods/d_mod_http.c \
-	   ./src/mods/d_mod_scalar.c
+	   ./src/mods/d_mod_tensor.c
 
 DEBUGF= -ggdb \
 		-g
