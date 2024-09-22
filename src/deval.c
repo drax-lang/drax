@@ -18,6 +18,7 @@ static void print_list(drax_list* l) {
 }
 
 static void print_tensor_type(d_internal_types v) {
+  printf(D_COLOR_PURPLE);
   switch (v) {
     case DIT_UNDEFINED: {
       printf("undefined");
@@ -77,52 +78,71 @@ static void print_tensor_type(d_internal_types v) {
       break;
     }
   }
+  printf(D_COLOR_RESET  );
 }
 
-static void print_tensor(drax_tensor* l) {
+static void print_tensor(drax_tensor* l, int level) {
+  int _i;
+  #define PRINTF2NUM(str, arg1) printf(D_COLOR_BLUE str D_COLOR_RESET, arg1)
+
+  #define PRINT_LEVEL() for (_i = 0; _i < level; _i++) { printf("  "); }
+  
+  int lb = l->_stype == DIT_TENSOR;
+
+  PRINT_LEVEL();
   printf("<<");
   print_tensor_type(l->_stype);
   printf(" :: ");
+  if (lb) {
+    printf("\n");
+    PRINT_LEVEL();
+  }
 
   int i;
   if (DIT_i16 == l->_stype) {
     int16_t* _i16 = (int16_t*) l->elems;
     for (i = 0; i < l->length; i++) {
-      printf("%i", (int16_t) _i16[i]);
+      PRINTF2NUM("%i", (int16_t) _i16[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_i32 == l->_stype) {
     int32_t* _i32 = (int32_t*) l->elems;
     for (i = 0; i < l->length; i++) {
-      printf("%i", (int32_t) _i32[i]);
+      PRINTF2NUM("%i", (int32_t) _i32[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_i64 == l->_stype) {
     int64_t* _i64 = (int64_t*) l->elems;
     for (i = 0; i < l->length; i++) {
-      printf("%li", (int64_t) _i64[i]);
+      PRINTF2NUM("%li", (int64_t) _i64[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_f32 == l->_stype) {
     float* _f32 = (float*) l->elems;
     for (i = 0; i < l->length; i++) {
-      printf("%f", (double) _f32[i]);
+      PRINTF2NUM("%f", (double) _f32[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_f64 == l->_stype) {
     double* _f64 = (double*) l->elems;
 
     for (i = 0; i < l->length; i++) {
-      printf("%.15f", _f64[i]);
+      PRINTF2NUM("%.15f", _f64[i]);
       if ((i+1) < l->length) printf(", ");
+    }
+  } else if (DIT_TENSOR == l->_stype) {
+    for (i = 0; i < l->length; i++) {
+      print_tensor(CAST_TENSOR(l->elems[i]), level + 1);
+      if ((i+1) < l->length) printf(",\n");
     }
   } else {
     for (i = 0; i < l->length; i++) {
       print_drax(l->elems[i], 1);
-      if ((i+1) < l->length) printf(", ");
+      if ((i+1) < l->length) printf(", \n");
     }
   }
 
+  if (lb) putchar('\n');
   printf(">>");
 }
 
@@ -159,7 +179,7 @@ static void print_d_struct(drax_value value, int formated) {
       break;
 
     case DS_TENSOR:
-      print_tensor(CAST_TENSOR(value));
+      print_tensor(CAST_TENSOR(value), 0);
       break;
 
     case DS_FRAME:

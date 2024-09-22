@@ -11,12 +11,14 @@
 #define D_COLOR_GREEN  "\033[32m"
 #define D_COLOR_YELLOW "\033[33m"
 #define D_COLOR_BLUE   "\033[34m"
+#define D_COLOR_PURPLE "\033[35m"
 #else
 #define D_COLOR_RESET  ""
 #define D_COLOR_RED    ""
 #define D_COLOR_GREEN  ""
 #define D_COLOR_YELLOW ""
 #define D_COLOR_BLUE   ""
+#define D_COLOR_PURPLE ""
 #endif
 
 
