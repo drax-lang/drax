@@ -105,9 +105,10 @@ int put_value_dtensor(d_vm* vm, drax_tensor* l, drax_value v, drax_value* r) {
     _tp* _dv = (_tp*) _l->elems;\
     _dv = realloc(_dv, sizeof(_tp) * _l->cap);
 
-  #define APPEND_VAL_FOR_TYPE(_dv, _l, _tp, _val)\
-    _tp* _dv = (_tp*) _l->elems;\
-    _dv[l->length] = (_tp) CAST_NUMBER(_val);
+  #define APPEND_VAL_FOR_TYPE(_dv, _l, _tp, _val) {\
+        _tp* _dv = (_tp*) _l->elems;\
+        _dv[_l->length] = (_tp) CAST_NUMBER(_val);\
+    }
 
   if (DIT_UNDEFINED == l->_stype) {
       l->_stype = IS_NUMBER(v) ? DIT_f64 : get_tensor_type(v);
