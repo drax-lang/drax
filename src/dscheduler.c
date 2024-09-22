@@ -42,14 +42,12 @@ static int dcreate_thread(dthread_t* thread_id, start_routine_t __start_routine)
         __start_routine,      
         NULL,                
         0,                   
-        &threadID            
+        thread_id           
     );
 
     if (thread_handle == NULL) {
         return 1;
     }
-
-    *thread_id = threadID;
     return 0;
   #else
     return pthread_create(thread_id, NULL, __start_routine, NULL);
