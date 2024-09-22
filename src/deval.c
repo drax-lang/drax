@@ -6,6 +6,9 @@
 
 #define D_NUMBER_STR_PRINT "%.17g"
 
+#define DPRINT_COLOR1(_f, _color, str, arg1) \
+  if (_f) {printf(_color str D_COLOR_RESET, arg1);} else {printf(str, arg1);}
+
 static void print_list(drax_list* l) {
   putchar('[');
   int i;
@@ -17,8 +20,8 @@ static void print_list(drax_list* l) {
   putchar(']');
 }
 
-static void print_tensor_type(d_internal_types v) {
-  printf(D_COLOR_PURPLE);
+static void print_tensor_type(d_internal_types v, int formated) {
+  if (formated) printf(D_COLOR_PURPLE);
   switch (v) {
     case DIT_UNDEFINED: {
       printf("undefined");
@@ -78,22 +81,20 @@ static void print_tensor_type(d_internal_types v) {
       break;
     }
   }
-  printf(D_COLOR_RESET  );
+  if (formated) printf(D_COLOR_RESET);
 }
 
-static void print_tensor(drax_tensor* l, int level) {
+static void print_tensor(drax_tensor* l, int formated, int level) {
   int _i;
-  #define PRINTF2NUM(str, arg1) printf(D_COLOR_BLUE str D_COLOR_RESET, arg1)
-
-  #define PRINT_LEVEL() for (_i = 0; _i < level; _i++) { printf("  "); }
+  #define PRINT_LEVEL() if(formated) {for (_i = 0; _i < level; _i++) { printf("  "); }}
   
   int lb = l->_stype == DIT_TENSOR;
 
   PRINT_LEVEL();
   printf("<<");
-  print_tensor_type(l->_stype);
+  print_tensor_type(l->_stype, formated);
   printf(" :: ");
-  if (lb) {
+  if (lb && formated) {
     printf("\n");
     PRINT_LEVEL();
   }
@@ -102,47 +103,49 @@ static void print_tensor(drax_tensor* l, int level) {
   if (DIT_i16 == l->_stype) {
     int16_t* _i16 = (int16_t*) l->elems;
     for (i = 0; i < l->length; i++) {
-      PRINTF2NUM("%i", (int16_t) _i16[i]);
+      DPRINT_COLOR1(formated, D_COLOR_BLUE, "%i", (int16_t) _i16[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_i32 == l->_stype) {
     int32_t* _i32 = (int32_t*) l->elems;
     for (i = 0; i < l->length; i++) {
-      PRINTF2NUM("%i", (int32_t) _i32[i]);
+      DPRINT_COLOR1(formated, D_COLOR_BLUE, "%i", (int32_t) _i32[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_i64 == l->_stype) {
     int64_t* _i64 = (int64_t*) l->elems;
     for (i = 0; i < l->length; i++) {
-      PRINTF2NUM("%li", (int64_t) _i64[i]);
+      DPRINT_COLOR1(formated, D_COLOR_BLUE, "%li", (int64_t) _i64[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_f32 == l->_stype) {
     float* _f32 = (float*) l->elems;
     for (i = 0; i < l->length; i++) {
-      PRINTF2NUM("%f", (double) _f32[i]);
+      DPRINT_COLOR1(formated, D_COLOR_BLUE, "%f", (double) _f32[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_f64 == l->_stype) {
     double* _f64 = (double*) l->elems;
 
     for (i = 0; i < l->length; i++) {
-      PRINTF2NUM("%.15f", _f64[i]);
+      DPRINT_COLOR1(formated, D_COLOR_BLUE, "%.15f", _f64[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_TENSOR == l->_stype) {
     for (i = 0; i < l->length; i++) {
-      print_tensor(CAST_TENSOR(l->elems[i]), level + 1);
-      if ((i+1) < l->length) printf(",\n");
+      print_tensor(CAST_TENSOR(l->elems[i]), formated, level + 1);
+      if ((i+1) < l->length) printf(", ");
+      if ((i+1) < l->length && formated) printf("\n");
     }
   } else {
     for (i = 0; i < l->length; i++) {
       print_drax(l->elems[i], 1);
-      if ((i+1) < l->length) printf(", \n");
+      if ((i+1) < l->length) printf(", ");
+      if ((i+1) < l->length && formated) printf("\n");
     }
   }
 
-  if (lb) putchar('\n');
+  if (lb && formated) putchar('\n');
   printf(">>");
 }
 
@@ -165,10 +168,10 @@ static void print_string(const char* str, int formated) {
       fprintf(stderr, D_COLOR_RED"runtime error: cannot format string"D_COLOR_RESET);
       return;
     }
-    printf(formated ? "\"%s\"" : "%s", tmpstr);
+    printf(formated ? D_COLOR_GREEN "\"%s\"" D_COLOR_RESET : "%s", tmpstr);
     free(tmpstr);
   } else {
-    printf(formated ? "\"%s\"" : "%s", str);
+    printf(formated ? D_COLOR_GREEN "\"%s\"" D_COLOR_RESET : "%s", str);
   }
 }
 
@@ -179,7 +182,7 @@ static void print_d_struct(drax_value value, int formated) {
       break;
 
     case DS_TENSOR:
-      print_tensor(CAST_TENSOR(value), 0);
+      print_tensor(CAST_TENSOR(value), formated, 0);
       break;
 
     case DS_FRAME:
