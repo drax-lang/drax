@@ -1507,7 +1507,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * Tensor Module
    */ 
-  drax_native_module* tensor = new_native_module(vm, "Tensor", 13);
+  drax_native_module* tensor = new_native_module(vm, "Tensor", 14);
   const drax_native_module_helper tensor_helper[] = {
     {2, "concat", __d_tensor_concat },
     {1, "head", __d_tensor_head},
@@ -1519,9 +1519,10 @@ void create_native_modules(d_vm* vm) {
     {3, "insert_at", __d_tensor_insert_at},
     {3, "replace_at", __d_tensor_replace_at},
     {3, "slice", __d_tensor_slice},
-    {1, "sum", __d_tensor_sum},
     {2, "at", __d_tensor_at},
-    {1, "sparse", __d_tensor_sparse}
+    {1, "sparse", __d_tensor_sparse},
+    {1, "sum", __d_tensor_sum},
+    {2, "add", __d_tensor_add},
   };
   
   put_fun_on_module(tensor, tensor_helper, sizeof(tensor_helper) / sizeof(drax_native_module_helper)); 

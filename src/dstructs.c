@@ -67,17 +67,17 @@ static d_internal_types get_tensor_type(drax_value v) {
   return DIT_UNDEFINED;
 }
 
+int tensor_type_is_number(d_internal_types t) {
+  return (
+    t == DIT_i16 ||
+    t == DIT_i32 ||
+    t == DIT_i64 ||
+    t == DIT_f32 ||
+    t == DIT_f64);
+}
+
 static int is_tensor_tp_valid(drax_value v, d_internal_types _stype) {
-  if (
-    IS_NUMBER(v) &&
-    (
-      DIT_f32 == _stype ||
-      DIT_f64 == _stype ||
-      DIT_i16 == _stype ||
-      DIT_i32 == _stype ||
-      DIT_i64 == _stype
-    )
-  ) {
+  if (IS_NUMBER(v) && tensor_type_is_number(_stype)) {
     return 1;
   }
   
@@ -90,11 +90,36 @@ drax_tensor* new_dtensor(d_vm* vm, int cap, d_internal_types type) {
   l->length = 0;
   l->cap = cap == 0 ? TENSOR_PRE_SIZE : cap;
 
-  if (DIT_f64 == l->_stype) {
-    double* _dv = malloc(sizeof(double) * l->cap);
-    l->elems = POINTER_TO_PDRAXVAL(_dv);
-  } else {
-    l->elems = malloc(sizeof(drax_value) * l->cap);
+  switch (l->_stype) {
+    case DIT_i16: {
+      double* _dvint16_t = malloc(sizeof(int16_t) * l->cap);
+      l->elems = POINTER_TO_PDRAXVAL(_dvint16_t);
+      break;
+    }
+    case DIT_i32: {
+      double* _dvint32_t = malloc(sizeof(int32_t) * l->cap);
+      l->elems = POINTER_TO_PDRAXVAL(_dvint32_t);
+      break;
+    }
+    case DIT_i64: {
+      double* _dvint64_t = malloc(sizeof(int64_t) * l->cap);
+      l->elems = POINTER_TO_PDRAXVAL(_dvint64_t);
+      break;
+    }
+    case DIT_f32: {
+      double* _dvfloat = malloc(sizeof(float) * l->cap);
+      l->elems = POINTER_TO_PDRAXVAL(_dvfloat);
+      break;
+    }
+    case DIT_f64: {
+      double* _dvdouble = malloc(sizeof(double) * l->cap);
+      l->elems = POINTER_TO_PDRAXVAL(_dvdouble);
+      break;
+    }
+    
+    default:
+      l->elems = malloc(sizeof(drax_value) * l->cap);
+      break;
   }
 
   return l;
@@ -110,8 +135,14 @@ int put_value_dtensor(d_vm* vm, drax_tensor* l, drax_value v, drax_value* r) {
         _dv[_l->length] = (_tp) CAST_NUMBER(_val);\
     }
 
+
   if (DIT_UNDEFINED == l->_stype) {
       l->_stype = IS_NUMBER(v) ? DIT_f64 : get_tensor_type(v);
+  }
+
+  if (DIT_TENSOR != l->_stype && !tensor_type_is_number(l->_stype)) {
+    *r = DS_VAL(new_derror(vm, (char*) "type not supported by tensor."));
+    return 0;
   }
 
   if (!is_tensor_tp_valid(v, l->_stype)) {

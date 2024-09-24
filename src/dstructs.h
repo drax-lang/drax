@@ -147,6 +147,8 @@ drax_error* new_derror(d_vm* vm, char* msg);
 
 drax_list* new_dlist(d_vm* vm, int cap);
 
+int tensor_type_is_number(d_internal_types t);
+
 drax_tensor* new_dtensor(d_vm* vm, int cap, d_internal_types type);
 
 int put_value_dtensor(d_vm* vm, drax_tensor* l, drax_value v, drax_value* r);

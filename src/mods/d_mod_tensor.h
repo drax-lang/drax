@@ -37,33 +37,12 @@ drax_value __d_tensor_replace_at(d_vm* vm, int* stat);
 
 drax_value __d_tensor_slice(d_vm* vm, int* stat);
 
+drax_value __d_tensor_sparse(d_vm* vm, int* stat);
+/**
+ * Mathematical functions
+ */
 drax_value __d_tensor_sum(d_vm* vm, int* stat);
 
-drax_value __d_tensor_sparse(d_vm* vm, int* stat);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+drax_value __d_tensor_add(d_vm* vm, int* stat);
 
 #endif

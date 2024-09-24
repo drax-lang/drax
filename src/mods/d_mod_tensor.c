@@ -369,68 +369,6 @@ drax_value __d_tensor_slice(d_vm* vm, int* stat) {
   return DS_VAL(nl);
 }
 
-drax_value __d_tensor_sum(d_vm* vm, int* stat) {
-  drax_value a = pop(vm);
-  return_if_is_not_tensor(a, stat);
-  
-  drax_tensor* l = CAST_TENSOR(a);
-
-  if(l->length == 0) {
-    DX_SUCESS_FN(stat);
-    return AS_VALUE(0);
-  }
-
-  if (
-    l->_stype != DIT_i16 &&
-    l->_stype != DIT_i32 &&
-    l->_stype != DIT_i64 &&
-    l->_stype != DIT_f32 &&
-    l->_stype != DIT_f64
-  ) {
-    DX_ERROR_FN(stat);
-    return DS_VAL(new_derror(vm, (char *) "Expected tensor of number as argument"));
-  }
-  
-  double res = 0;
-  int i;
-
-  if (DIT_i16 == l->_stype) {
-    int16_t i16res = 0;
-    int16_t* _i16 = (int16_t*) l->elems;
-    for (i = 0; i < l->length; i++) i16res += _i16[i];
-    res = (double) i16res;
-  }
-
-  if (DIT_i32 == l->_stype) {
-    int32_t i32res = 0;
-    int32_t* _i32 = (int32_t*) l->elems;
-    for (i = 0; i < l->length; i++) i32res += _i32[i];
-    res = (double) i32res;
-  }
-
-  if (DIT_i64 == l->_stype) {
-    int64_t i64res = 0;
-    int64_t* _i64 = (int64_t*) l->elems;
-    for (i = 0; i < l->length; i++) i64res += _i64[i];
-    res = (double) i64res;
-  }
-
-  if (DIT_f32 == l->_stype) {
-    float f32res = 0;
-    float* _f32 = (float*) l->elems;
-    for (i = 0; i < l->length; i++) f32res += _f32[i];
-    res = (double) f32res;
-  }
-
-  if (DIT_f64 == l->_stype) {
-    double* _f64 = (double*) l->elems;
-    for (i = 0; i < l->length; i++) res += _f64[i];
-  }
-
-  DX_SUCESS_FN(stat);
-  return AS_VALUE(res);
-}
-
 drax_value __d_tensor_sparse(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
   return_if_is_not_number(a, stat);
@@ -454,4 +392,197 @@ drax_value __d_tensor_sparse(d_vm* vm, int* stat) {
 
   DX_SUCESS_FN(stat);
   return DS_VAL(ll);
+}
+
+static double __d_tensor_sum_number(drax_tensor* t) {
+  double res = 0;
+  int i;
+  switch (t->_stype) {
+    case DIT_i16: {
+      int16_t i16res = 0;
+      int16_t* _i16 = (int16_t*) t->elems;
+      for (i = 0; i < t->length; i++) i16res += _i16[i];
+      res = (double) i16res;
+      break;
+    }
+
+    case DIT_i32: {
+      int32_t i32res = 0;
+      int32_t* _i32 = (int32_t*) t->elems;
+      for (i = 0; i < t->length; i++) i32res += _i32[i];
+      res = (double) i32res;
+      break;
+    }
+
+    case DIT_i64: {
+      int64_t i64res = 0;
+      int64_t* _i64 = (int64_t*) t->elems;
+      for (i = 0; i < t->length; i++) i64res += _i64[i];
+      res = (double) i64res;
+      break;
+    }
+
+    case DIT_f32: {
+      float f32res = 0;
+      float* _f32 = (float*) t->elems;
+      for (i = 0; i < t->length; i++) f32res += _f32[i];
+      res = (double) f32res;
+      break;
+    }
+
+    case DIT_f64: {
+      double* _f64 = (double*) t->elems;
+      for (i = 0; i < t->length; i++) res += _f64[i];
+      break;
+    }
+    
+    case DIT_TENSOR: {
+      for (i = 0; i < t->length; i++) {
+        res += __d_tensor_sum_number(CAST_TENSOR(t->elems[i]));
+      }
+    }
+    default:
+      break;
+  }
+  return res;
+}
+
+drax_value __d_tensor_sum(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_tensor(a, stat);
+  
+  drax_tensor* t = CAST_TENSOR(a);
+
+  if(t->length == 0) {
+    DX_SUCESS_FN(stat);
+    return AS_VALUE(0);
+  }
+
+  if (t->_stype != DIT_TENSOR && !tensor_type_is_number(t->_stype)) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char *) "Expected valid tensor of numbers as argument"));
+  }
+  
+  double res = __d_tensor_sum_number(t);
+
+  DX_SUCESS_FN(stat);
+  return AS_VALUE(res);
+}
+
+#define OP_TENSOR_SAME_TP(_tp, _op_, _n_l, _l_g, _l_l) \
+  _tp* l_g##_tp = (_tp*) _l_g->elems;\
+  _tp* l_l##_tp = (_tp*) _l_l->elems;\
+  _tp* n_l##_tp = (_tp*) _n_l->elems;\
+  for (i = 0; i < _l_l->length; i++) {\
+    n_l##_tp[i] = l_l##_tp[i] _op_ l_g##_tp[i];\
+  }\
+  for (; i < _l_g->length; i++) {\
+    n_l##_tp[i] = l_g##_tp[i];\
+  }
+
+/**
+ * Sum Tensor
+ */
+
+static void create_recursive_tensor(
+  d_vm* vm,
+  drax_tensor* target, drax_tensor* tg, drax_tensor* tl
+) {
+  if (DIT_TENSOR != tg->_stype) return;
+
+  int i;
+  for (i = 0; i < tg->length; i++) {
+    target->elems[i] = DS_VAL(new_dtensor(
+      vm,
+      CAST_TENSOR(tg->elems[i])->cap,
+      CAST_TENSOR(tg->elems[i])->_stype
+    ));
+    CAST_TENSOR(target->elems[i])->length = CAST_TENSOR(tg->elems[i])->length;
+    create_recursive_tensor(
+      vm,
+      CAST_TENSOR(target->elems[i]),
+      CAST_TENSOR(tg->elems[i]),
+      CAST_TENSOR(tl->elems[i])
+    );
+  }
+}
+
+static void __d_tensor_add_number(
+  drax_tensor* l_n, drax_tensor* l_g, drax_tensor* l_l
+) {
+  int i;
+  switch (l_n->_stype) {
+    case DIT_i16: {
+      OP_TENSOR_SAME_TP(int16_t, +, l_n, l_g, l_l);
+      break;
+    }
+    case DIT_i32: {
+      OP_TENSOR_SAME_TP(int32_t, +, l_n, l_g, l_l);
+      break;
+    }
+    case DIT_i64: {
+      OP_TENSOR_SAME_TP(int64_t, +, l_n, l_g, l_l);
+      break;
+    }
+    case DIT_f32: {
+      OP_TENSOR_SAME_TP(float, +, l_n, l_g, l_l);
+      break;
+    }
+    case DIT_f64: {
+      OP_TENSOR_SAME_TP(double, +, l_n, l_g, l_l);
+      break;
+    }
+    case DIT_TENSOR: {
+      for (i = 0; i < l_l->length; i++) {
+        __d_tensor_add_number(
+          CAST_TENSOR(l_n->elems[i]),
+          CAST_TENSOR(l_g->elems[i]),
+          CAST_TENSOR(l_l->elems[i])
+        );
+      }
+      for (; i < l_g->length; i++) {
+        /**
+         * we have no problem sharing 
+         * the same tensor.
+         */
+        l_n->elems[i] = l_g->elems[i];
+      }
+    }
+
+    default:
+      break;
+  }
+}
+
+drax_value __d_tensor_add(d_vm* vm, int* stat) { 
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_tensor(a, stat);
+  return_if_is_not_tensor(b, stat);
+
+  drax_tensor* l1 = CAST_TENSOR(a);
+  drax_tensor* l2 = CAST_TENSOR(b);
+  
+  if (l1->_stype != l2->_stype) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char *) "Tensor add with different types."));
+  }
+  
+  drax_tensor* l_n = new_dtensor(vm, l1->length + l2->length, l1->_stype);
+  int nlength = l1->length <= l2->length ? l2->length : l1->length;
+  l_n->length = nlength;
+  l_n->cap = l_n->length;
+
+  drax_tensor* l_g = l1->length <= l2->length ? l2 : l1;
+  drax_tensor* l_l = l1->length <= l2->length ? l1 : l2;
+
+  if (DIT_TENSOR == l1->_stype) {
+    create_recursive_tensor(vm, l_n, l_g, l_l);
+  }
+
+  __d_tensor_add_number(l_n, l_g, l_l);
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(l_n);
 }

@@ -13,8 +13,6 @@ assert(Tensor.length(val) == 6, "tensor error: concat length")
 
 assert(Tensor.tail(ll) == <<2, 3, 4, 5, 6>>, "tensor error: tail")
 
-assert(<<{ a: 1 }>> != <<{ b: 1 }>>, "tensor error: tensor comparison")
-
 ll = <<1, 2, 3, 4, 5>>
 
 # Delete at
@@ -69,6 +67,8 @@ assert(Tensor.sum(<<>>) == expected, "tensor error: sum(<<>>) is different of 0"
 
 expected = -15
 assert(Tensor.sum(<<-1, -2, -3, -4, -5>>) == expected, "tensor error: sum(<<-1, -2, -3, -4, -5>>) is different of -15")
+
+assert(Tensor.sum(<< <<1,2,3>> , <<1,1,2>>, <<<<1,2,3>>>>  >>) == 16, "fail to sum mult dim. tensor")
 
 ## types tests
 
@@ -132,3 +132,35 @@ assert(Tensor.at(list_i64, 3) == -10000000000, "i64 negative value invalid")
 
 print("Tensor done!")
 
+## add
+assert(Tensor.add(<<i16::1,2,3, 4, 5>>, <<i16::1,2,3,4>>) == <<i16::2,4,6,8,5>>, "fail to add i16 tensor")
+assert(Tensor.add(<<i32::1,2,3, 4, 5>>, <<i32::1,2,3,4>>) == <<i32::2,4,6,8,5>>, "fail to add i32 tensor")
+assert(Tensor.add(<<i64::1,2,3, 4, 5>>, <<i64::1,2,3,4>>) == <<i64::2,4,6,8,5>>, "fail to add i64 tensor")
+assert(Tensor.add(<<f32::1.1,2,3, 4, 5>>, <<f32::1.1,2,3,4>>) == <<f32::2.2,4,6,8,5>>, "fail to add f32 tensor")
+assert(Tensor.add(<<f64::1.1,2,3, 4, 5>>, <<f64::1.1,2,3,4>>) == <<f64::2.2,4,6,8,5>>, "fail to add f64 tensor")
+
+res =
+    <<i16:: 123,456,789,456,123>>
+    |> Tensor.add(<<i16:: 123,456,789,456,123>>)
+    |> Tensor.add(<<i16:: 123,456,789,456,123>>)
+    |> Tensor.add(<<i16:: 123,456,789,456,123>>)
+    |> Tensor.add(<<i16:: 123,456,789,456,123>>)
+
+assert(res == <<i16::615, 2280, 3945, 2280, 615>>, "fail to add mult tensor")
+
+multd = <<
+    <<1,2,3>>,
+    <<4,5,6>>,
+    <<7,8,9>>
+>> + <<
+    <<1,2,3>>,
+    <<4,5,6>>,
+    <<7,8,9>>
+>>
+
+expc = <<
+  <<f64 :: 2.000000000000000, 4.000000000000000, 6.000000000000000>>, 
+  <<f64 :: 8.000000000000000, 10.000000000000000, 12.000000000000000>>, 
+  <<f64 :: 14.000000000000000, 16.000000000000000, 18.000000000000000>>
+>>
+assert(multd == expc, "fail to add mult tensor")

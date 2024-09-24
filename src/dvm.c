@@ -118,6 +118,13 @@ void raise_drax_error(d_vm* vm, const char* format, ...) {
 }
 
 static bool values_equal(drax_value a, drax_value b) {
+  #define DV_EQS_AND_RETURN(_tp, _t1, _t2)\
+    _tp* _v1##_tp = (_tp*) _t1->elems;\
+    _tp* _v2##_tp = (_tp*) _t2->elems;\
+    for(i = 0; i < _t1->length; i++) {\
+      if (_v1##_tp[i] != _v2##_tp[i]) {  return false; }\
+    }
+
   if(a == b) {
     return true;
   }
@@ -156,11 +163,37 @@ static bool values_equal(drax_value a, drax_value b) {
       if(s1->_stype != s2->_stype) { return false; }
       if(s1->length != s2->length) { return false; }
 
-      for(i = 0; i < s1->length; i++) {
-        if(!values_equal(s1->elems[i], s2->elems[i])) {
-          return false;
+      switch (s1->_stype) {
+        case DIT_i16: {
+          DV_EQS_AND_RETURN(int16_t, s1, s2);
+          break;
         }
+        case DIT_i32: {
+          DV_EQS_AND_RETURN(int32_t, s1, s2);
+          break;
+        }
+        case DIT_i64: {
+          DV_EQS_AND_RETURN(int64_t, s1, s2);
+          break;
+        }
+        case DIT_f32: {
+          DV_EQS_AND_RETURN(float, s1, s2);
+          break;
+        }
+        case DIT_f64: {
+          DV_EQS_AND_RETURN(double, s1, s2);
+          break;
+        }
+        
+        default:
+          for(i = 0; i < s1->length; i++) {
+            if(!values_equal(s1->elems[i], s2->elems[i])) {
+              return false;
+            }
+          }
+          break;
       }
+
       return true;
     }
 
@@ -689,6 +722,17 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_ADD) {
+        if (IS_TENSOR(peek(vm, 0)) || IS_TENSOR(peek(vm, 1))) {
+          int stat = 0;
+          drax_value _rs = __d_tensor_add(vm, &stat);
+          if (!stat) {
+            raise_drax_error(vm, CAST_ERROR(_rs)->chars);
+            return 1;
+          }
+          push(vm, DS_VAL(_rs));
+          break;
+        }
+
         binary_op(vm, +);
         break;
       }

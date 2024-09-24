@@ -21,9 +21,9 @@
 #define DISABLE_REFR_PROCESS() parser.is_refr = 0
 #define ENABLE_REFR_PROCESS()  parser.is_refr = 1
 
+extern int is_teractive_mode;
 parser_state parser;
 parser_builder* current = NULL;
-
 /**
  * Module List
  * 
@@ -148,7 +148,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_BE,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LS,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_LE,        NULL,                process_binary, iDIFF),
-  make_op_line(DTK_LL,        process_tensor,        process_binary, iCALL),
+  make_op_line(DTK_LL,        process_tensor,      process_binary, iCALL),
   make_op_line(DTK_GG,        NULL,                NULL,           iNONE),
   make_op_line(DTK_PIPE,      NULL,                process_pipe,   iTERM),
   make_op_line(DTK_AMP,       process_amper,       NULL,           iNONE),
@@ -736,10 +736,12 @@ static void expression_with_lb(d_vm* vm) {
 }
 
 static void block(d_vm* vm) {
+  int remove_u = 0;
   while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
     int cl = parser.current.line;
     
     expression(vm);
+    /*put_instruction(vm, OP_POP);*/
     
     if (
       cl == parser.current.line &&
@@ -968,25 +970,31 @@ void process_if(d_vm* vm, bool v) {
   int then_jump = put_jmp(vm, OP_JMF);
   put_instruction(vm, OP_POP);
 
+  int remove_u = 0;
   while (
     (get_current_token() != DTK_EOF) &&
     (get_current_token() != DTK_END) &&
     (get_current_token() != DTK_ELSE)) 
   {
+    if (remove_u) put_instruction(vm, OP_POP);
     expression(vm);
+    remove_u = 1;
   }
 
   int else_jump = put_jmp(vm, OP_JMP);
 
   patch_jump(vm, then_jump);
   put_instruction(vm, OP_POP);
-
+  
+  remove_u = 0;
   if (eq_and_next(DTK_ELSE)) {
     while (
       (get_current_token() != DTK_EOF) &&
       (get_current_token() != DTK_END))
     {
+      if (remove_u) put_instruction(vm, OP_POP);
       expression(vm);
+      remove_u = 1;
     }
   }
 
@@ -1037,7 +1045,9 @@ int __build__(d_vm* vm, const char* input, char* path) {
 
   while (get_current_token() != DTK_EOF) {
     expression_with_lb(vm);
-    /*put_instruction(vm, OP_POP);*/
+    if (!is_teractive_mode) {
+      put_instruction(vm, OP_POP);
+    }
   }
 
   if (parser.has_error) {

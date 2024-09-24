@@ -18,7 +18,10 @@
   #include "dshell.h"
 #endif
 
+int is_teractive_mode = 0;
+
 static int interactive_shell(d_vm* v) {
+  is_teractive_mode = 1;
   initial_info();
   
   while (1) {
@@ -40,6 +43,7 @@ static int interactive_shell(d_vm* v) {
 }
 
 static int process_file(d_vm* v, char** argv) {
+  is_teractive_mode = 0;
   int stat = 0;
   char* content = 0;
   char* path = argv[1];
