@@ -736,7 +736,6 @@ static void expression_with_lb(d_vm* vm) {
 }
 
 static void block(d_vm* vm) {
-  int remove_u = 0;
   while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
     int cl = parser.current.line;
     
