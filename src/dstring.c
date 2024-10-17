@@ -29,6 +29,44 @@ drax_value dstr_to_number(d_vm* vm, int* stat) {
   return AS_VALUE(strtod(ds->chars, NULL));
 }
 
+drax_value dstr_to_tensor(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  drax_string* ds = CAST_STRING(a);
+
+  drax_tensor* t = new_dtensor(vm, ds->length, DIT_u8);
+  t->length = ds->length;
+  uint8_t* e = (uint8_t*) t->elems;
+
+  int i;
+  for(i = 0; i < ds->length; i++) e[i] = (uint8_t) ds->chars[i];
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(t);
+}
+
+drax_value dstr_from_tensor(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_tensor(a, stat);
+  drax_tensor* t = CAST_TENSOR(a);
+
+  if(DIT_u8 != t->_stype) {
+    return DS_VAL(new_derror(vm, (char*) "Expected a u8 tensor"));
+  }
+
+  uint8_t* elems = (uint8_t*) t->elems;
+  char* c = (char*) malloc(t->length * sizeof(char));
+
+  int i;
+  for(i = 0; i < t->length; i++) c[i] = (char) elems[i];
+
+  drax_string* s = new_dstring(vm, c, t->length);
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(s);
+}
+
+
 #if !defined(_POSIX_C_SOURCE) || _POSIX_C_SOURCE < 200809L
 char* strndup(const char *s, size_t n) {
   char *p;

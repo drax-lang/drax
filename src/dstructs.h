@@ -53,6 +53,7 @@ typedef enum d_internal_types {
   DIT_i16       = 96,
   DIT_i32       = 95,
   DIT_i64       = 94,
+  DIT_u8        = 93,
 
   DIT_LIST     = DS_LIST, /* == 3*/
   DIT_TENSOR   = DS_TENSOR,

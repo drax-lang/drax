@@ -31,6 +31,10 @@ drax_value __d_tensor_at(d_vm* vm, int* stat) {
     RETURN_AT_TO_TYPE(int16_t, _i16, ll, n);
   }
 
+  if (DIT_u8 == ll->_stype) {
+    RETURN_AT_TO_TYPE(uint8_t, _i8, ll, n);
+  }
+
   if (DIT_i32 == ll->_stype) {
     RETURN_AT_TO_TYPE(int32_t, _i32, ll, n);
   }
@@ -76,7 +80,9 @@ drax_value __d_tensor_concat(d_vm* vm, int* stat) {
 
   if (DIT_i16 == l1->_stype) {
     DO_MEMCPY_TO_TYPE(int16_t, l1, l2, l);
-  } else if (DIT_i32 == l1->_stype) {
+  } else if (DIT_u8 == l1->_stype) {
+    DO_MEMCPY_TO_TYPE(uint8_t, l1, l2, l);
+  }else if (DIT_i32 == l1->_stype) {
     DO_MEMCPY_TO_TYPE(int32_t, l1, l2, l);
   } else if (DIT_i64 == l1->_stype) {
     DO_MEMCPY_TO_TYPE(int64_t, l1, l2, l);
@@ -104,6 +110,10 @@ drax_value __d_tensor_head(d_vm* vm, int* stat) {
   drax_tensor* l = CAST_TENSOR(a);
 
   DX_SUCESS_FN(stat);
+
+  if (DIT_u8 == l->_stype) {
+    RETURN_VAL_TO_TYPE(uint8_t, l);
+  }
 
   if (DIT_i16 == l->_stype) {
     RETURN_VAL_TO_TYPE(int16_t, l);
@@ -144,7 +154,9 @@ drax_value __d_tensor_tail(d_vm* vm, int* stat) {
 
   if (DIT_i16 == l->_stype) {
     REMOVE_VAL_TO_TYPE_TAIL(int16_t, l1, l);
-  } else if (DIT_i32 == l->_stype) {
+  } else if (DIT_u8 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_TAIL(uint8_t, l1, l);
+  }else if (DIT_i32 == l->_stype) {
     REMOVE_VAL_TO_TYPE_TAIL(int32_t, l1, l);
   } else if (DIT_i64 == l->_stype) {
     REMOVE_VAL_TO_TYPE_TAIL(int64_t, l1, l);
@@ -213,6 +225,8 @@ drax_value __d_tensor_remove_at(d_vm* vm, int* stat) {
 
   if (DIT_i16 == l->_stype) {
     REMOVE_VAL_TO_TYPE_R_AT(int16_t, l, nl);
+  } else if (DIT_u8 == l->_stype) {
+    REMOVE_VAL_TO_TYPE_R_AT(uint8_t, l, nl);
   } else if (DIT_i32 == l->_stype) {
     REMOVE_VAL_TO_TYPE_R_AT(int32_t, l, nl);
   } else if (DIT_i64 == l->_stype) {
@@ -259,6 +273,8 @@ drax_value __d_tensor_insert_at(d_vm* vm, int* stat) {
 
   if (DIT_i16 == l->_stype) {
     INSET_AT_TO_TYPE(int16_t, l, nl);
+  } else if (DIT_u8 == l->_stype) {
+    INSET_AT_TO_TYPE(uint8_t, l, nl);
   } else if (DIT_i32 == l->_stype) {
     INSET_AT_TO_TYPE(int32_t, l, nl);
   } else if (DIT_i64 == l->_stype) {
@@ -306,6 +322,8 @@ drax_value __d_tensor_replace_at(d_vm* vm, int* stat) {
 
   if (DIT_i16 == l->_stype) {
     REPLACE_AT_TO_TYPE(int16_t, l, nl);
+  } else if (DIT_u8 == l->_stype) {
+    REPLACE_AT_TO_TYPE(uint8_t, l, nl);
   } else if (DIT_i32 == l->_stype) {
     REPLACE_AT_TO_TYPE(int32_t, l, nl);
   } else if (DIT_i64 == l->_stype) {
@@ -353,6 +371,8 @@ drax_value __d_tensor_slice(d_vm* vm, int* stat) {
 
   if (DIT_i16 == l->_stype) {
     S_SLICE_TO_TYPE(int16_t, l, nl);
+  } else if (DIT_u8 == l->_stype) {
+    S_SLICE_TO_TYPE(uint8_t, l, nl);
   } else if (DIT_i32 == l->_stype) {
     S_SLICE_TO_TYPE(int32_t, l, nl);
   } else if (DIT_i64 == l->_stype) {
@@ -403,6 +423,14 @@ static double __d_tensor_sum_number(drax_tensor* t) {
       int16_t* _i16 = (int16_t*) t->elems;
       for (i = 0; i < t->length; i++) i16res += _i16[i];
       res = (double) i16res;
+      break;
+    }
+
+    case DIT_u8: {
+      uint8_t u8res = 0;
+      uint8_t* _u8 = (uint8_t*) t->elems;
+      for (i = 0; i < t->length; i++) u8res += _u8[i];
+      res = (double) u8res;
       break;
     }
 
@@ -516,6 +544,10 @@ static void __d_tensor_add_number(
       OP_TENSOR_SAME_TP(int16_t, +, l_n, l_g, l_l);
       break;
     }
+    case DIT_u8: {
+      OP_TENSOR_SAME_TP(uint8_t, +, l_n, l_g, l_l);
+      break;
+    }
     case DIT_i32: {
       OP_TENSOR_SAME_TP(int32_t, +, l_n, l_g, l_l);
       break;
@@ -552,6 +584,54 @@ static void __d_tensor_add_number(
     default:
       break;
   }
+}
+
+drax_value __d_tensor_type(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_tensor(a, stat);
+  
+  drax_tensor* t = CAST_TENSOR(a);
+
+  switch (t->_stype) {
+    case DIT_i16: {
+      DX_SUCESS_FN(stat);
+      MSR(vm, "i16");
+    }
+    case DIT_u8: {
+      DX_SUCESS_FN(stat);
+      MSR(vm, "u8");
+
+    }
+    case DIT_i32: {
+      DX_SUCESS_FN(stat);
+      MSR(vm, "i32");
+    }
+    case DIT_i64: {
+      DX_SUCESS_FN(stat);
+      MSR(vm, "i64");
+    }
+    case DIT_f32: {
+      DX_SUCESS_FN(stat);
+      MSR(vm, "f32");
+    }
+    case DIT_f64: {
+      DX_SUCESS_FN(stat);
+      MSR(vm, "f64");
+    }
+    case DIT_TENSOR: {
+      DX_SUCESS_FN(stat);
+      MSR(vm, "tensor");
+    }
+    case DIT_UNDEFINED: {
+      DX_SUCESS_FN(stat);
+      MSR(vm, "undefined");
+    }
+    default:
+        break;
+  }
+
+  DX_ERROR_FN(stat);
+  return DS_VAL(new_derror(vm, (char*) "Type not found"));
 }
 
 drax_value __d_tensor_add(d_vm* vm, int* stat) { 

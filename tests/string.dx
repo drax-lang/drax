@@ -49,4 +49,12 @@ assert(String.to_lowercase("FOO") == "foo", "string error: fail to lower case")
 assert(String.to_uppercase("abcdefghijklmnopqrstuvwxyz_1234567890") == "ABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890", "string error: fail to upper case by alphabet")
 assert(String.to_uppercase("foo") == "FOO", "string error: fail to upper case")
 
+s = "abcd"
+result = String.to_tensor(s)
+expected = <<u8 :: 97, 98, 99, 100>>
+
+assert(Tensor.type(result), "string error: expected u8 tensor was result")
+assert(result == expected, "string error: result not expected")
+assert(String.from_tensor(result) == s, "string error: the result is different from what was expected")
+
 print("String done!")

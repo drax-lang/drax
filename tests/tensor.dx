@@ -130,7 +130,6 @@ assert(Tensor.at(list_i64, 2) == 10000000000, "i64 positive value invalid")
 
 assert(Tensor.at(list_i64, 3) == -10000000000, "i64 negative value invalid")
 
-print("Tensor done!")
 
 ## add
 assert(Tensor.add(<<i16::1,2,3, 4, 5>>, <<i16::1,2,3,4>>) == <<i16::2,4,6,8,5>>, "fail to add i16 tensor")
@@ -164,3 +163,10 @@ expc = <<
   <<f64 :: 14.000000000000000, 16.000000000000000, 18.000000000000000>>
 >>
 assert(multd == expc, "fail to add mult tensor")
+
+assert(Tensor.type(<<>>) == "undefined", "tendor error: expected undefined was type")
+assert(Tensor.type(<<u8 :: 0>>) == "u8", "tendor error: expected u8 was type")
+assert(Tensor.type(<<i16 :: 0>>) == "i16", "tendor error: expected i16 was type")
+assert(Tensor.type(<<f32 :: 0.0>>) == "f32", "tendor error: expected f32 was type")
+
+print("Tensor done!")

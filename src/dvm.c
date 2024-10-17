@@ -164,6 +164,10 @@ static bool values_equal(drax_value a, drax_value b) {
       if(s1->length != s2->length) { return false; }
 
       switch (s1->_stype) {
+        case DIT_u8: {
+          DV_EQS_AND_RETURN(uint8_t, s1, s2);
+          break;
+        }
         case DIT_i16: {
           DV_EQS_AND_RETURN(int16_t, s1, s2);
           break;
