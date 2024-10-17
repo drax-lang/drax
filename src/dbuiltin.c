@@ -1080,7 +1080,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * String module
    */
-  drax_native_module* string = new_native_module(vm, "String", 8);
+  drax_native_module* string = new_native_module(vm, "String", 10);
   const drax_native_module_helper string_helper[] = {
     {2, "split", dstr_split },
     {1, "length", dstr_length },
@@ -1090,6 +1090,8 @@ void create_native_modules(d_vm* vm) {
     {1, "to_uppercase", dstr_to_uppercase },
     {1, "to_lowercase", dstr_to_lowercase },
     {1, "to_number", dstr_to_number },
+    {1, "to_tensor", dstr_to_tensor },
+    {1, "from_tensor", dstr_from_tensor },
   };
 
   put_fun_on_module(string, string_helper, sizeof(string_helper) / sizeof(drax_native_module_helper)); 
@@ -1149,7 +1151,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * Tensor Module
    */ 
-  drax_native_module* tensor = new_native_module(vm, "Tensor", 14);
+  drax_native_module* tensor = new_native_module(vm, "Tensor", 15);
   const drax_native_module_helper tensor_helper[] = {
     {2, "concat", __d_tensor_concat },
     {1, "head", __d_tensor_head},
@@ -1165,6 +1167,7 @@ void create_native_modules(d_vm* vm) {
     {1, "sparse", __d_tensor_sparse},
     {1, "sum", __d_tensor_sum},
     {2, "add", __d_tensor_add},
+    {1, "type", __d_tensor_type},
   };
   
   put_fun_on_module(tensor, tensor_helper, sizeof(tensor_helper) / sizeof(drax_native_module_helper)); 

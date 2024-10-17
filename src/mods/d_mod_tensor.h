@@ -38,6 +38,8 @@ drax_value __d_tensor_replace_at(d_vm* vm, int* stat);
 drax_value __d_tensor_slice(d_vm* vm, int* stat);
 
 drax_value __d_tensor_sparse(d_vm* vm, int* stat);
+
+drax_value __d_tensor_type(d_vm* vm, int* stat);
 /**
  * Mathematical functions
  */

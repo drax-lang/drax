@@ -462,6 +462,12 @@ void process_tensor(d_vm* vm, bool v) {
       process_token(DTK_DCOLON, "Expect '::' after type.");
       break;
     }
+    case DTK_T_u8: {
+      _tp = DIT_u8;
+      get_next_token();
+      process_token(DTK_DCOLON, "Expect '::' after type.");
+      break;
+    }
     case DTK_T_i32: {
       _tp = DIT_i32;
       get_next_token();

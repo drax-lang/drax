@@ -70,6 +70,7 @@ static d_internal_types get_tensor_type(drax_value v) {
 int tensor_type_is_number(d_internal_types t) {
   return (
     t == DIT_i16 ||
+    t == DIT_u8 ||
     t == DIT_i32 ||
     t == DIT_i64 ||
     t == DIT_f32 ||
@@ -94,6 +95,11 @@ drax_tensor* new_dtensor(d_vm* vm, int cap, d_internal_types type) {
     case DIT_i16: {
       double* _dvint16_t = malloc(sizeof(int16_t) * l->cap);
       l->elems = POINTER_TO_PDRAXVAL(_dvint16_t);
+      break;
+    }
+    case DIT_u8: {
+      double* _dvu8_t = malloc(sizeof(uint8_t) * l->cap);
+      l->elems = POINTER_TO_PDRAXVAL(_dvu8_t);
       break;
     }
     case DIT_i32: {
@@ -158,6 +164,10 @@ int put_value_dtensor(d_vm* vm, drax_tensor* l, drax_value v, drax_value* r) {
         REALLOC_FOR_TYPE(_i16, l, int16_t);
         break;
       }
+      case DIT_u8: {
+        REALLOC_FOR_TYPE(_u8, l, uint8_t);
+        break;
+      }
       case DIT_i32: {
         REALLOC_FOR_TYPE(_i32, l, int32_t);
         break;
@@ -184,6 +194,9 @@ int put_value_dtensor(d_vm* vm, drax_tensor* l, drax_value v, drax_value* r) {
   switch (l->_stype) {
     case DIT_i16:
       APPEND_VAL_FOR_TYPE(_i16, l, int16_t, v)
+      break;
+    case DIT_u8:
+      APPEND_VAL_FOR_TYPE(_u8, l, uint8_t, v)
       break;
 
     case DIT_i32:

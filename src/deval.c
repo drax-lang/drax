@@ -34,6 +34,10 @@ static void print_tensor_type(d_internal_types v) {
       printf("f32");
       break;
     }
+    case DIT_u8: {
+      printf("u8");
+      break;
+    }
     case DIT_f64: {
       printf("f64");
       break;
@@ -107,6 +111,12 @@ static void print_tensor(drax_tensor* l, int formated, int level) {
     int16_t* _i16 = (int16_t*) l->elems;
     for (i = 0; i < l->length; i++) {
       DPRINT_COLOR1(D_COLOR_BLUE, "%i", (int16_t) _i16[i]);
+      if ((i+1) < l->length) printf(", ");
+    }
+  } else if (DIT_u8 == l->_stype) {
+    uint8_t* _u8 = (uint8_t*) l->elems;
+    for (i = 0; i < l->length; i++) {
+      DPRINT_COLOR1(D_COLOR_BLUE, "%d", (uint8_t) _u8[i]);
       if ((i+1) < l->length) printf(", ");
     }
   } else if (DIT_i32 == l->_stype) {
