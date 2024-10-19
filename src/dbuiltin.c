@@ -102,6 +102,7 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_FUNCTION: MSR(vm, "function");
       case DS_STRING: MSR(vm, "string");
       case DS_LIST: MSR(vm, "list");
+      case DS_TIME: MSR(vm, "time");
       case DS_TENSOR: MSR(vm, "tensor");
       case DS_FRAME: MSR(vm, "frame");
       case DS_MODULE: MSR(vm, "module");
@@ -1024,6 +1025,129 @@ static drax_value __d_disconnect_server(d_vm* vm, int* stat) {
 }
 
 /**
+ * Time
+*/
+
+static drax_value __d_time_now(d_vm* vm, int* stat) {
+  drax_time* nt = new_dtime(vm);
+  time_t now;
+  time(&now);
+  struct tm* time = localtime(&now);
+
+  nt->hours = time->tm_hour;
+  nt->minutes = time->tm_min;
+  nt->seconds = time->tm_sec;
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nt);  
+}
+
+static drax_value __d_time_to_frame(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  return_if_is_not_time(v, stat);
+  drax_time* nt = CAST_TIME(v);
+
+  drax_frame* f = new_dframe(vm, 3);
+  put_value_dframe(f, (char*) "hours", num_to_draxvalue((double) nt->hours));
+  put_value_dframe(f, (char*) "minutes", num_to_draxvalue((double) nt->minutes));
+  put_value_dframe(f, (char*) "seconds", num_to_draxvalue((double) nt->seconds));
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(f);  
+}
+
+static drax_value __d_time_from_frame(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  return_if_is_not_frame(v, stat);
+
+  drax_frame* f = CAST_FRAME(v);
+  drax_time* t = new_dtime(vm);
+
+  drax_value hours;
+  if(get_value_dframe(f, (char*) "hours", &hours) != -1) {
+    return_if_is_not_number(hours, stat);
+    t->hours = (int) CAST_NUMBER(hours);
+  }
+
+  drax_value minutes;
+  if(get_value_dframe(f, (char*) "minutes", &minutes) != -1) {
+    return_if_is_not_number(minutes, stat);
+    t->minutes = (int) CAST_NUMBER(minutes);
+    if(t->minutes >= 60) {
+      return DS_VAL(new_derror(vm, (char*) "Invalid time: minutes cannot be greater than or equal to 60."));
+    }
+  }
+  
+  drax_value seconds;
+  if(get_value_dframe(f, (char*) "seconds", &seconds) != -1) {
+    return_if_is_not_number(seconds, stat);
+    t->seconds = (int) CAST_NUMBER(seconds);
+
+    if(t->seconds >= 60) {
+      return DS_VAL(new_derror(vm, (char*) "Invalid time: seconds cannot be greater than or equal to 60."));
+    }
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(t);  
+}
+
+static drax_value __d_time_add(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_time(a, stat);
+  return_if_is_not_time(b, stat);
+  drax_time* t1 = CAST_TIME(a);
+  drax_time* t2 = CAST_TIME(b);
+
+  drax_time* nt = new_dtime(vm);
+    
+  nt->seconds = t1->seconds + t2->seconds;
+  if(nt->seconds >= 60) {
+    nt->minutes = (t1->seconds + t2->seconds) / 60;
+    nt->seconds = nt->seconds - (60 * nt->minutes);
+  }
+
+  nt->minutes += t1->minutes + t2->minutes;
+  if(nt->minutes >= 60) {
+    nt->hours = (t1->minutes + t2->minutes) / 60;
+    nt->minutes = nt->minutes - (60 * nt->hours);
+  }
+  nt->hours += t1->hours + t2->hours;
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nt);  
+}
+
+static drax_value __d_time_new(d_vm* vm, int* stat) {
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_number(c, stat);
+  return_if_is_not_number(b, stat);
+  return_if_is_not_number(a, stat);
+
+  int hours = (int) CAST_NUMBER(a);
+  int minutes = (int) CAST_NUMBER(b);
+  if(minutes >= 60) {
+    return DS_VAL(new_derror(vm, (char*) "Invalid time: minutes cannot be greater than or equal to 60"));
+  }
+
+  int seconds = (int) CAST_NUMBER(c);
+  if(seconds >= 60) {
+    return DS_VAL(new_derror(vm, (char*) "Invalid time: seconds cannot be greater than or equal to 60"));
+  }
+  
+  drax_time* nt = new_dtime(vm);
+  nt->hours = hours;
+  nt->minutes = minutes;
+  nt->seconds = seconds;
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nt);  
+}
+
+/**
  * Entry point for native modules
  */
 
@@ -1043,6 +1167,21 @@ void create_native_modules(d_vm* vm) {
 
   put_fun_on_module(mos, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(mos));
+
+    /**
+   * Time module
+  */
+  drax_native_module* mtime = new_native_module(vm, "Time", 5);
+  const drax_native_module_helper time_helper[] = {
+    {0, "now", __d_time_now },
+    {1, "to_frame", __d_time_to_frame },
+    {1, "from_frame", __d_time_from_frame },
+    {2, "add", __d_time_add },
+    {3, "new", __d_time_new },
+  };
+
+  put_fun_on_module(mtime, time_helper, sizeof(time_helper) / sizeof(drax_native_module_helper)); 
+  put_mod_table(vm->envs->modules, DS_VAL(mtime));
 
   /**
    * Core module

@@ -216,6 +216,21 @@ static bool values_equal(drax_value a, drax_value b) {
       return true;
     }
 
+    case DS_TIME: {
+      drax_time* t1 = CAST_TIME(a);
+      drax_time* t2 = CAST_TIME(b);
+
+      if(
+        t1->hours == t2->hours &&
+        t1->minutes == t2->minutes &&
+        t1->seconds == t2->seconds 
+      ) {
+        return true;
+      }
+
+      return false;
+    }
+
 
     case DS_FUNCTION:
     case DS_NATIVE:

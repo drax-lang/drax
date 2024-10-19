@@ -1,0 +1,23 @@
+a = Time.from_frame({'hours': 3, 'minutes': 10, 'seconds': 50})
+b = Time.from_frame({'hours': 5, 'minutes': 55, 'seconds': 10})
+result = Time.add(a, b)
+expected = Time.new(9, 6, 0)
+assert(result == expected, "time error: expected result Time<09:06:00>")
+
+a = Time.new(1, 5, 10)
+b = Time.new(1, 55, 10)
+result = Time.add(a, b)
+expected = Time.new(3, 0, 20)
+assert(result == expected, "time error: expected result Time<03:00:20>")
+
+t = Time.new(10, 20, 30)
+result = Time.to_frame(t)
+expected = {'hours': 10, 'minutes': 20, 'seconds': 30}
+assert(result == expected, "time error: unspected result.")
+
+t = Time.new(9, 59, 59)
+f = Time.to_frame(t)
+result = Time.from_frame(f)
+assert(result == t, "time error: expected result as Time<09:59:59>")
+
+print("Time done")

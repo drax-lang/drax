@@ -42,6 +42,14 @@ drax_list* new_dlist(d_vm* vm, int cap) {
   return l;
 }
 
+drax_time* new_dtime(d_vm* vm) {
+  drax_time* l = ALLOCATE_DSTRUCT(vm, drax_time, DS_TIME);
+  l->seconds = 0;
+  l->minutes = 0;
+  l->hours = 0;
+  return l;
+}
+
 void put_value_dlist(drax_list* l, drax_value v) {
   if (l->cap <= l->length) {
     l->cap = (l->cap + LIST_PRE_SIZE);
