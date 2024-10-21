@@ -1147,6 +1147,86 @@ static drax_value __d_time_new(d_vm* vm, int* stat) {
   return DS_VAL(nt);  
 }
 
+static drax_value __d_time_from_seconds(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_number(a, stat);
+  int sencods = (int) CAST_NUMBER(a);
+
+  drax_time* t = new_dtime(vm);
+
+  t->seconds = sencods;
+  if(t->seconds >= 60) {
+    t->minutes = t->seconds / 60;
+    t->seconds = t->seconds - (t->minutes * 60);
+  }
+
+  if(t->minutes >= 60) {
+    t->hours = t->minutes / 60;
+    t->minutes = t->minutes - (t->hours * 60);
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(t);  
+}
+
+static drax_value __d_time_to_string(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_time(a, stat);
+  drax_time* t = CAST_TIME(a);
+
+  char* res = (char*) malloc(sizeof(char) * 9);
+  snprintf(res, sizeof(res) + 1, "%02d:%02d:%02d", t->hours, t->minutes, t->seconds);
+
+  drax_string* s = new_dstring(vm, (char*) res, strlen(res));
+  s->chars[strlen(s->chars) + 1] = '\0';
+  DX_SUCESS_FN(stat);
+  return DS_VAL(s);  
+}
+
+static drax_value __d_time_from_string(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  drax_string* s = CAST_STRING(a);
+
+  drax_time* t = new_dtime(vm);
+
+  char _e;
+  if(sscanf(s->chars, "%d:%d:%d%c", &t->hours, &t->minutes, &t->seconds, &_e) != 3) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char*) "Invalid format: the expected format is hh:mm:ss"));
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(t);  
+}
+
+static drax_value __d_time_get_hours(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_time(a, stat);
+  drax_time* t = CAST_TIME(a);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue((double) t->hours);  
+}
+
+static drax_value __d_time_get_minutes(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_time(a, stat);
+  drax_time* t = CAST_TIME(a);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue((double) t->minutes);  
+}
+
+static drax_value __d_time_get_seconds(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_time(a, stat);
+  drax_time* t = CAST_TIME(a);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue((double) t->seconds);  
+}
+
 /**
  * Entry point for native modules
  */
@@ -1171,13 +1251,19 @@ void create_native_modules(d_vm* vm) {
     /**
    * Time module
   */
-  drax_native_module* mtime = new_native_module(vm, "Time", 5);
+  drax_native_module* mtime = new_native_module(vm, "Time", 11);
   const drax_native_module_helper time_helper[] = {
     {0, "now", __d_time_now },
     {1, "to_frame", __d_time_to_frame },
     {1, "from_frame", __d_time_from_frame },
     {2, "add", __d_time_add },
     {3, "new", __d_time_new },
+    {1, "from_seconds", __d_time_from_seconds },
+    {1, "to_string", __d_time_to_string },
+    {1, "from_string", __d_time_from_string },
+    {1, "get_hours", __d_time_get_hours },
+    {1, "get_minutes", __d_time_get_minutes },
+    {1, "get_seconds", __d_time_get_seconds },
   };
 
   put_fun_on_module(mtime, time_helper, sizeof(time_helper) / sizeof(drax_native_module_helper)); 
