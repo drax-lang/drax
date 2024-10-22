@@ -231,7 +231,8 @@ static void print_d_struct(drax_value value, int formated) {
       break;
 
     case DS_TIME:
-      printf("Time<%02d:%02d:%02d>", CAST_TIME(value)->hours, CAST_TIME(value)->minutes, CAST_TIME(value)->seconds);
+      struct tm* time = localtime(&CAST_TIME(value)->timestamp);
+      printf("Time<%02d:%02d:%02d>", time->tm_hour, time->tm_min, time->tm_sec);
       break; 
   }
 }

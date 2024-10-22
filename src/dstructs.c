@@ -44,9 +44,7 @@ drax_list* new_dlist(d_vm* vm, int cap) {
 
 drax_time* new_dtime(d_vm* vm) {
   drax_time* l = ALLOCATE_DSTRUCT(vm, drax_time, DS_TIME);
-  l->seconds = 0;
-  l->minutes = 0;
-  l->hours = 0;
+  l->timestamp = 0;
   return l;
 }
 

@@ -219,12 +219,14 @@ static bool values_equal(drax_value a, drax_value b) {
     case DS_TIME: {
       drax_time* t1 = CAST_TIME(a);
       drax_time* t2 = CAST_TIME(b);
+      struct tm* time1 = localtime(&t1->timestamp);
+      struct tm* time2 = localtime(&t2->timestamp);
 
       if(
-        t1->hours == t2->hours &&
-        t1->minutes == t2->minutes &&
-        t1->seconds == t2->seconds 
-      ) {
+        time1->tm_hour == time2->tm_hour &&
+        time1->tm_min == time2->tm_min   &&
+        time1->tm_sec == time2->tm_sec
+        ) {
         return true;
       }
 

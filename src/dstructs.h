@@ -115,9 +115,7 @@ typedef struct drax_tensor {
 
 typedef struct drax_time {
   d_struct d_struct;
-  int seconds;
-  int minutes;
-  int hours;
+  time_t timestamp;
 } drax_time;
 
 typedef struct drax_frame {
