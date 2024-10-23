@@ -1105,7 +1105,7 @@ static drax_value __d_time_add(d_vm* vm, int* stat) {
   drax_time* t2 = CAST_TIME(b);
 
   struct tm* ntime = (struct tm*) malloc(sizeof(struct tm));
-  
+
   struct tm* time1 = localtime(&t1->timestamp);
   struct tm* time2 = localtime(&t2->timestamp);
     
@@ -1255,6 +1255,20 @@ static drax_value __d_time_get_seconds(d_vm* vm, int* stat) {
   return num_to_draxvalue((double) time->tm_sec);  
 }
 
+static drax_value __d_time_diff(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  return_if_is_not_time(a, stat);
+  return_if_is_not_time(b, stat);
+
+  drax_time* t1 = CAST_TIME(a);
+  drax_time* t2 = CAST_TIME(b);
+  double diff = difftime(t1->timestamp, t2->timestamp);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue(diff);  
+}
+
 /**
  * Entry point for native modules
  */
@@ -1279,7 +1293,7 @@ void create_native_modules(d_vm* vm) {
     /**
    * Time module
   */
-  drax_native_module* mtime = new_native_module(vm, "Time", 11);
+  drax_native_module* mtime = new_native_module(vm, "Time", 12);
   const drax_native_module_helper time_helper[] = {
     {0, "now", __d_time_now },
     {1, "to_frame", __d_time_to_frame },
@@ -1292,6 +1306,7 @@ void create_native_modules(d_vm* vm) {
     {1, "get_hours", __d_time_get_hours },
     {1, "get_minutes", __d_time_get_minutes },
     {1, "get_seconds", __d_time_get_seconds },
+    {2, "diff", __d_time_diff },
   };
 
   put_fun_on_module(mtime, time_helper, sizeof(time_helper) / sizeof(drax_native_module_helper)); 

@@ -93,4 +93,22 @@ result = Time.get_hours(t)
 expected = 11
 assert(result == expected, "time error: expected 11 as result")
 
+t1 = Time.new(10, 20, 30)
+t2 = Time.new(10, 20, 10)
+result = Time.diff(t1, t2)
+expected = 20
+assert(result == expected, "time error: expected 20 seconds as result")
+
+t1 = Time.new(10, 20, 30)
+t2 = Time.new(10, 19, 30)
+result = Time.diff(t1, t2)
+expected = 60
+assert(result == expected, "time error: expected 60 seconds as result")
+
+t1 = Time.new(10, 20, 30)
+t2 = Time.new(9, 20, 30)
+result = Time.diff(t1, t2)
+expected = 3600
+assert(result == expected, "time error: expected 60 seconds as result")
+
 print("Time done")
