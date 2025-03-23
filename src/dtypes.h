@@ -31,6 +31,7 @@ typedef enum dstruct_type{
 
 typedef struct d_struct {
   dstruct_type type;
+  bool mut;
   bool checked;
   struct d_struct* next;
 } d_struct;
@@ -77,6 +78,7 @@ typedef enum drax_nanbox_def {
 */
 typedef enum d_op_code {
   OP_CONST = 1,
+  OP_LET,
   OP_NIL, 
   OP_TRUE,
   OP_FALSE,
@@ -105,9 +107,11 @@ typedef enum d_op_code {
   OP_CALL_L,   /* local*/
   OP_ARGS,     /* arguments */
   OP_FUN,
-  OP_SET_G_ID, /* global */
+  OP_SET_G_MID, /* mut global */
+  OP_SET_G_ID,  /* global */
   OP_GET_G_ID,
-  OP_SET_L_ID, /* local */
+  OP_SET_L_MID, /* mut local */
+  OP_SET_L_ID,  /* local */
   OP_GET_L_ID,
   OP_SET_I_ID, /* inside */
   OP_GET_I_ID,

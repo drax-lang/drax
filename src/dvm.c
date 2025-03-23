@@ -611,19 +611,39 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         push(vm, GET_VALUE(vm));
         break;
       }
+      VMCase(OP_SET_G_MID) {
+        drax_value mval = pop(vm);
+        if (IS_STRUCT(mval)) {
+          CAST_STRUCT(mval)->mut = true;
+        }
+        char* k = (char*) GET_VALUE(vm);
+        put_var_table(vm->envs->global, k, mval, true);
+        break;
+      }
       VMCase(OP_SET_G_ID) {
         drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
-        put_var_table(vm->envs->global, k, v);
+        put_var_table(vm->envs->global, k, v, false);
         break;
       }
       VMCase(OP_GET_G_ID) {
         if(get_definition(vm, 0) == 0) { return 1; }
         break;
       }
+      VMCase(OP_SET_L_MID) {
+        char* k = (char*) GET_VALUE(vm);
+
+        drax_value mval = pop(vm);
+        if (IS_STRUCT(mval)) {
+          CAST_STRUCT(mval)->mut = true;
+        }
+
+        put_local_table(vm->envs->local, k, mval, true);
+        break;
+      }
       VMCase(OP_SET_L_ID) {
         char* k = (char*) GET_VALUE(vm);
-        put_local_table(vm->envs->local, k, pop(vm));
+        put_local_table(vm->envs->local, k, pop(vm), false);
         break;
       }
       VMCase(OP_GET_L_ID) {
@@ -631,14 +651,20 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_SET_I_ID) {
-        /**
-         * This operation is invalid, we cannot change values 
-         * of structures such as frames and lists, as this will 
-         * influence old references, resulting in side effects.
-         */
+        drax_value k = pop(vm);
+        drax_value val = pop(vm);
+        drax_value f = pop(vm);
 
-        raise_drax_error(vm, "error: invalid assigment\nuse helper functions to change values of structures\n");
-        return 1;
+        if (IS_STRUCT(f) && !CAST_STRUCT(f)->mut) {
+          raise_drax_error(vm, "error: invalid assigment\nuse helper functions to change values of structures\n\nor\n\nassign values using mut keyword.");
+          return 1;
+        }
+
+        if (IS_FRAME(f)) {
+          put_value_dframe(CAST_FRAME(f), (char*) k, val);
+          push(vm, DRAX_NIL_VAL);
+          break;
+        }
       }
       VMCase(OP_GET_I_ID) {
         drax_value k = pop(vm);

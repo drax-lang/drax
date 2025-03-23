@@ -21,6 +21,8 @@ typedef struct d_vm d_vm;
   #undef IS_ERROR
 #endif
 
+#define IS_MUT(v)         (CAST_STRUCT(v)->mut)
+
 #define IS_ERROR(v)       IS_ST_TYPE(v, DS_ERROR)
 #define IS_FRAME(v)       IS_ST_TYPE(v, DS_FRAME)
 #define IS_LIST(v)        IS_ST_TYPE(v, DS_LIST)
@@ -37,7 +39,7 @@ typedef struct d_vm d_vm;
 #define CAST_MODULE(v)    ((drax_native_module*) CAST_STRUCT(v))
 #define CAST_STRING(v)    ((drax_string*) CAST_STRUCT(v))
 #define CAST_LIST(v)      ((drax_list*) CAST_STRUCT(v))
-#define CAST_TENSOR(v)      ((drax_tensor*) CAST_STRUCT(v))
+#define CAST_TENSOR(v)    ((drax_tensor*) CAST_STRUCT(v))
 #define CAST_FRAME(v)     ((drax_frame*) CAST_STRUCT(v))
 #define CAST_TID(v)       ((drax_tid*) CAST_STRUCT(v))
 

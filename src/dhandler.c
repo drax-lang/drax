@@ -83,7 +83,7 @@ int get_var_table(d_generic_var_table* t, char* name, drax_value* value) {
   return 1;
 }
 
-void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
+void put_var_table(d_generic_var_table* t, char* name, drax_value value, bool mut) {
   int i = generate_hash(name, t->size);
   size_t k = fnv1a_hash(name, strlen(name));
 
@@ -91,6 +91,7 @@ void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
   
   if (node == NULL) {
     node = (drax_generic_var_node*) malloc(sizeof(drax_generic_var_node));
+    node->mut = mut;
     node->key = k;
     node->next = t->array[i];
     t->array[i] = node;
@@ -182,7 +183,7 @@ d_local_var_table* new_local_table() {
  * The table size (count) is not incremented normally.
  * it is based on the slots of each function
  */
-void put_local_table(d_local_var_table* t, char* name, drax_value value) {
+void put_local_table(d_local_var_table* t, char* name, drax_value value, bool mut) {
   if (t->count >= t->limit) {
     t->limit = t->limit + MAX_LOCAL_INSTRUCTIONS;
     t->array = (d_local_var_node**) realloc(t->array, sizeof(d_local_var_node*) * t->limit);
@@ -190,6 +191,7 @@ void put_local_table(d_local_var_table* t, char* name, drax_value value) {
 
   d_local_var_node* node = malloc(sizeof(d_local_var_node));
   node->key = fnv1a_hash(name, strlen(name));
+  node->mut = mut;
   node->value = value;
 
   int next_index = t->count - 1;

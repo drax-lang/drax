@@ -167,6 +167,7 @@ static operation_line op_lines[] = {
   make_op_line(DTK_ERROR,     NULL,                NULL,           iNONE),
   make_op_line(DTK_EOF,       NULL,                NULL,           iNONE),
   make_op_line(DTK_CONCAT,    NULL,                process_binary, iTERM),
+  make_op_line(DTK_MUT,       process_mutable,     NULL,           iNONE),
   make_op_line(DTK_ID,        process_variable,    NULL,           iNONE),
   make_op_line(DTK_RETURN,    process_return,      NULL,           iNONE),
   make_op_line(DTK_IMPORT,    process_import,      NULL,           iNONE),
@@ -615,6 +616,54 @@ void process_dstring(d_vm* vm, bool v) {
 void process_mstring(d_vm* vm, bool v) {
   UNUSED(v);
   put_pair(vm, OP_DSTR, DS_VAL(copy_dstring(vm, parser.prev.first + 3, parser.prev.length - 6)));
+}
+
+void process_mutable(d_vm* vm, bool v) {
+  UNUSED(v);
+  get_next_token();
+  d_token ctk = parser.prev;
+  int is_global = IS_GLOBAL_SCOPE(vm);
+
+  char* name = (char*) malloc(sizeof(char) * (ctk.length + 1));
+  strncpy(name, ctk.first, ctk.length);
+  name[ctk.length] = '\0';
+
+  if (parser.is_refr == 1 && get_current_token() == DTK_DIV) {
+    /** disabled */
+    DISABLE_REFR_PROCESS();
+    return;
+  }
+
+  if (eq_and_next(DTK_EQ)) {
+    expression(vm);
+    put_pair(vm, is_global ? OP_SET_G_MID : OP_SET_L_MID, (drax_value) name);
+    
+    if (!is_global) {
+      put_local(&parser, name);
+      vm->active_instr->local_range++;
+    }
+    return;
+  }
+
+  if (is_global || get_local(&parser, name) == -1) {
+    put_pair(vm, OP_GET_G_ID, (drax_value) name);
+
+    bool is_module = false;
+    int i;
+    for (i = 0; str_module_list[i] != NULL; i++) {
+      if (strcmp(str_module_list[i], name) == 0) {
+        is_module = true;
+        break;
+      }
+    }
+
+    if (!is_module) {
+      process_external_ref(vm);
+    }
+    return;
+  }
+
+  put_pair(vm, OP_GET_L_ID, (drax_value) name);
 }
 
 void process_variable(d_vm* vm, bool v) {

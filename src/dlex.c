@@ -30,6 +30,7 @@ static const drax_tokens drax_t[] = {
   {"if",     DTK_IF},
   {"nil",    DTK_NIL},
   {"or",     DTK_OR},
+  {"mut",    DTK_MUT},
   {"true",   DTK_TRUE},
   {"import", DTK_IMPORT},
   {"export", DTK_EXPORT},

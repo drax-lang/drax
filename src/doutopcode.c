@@ -23,6 +23,11 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         ip++;
         break;
       }
+      case OP_LET: {
+        printf("OP_LET, <value>\n");
+        ip++;
+        break;
+      }
       case OP_NIL: {
         printf("OP_NIL\n");
         break;

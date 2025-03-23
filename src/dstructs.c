@@ -19,6 +19,7 @@
 static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type, int is_orphan) {
   d_struct* d = (d_struct*) malloc(sizeof(d_struct) * size);
   d->type = type;
+  d->mut = false;
   d->checked = 0;
   if (!is_orphan) {
     d->next = vm->d_ls;
@@ -322,19 +323,19 @@ int get_value_dframe(drax_frame* l, char* name, drax_value* value) {
 }
 
 void put_value_dframe(drax_frame* l, char* k, drax_value v) {
-  if (l->cap <= l->length) {
-    l->cap = (l->cap + 8);
-    l->keys = realloc(l->keys, sizeof(int) * l->cap);
-    l->values = realloc(l->values, sizeof(drax_value) * l->cap);
-    l->literals = realloc(l->literals, sizeof(char*) * l->cap);
-  }
-
   drax_value tv;
   int idx = get_value_dframe(l, k, &tv);
 
   if (idx != -1) {
     l->values[idx] = v;
     return;
+  }
+
+  if (l->cap <= l->length) {
+    l->cap = (l->cap + 8);
+    l->keys = realloc(l->keys, sizeof(int) * l->cap);
+    l->values = realloc(l->values, sizeof(drax_value) * l->cap);
+    l->literals = realloc(l->literals, sizeof(char*) * l->cap);
   }
 
   l->keys[l->length] = fnv1a_hash(k, strlen(k));
