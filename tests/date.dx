@@ -1,0 +1,97 @@
+a = Date.now()
+assert(typeof(a) == "date", "date error: expected date type as result")
+
+d = Date.new(13, 11, 2007)
+assert(Date.get_day(d) == 13, "date error: expected 13 as result")
+assert(Date.get_month(d) == 11, "date error: expected 11 as result")
+assert(Date.get_year(d) == 2007, "date error: expected 2007 as result")
+
+d = Date.new(28, 2, 1950)
+assert(Date.get_day(d) == 28, "date error: expected 28 as result")
+assert(Date.get_month(d) == 2, "date error: expected 2 as result")
+assert(Date.get_year(d) == 1950, "date error: expected 1950 as result")
+
+d = Date.new(7, 9, 1822)
+assert(Date.get_day(d) == 7, "date error: expected 7 as result")
+assert(Date.get_month(d) == 9, "date error: expected 9 as result")
+assert(Date.get_year(d) == 1822, "date error: expected 1822 as result")
+
+result = Date.from_frame({ day: 1, month: 11, year: 2025 })
+expected = Date.new(1, 11, 2025)
+assert(result == expected, "date error: expected Date<01-11-2025> as result")
+
+result = Date.from_frame({ day: 22, month: 2, year: 1998 })
+expected = Date.new(22, 2, 1998)
+assert(result == expected, "date error: expected Date<22-02-1998> as result")
+
+result = Date.from_frame({ day: 1, month: 1, year: 1900 })
+expected = Date.new(1, 1, 1900)
+assert(result == expected, "date error: expected Date<01-01-1900> as result")
+
+result = Date.to_frame(result)
+expected = { day: 1, month: 1, year: 1900 }
+assert(result == expected, "date error: unexpected result")
+
+result = Date.to_frame(d)
+expected = { day: 7, month: 9, year: 1822 }
+assert(result == expected, "date error: unexpected result")
+
+d = Date.new(27, 11, 1)
+result = Date.to_frame(d)
+expected = { day: 27, month: 11, year: 1 }
+assert(result == expected, "date error: unexpected result")
+
+result = Date.add(d, 60)
+expected = Date.new(26, 1, 2)
+assert(result == expected, "date error: expected Date<26-01-02> as result")
+
+b = Date.new(3, 12, 2000)
+result = Date.add(b, 65)
+expected = Date.new(6, 2, 2001)
+assert(result == expected, "date error: expected Date<01-02-2001> as result")
+
+b = Date.new(5, 2, 2005)
+result = Date.add(b, 22)
+expected = Date.new(27, 2, 2005)
+assert(result == expected, "date error: expected Date<27-02-2005> as result")
+
+result = Date.from_days(24107)
+expected = Date.new(1, 1, 2036)
+assert(result == expected, "date error: expected Date<01-01-2036> as result")
+
+result = Date.from_days(30000)
+expected = Date.new(19, 2, 2052)
+assert(result == expected, "date error: expected Date<19-02-2052> as result")
+
+result = Date.from_days(1)
+expected = Date.new(1, 1, 1970)
+assert(result == expected, "date error: expected Date<19-02-2052> as result")
+
+result = Date.from_string("01-01-2001")
+expected = Date.new(1, 1, 2001)
+assert(result == expected, "date error: expected Date<01-01-2001> as result")
+
+result = Date.from_string("01-01-1970")
+expected = Date.new(1, 1, 1970)
+assert(result == expected, "date error: expected Date<01-01-1970> as result")
+
+result = Date.from_string("01-01-100000")
+expected = Date.new(22, 1, 100000)
+assert(result == expected, "date error: expected Date<22-01-100000> as result")
+
+d = Date.new(22, 3, 2025)
+result = Date.to_string(d)
+expected = "22-03-2025"
+assert(result == expected, "date error: expected 22-03-2025 as result")
+
+d = Date.new(12, 1, 1969)
+result = Date.to_string(d)
+expected = "12-01-1969"
+assert(result == expected, "date error: expected 12-01-1969 as result")
+
+d = Date.new(19, 8, 99999)
+result = Date.to_string(d)
+expected = "19-08-99999"
+assert(result == expected, "date error: expected 19-08-99999 as result")
+
+print("Date done!")

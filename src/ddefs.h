@@ -100,4 +100,9 @@ typedef uint8_t d_byte_def;
     return DS_VAL(new_derror(vm, (char *) "Expected time as argument")); \
   }  
 
+#define return_if_is_not_date(v, s) \
+  if (!IS_DATE(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected date as argument")); \
+  } 
 #endif

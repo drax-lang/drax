@@ -43,6 +43,8 @@ echo -e "\n\033[43m----------------------\033[0m"
 
 ./bin/drax ./tests/gc.dx
 
+./bin/drax ./tests/date.dx
+
 echo "----------------------------------------"
 
 echo -e "\n\033[32mAll tests were executed successfully!\033[0m"

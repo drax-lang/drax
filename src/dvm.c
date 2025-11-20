@@ -233,6 +233,23 @@ static bool values_equal(drax_value a, drax_value b) {
       return false;
     }
 
+    case DS_DATE: {
+      drax_date* t1 = CAST_DATE(a);
+      drax_date* t2 = CAST_DATE(b);
+      struct tm* date1 = localtime(&t1->timestamp);
+      struct tm* date2 = localtime(&t2->timestamp);
+
+      if(
+        date1->tm_year == date2->tm_year &&
+        date1->tm_mon== date2->tm_mon   &&
+        date1->tm_mday == date2->tm_mday
+        ) {
+        return true;
+      }
+
+      return false;
+    }
+
 
     case DS_FUNCTION:
     case DS_NATIVE:

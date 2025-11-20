@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
-
+#include <sys/ioctl.h>
 #include "dstructs.h"
 #include "dhandler.h"
 #include "dtypes.h"
@@ -46,6 +46,12 @@ drax_time* new_dtime(d_vm* vm) {
   drax_time* l = ALLOCATE_DSTRUCT(vm, drax_time, DS_TIME);
   l->timestamp = 0;
   return l;
+}
+
+drax_date* new_ddate(d_vm* vm) {
+  drax_date* d = ALLOCATE_DSTRUCT(vm, drax_date, DS_DATE);
+  d->timestamp = 0;
+  return d;
 }
 
 void put_value_dlist(drax_list* l, drax_value v) {

@@ -109,6 +109,6 @@ t1 = Time.new(10, 20, 30)
 t2 = Time.new(9, 20, 30)
 result = Time.diff(t1, t2)
 expected = 3600
-assert(result == expected, "time error: expected 60 seconds as result")
+assert(result == expected, "time error: expected 3600 seconds as result")
 
-print("Time done")
+print("Time done!")

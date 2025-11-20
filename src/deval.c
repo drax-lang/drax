@@ -87,6 +87,11 @@ static void print_tensor_type(d_internal_types v) {
       printf("time");
       break;
     }
+    case DS_DATE: {
+      printf("date");
+      break;
+    }
+
     default: {
       printf("undefined");
       break;
@@ -233,7 +238,12 @@ static void print_d_struct(drax_value value, int formated) {
     case DS_TIME:
       struct tm* time = localtime(&CAST_TIME(value)->timestamp);
       printf("Time<%02d:%02d:%02d>", time->tm_hour, time->tm_min, time->tm_sec);
-      break; 
+      break;
+
+    case DS_DATE:
+      struct tm* date = localtime(&CAST_DATE(value)->timestamp);
+      printf("Date<%02d-%02d-%02d>", date->tm_mday, date->tm_mon + 1, date->tm_year + 1900);
+      break;
   }
 }
 

@@ -7,6 +7,7 @@
 #include "dbuiltin.h"
 #include "ddefs.h"
 #include "dstring.h"
+#include "dstructs.h"
 #include "dtypes.h"
 #include "dtime.h"
 #include "dvm.h"
@@ -103,6 +104,7 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_STRING: MSR(vm, "string");
       case DS_LIST: MSR(vm, "list");
       case DS_TIME: MSR(vm, "time");
+      case DS_DATE: MSR(vm, "date");
       case DS_TENSOR: MSR(vm, "tensor");
       case DS_FRAME: MSR(vm, "frame");
       case DS_MODULE: MSR(vm, "module");
@@ -1025,6 +1027,216 @@ static drax_value __d_disconnect_server(d_vm* vm, int* stat) {
 }
 
 /**
+ * Date
+ */
+
+static drax_value __d_date_now(d_vm* vm, int* stat) {
+  drax_date* nd = new_ddate(vm);
+  time_t now = time(NULL);
+  nd->timestamp = now;
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nd);
+}
+
+static drax_value __d_date_to_frame(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  return_if_is_not_date(v, stat);
+  drax_date* dd = CAST_DATE(v);
+
+  struct tm* date = localtime(&dd->timestamp);
+
+  drax_frame* f = new_dframe(vm, 3);
+  put_value_dframe(f, (char*) "day", num_to_draxvalue((double) date->tm_mday));
+  put_value_dframe(f, (char*) "month", num_to_draxvalue((double) date->tm_mon + 1));
+  put_value_dframe(f, (char*) "year", num_to_draxvalue((double) date->tm_year + 1900));
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(f);  
+}
+
+static drax_value __d_date_from_frame(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  return_if_is_not_frame(v, stat);
+
+  drax_frame* f = CAST_FRAME(v);
+  drax_date* d = new_ddate(vm);
+  struct tm* date = localtime(&d->timestamp);
+
+  drax_value days;
+  if(get_value_dframe(f, (char*) "day", &days) != -1) {
+    return_if_is_not_number(days, stat);
+    date->tm_mday = (int) CAST_NUMBER(days);
+    if(date->tm_mday < 1 || date->tm_mday > 31) {
+      return DS_VAL(new_derror(vm, (char*) "Invalid time: expected days in the range 1 and 31"));
+    }
+  }
+
+  drax_value months;
+  if(get_value_dframe(f, (char*) "month", &months) != -1) {
+    return_if_is_not_number(months, stat);
+    date->tm_mon = (int) CAST_NUMBER(months) - 1;
+    if(date->tm_mon >= 12 || date->tm_mon < 0) {
+      return DS_VAL(new_derror(vm, (char*) "Invalid time: expected months in the range 1 and 12"));
+    }
+  }
+  
+  drax_value years;
+  if(get_value_dframe(f, (char*) "year", &years) != -1) {
+    return_if_is_not_number(years, stat);
+    date->tm_year = ((int) CAST_NUMBER(years)) - 1900;
+    if(date->tm_year < 0) {
+      return DS_VAL(new_derror(vm, (char*) "Invalid time: expected months in the range 1 and 12"));
+    }
+  }
+
+  d->timestamp = mktime(date);
+
+  if(date->tm_mday != (int) CAST_NUMBER(days) ||
+    date->tm_mon != ((int) CAST_NUMBER(months)) - 1 ||
+    date->tm_year != ((int) CAST_NUMBER(years)) - 1900) { 
+      return DS_VAL(new_derror(vm, (char*) "Invalid date."));
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(d);  
+}
+
+static drax_value __d_date_add(d_vm* vm, int* stat) {
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_date(a, stat);
+  return_if_is_not_number(b, stat);
+
+  drax_date* d1 = CAST_DATE(a);
+  int days = (int) CAST_NUMBER(b);
+
+  time_t timestamp = d1->timestamp + (days * 86400);
+
+  drax_date* res = new_ddate(vm);
+  res->timestamp = timestamp;
+  
+  DX_SUCESS_FN(stat);
+  return DS_VAL(res);
+}
+
+
+static drax_value __d_date_new(d_vm* vm, int* stat) {
+  drax_value c = pop(vm);
+  drax_value b = pop(vm);
+  drax_value a = pop(vm);
+  
+  return_if_is_not_number(c, stat);
+  return_if_is_not_number(b, stat);
+  return_if_is_not_number(a, stat);
+
+  int year = (int) CAST_NUMBER(c);
+  int month = (int) CAST_NUMBER(b);
+  int day = (int) CAST_NUMBER(a);
+
+  drax_date* nd = new_ddate(vm);
+  struct tm* date = localtime(&nd->timestamp);
+  date->tm_year = year - 1900;
+  date->tm_mon = month - 1;
+  date->tm_mday = day;
+
+  nd->timestamp = mktime(date);
+ 
+  if(date->tm_mday != day ||
+    date->tm_mon != month - 1 ||
+    date->tm_year != year - 1900) { 
+      return DS_VAL(new_derror(vm, (char*) "Invalid date."));
+  }
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nd);  
+}
+
+static drax_value __d_date_from_days(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_number(a, stat);
+
+  int days = (int) CAST_NUMBER(a);
+
+  drax_date* date = new_ddate(vm);
+  date->timestamp = (long) days * 86400;
+  
+  DX_SUCESS_FN(stat);
+  return DS_VAL(date);
+}
+
+static drax_value __d_date_to_string(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_date(a, stat);
+  drax_date* d = CAST_DATE(a);
+  struct tm* date = localtime(&d->timestamp);
+
+  char* res = (char*) malloc(sizeof(char) * 12);
+  snprintf(res, sizeof(char) * 12, "%02d-%02d-%04d", date->tm_mday, date->tm_mon + 1, date->tm_year + 1900);
+
+  drax_string* s = new_dstring(vm, (char*) res, strlen(res));
+  s->chars[strlen(s->chars)] = '\0';
+  DX_SUCESS_FN(stat);
+  return DS_VAL(s);  
+}
+
+static drax_value __d_date_from_string(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_string(a, stat);
+  drax_string* s = CAST_STRING(a);
+
+  drax_date* d = new_ddate(vm);
+  struct tm* date = localtime(&d->timestamp);
+
+  int year, month, day;
+  char _e;
+  if(sscanf(s->chars, "%d-%d-%d%c", &day, &month, &year, &_e) != 3) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char*) "Invalid format: the expected format is dd:MM:yyyy"));
+  }
+
+  date->tm_mday = day;
+  date->tm_mon = month - 1;
+  date->tm_year = year - 1900;
+
+  d->timestamp = mktime(date);
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(d);
+}
+
+static drax_value __d_date_get_day(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_date(a, stat);
+  drax_date* d = CAST_DATE(a);
+  struct tm* date = localtime(&d->timestamp);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue((double) date->tm_mday);  
+}
+
+static drax_value __d_date_get_month(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_date(a, stat);
+  drax_date* d = CAST_DATE(a);
+  struct tm* date = localtime(&d->timestamp);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue((double) date->tm_mon + 1);  
+}
+
+static drax_value __d_date_get_year(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  return_if_is_not_date(a, stat);
+  drax_date* d = CAST_DATE(a);
+  struct tm* date = localtime(&d->timestamp);
+
+  DX_SUCESS_FN(stat);
+  return num_to_draxvalue((double) date->tm_year + 1900);  
+}
+
+/**
  * Time
 */
 
@@ -1218,6 +1430,10 @@ static drax_value __d_time_from_string(d_vm* vm, int* stat) {
     DX_ERROR_FN(stat);
     return DS_VAL(new_derror(vm, (char*) "Invalid format: the expected format is hh:mm:ss"));
   }
+  
+  time->tm_sec = sec;
+  time->tm_min = min;
+  time->tm_hour = hour;
 
   t->timestamp = mktime(time);
 
@@ -1311,6 +1527,28 @@ void create_native_modules(d_vm* vm) {
 
   put_fun_on_module(mtime, time_helper, sizeof(time_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(mtime));
+
+  /**
+   * Date module
+   */
+  drax_native_module* mdate = new_native_module(vm, "Date", 11);
+  const drax_native_module_helper date_helper[] = {
+    {0, "now", __d_date_now},
+    {1, "to_frame", __d_date_to_frame},
+    {1, "from_frame", __d_date_from_frame},
+    {2, "add", __d_date_add},
+    {3, "new", __d_date_new},
+    {1, "from_days", __d_date_from_days},
+    {1, "to_string", __d_date_to_string},
+    {1, "from_string", __d_date_from_string},
+    {1, "get_day", __d_date_get_day},
+    {1, "get_month", __d_date_get_month},
+    {1, "get_year", __d_date_get_year}
+  };
+  put_fun_on_module(mdate, date_helper, sizeof(date_helper) / sizeof(drax_native_module_helper));
+  put_mod_table(vm->envs->modules, DS_VAL(mdate));
+
+  
 
   /**
    * Core module
