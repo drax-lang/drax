@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <float.h>
 
 #include "dtypes.h"
 #include "dparser.h"
@@ -42,6 +43,27 @@ const char *str_module_list[] = {
  NULL,
 };
 
+const char* d_internal_type_to_string(d_internal_types type) {
+  switch (type) {
+    case DIT_u8:        return "u8";
+    case DIT_i16:       return "i16";
+    case DIT_i32:       return "i32";
+    case DIT_i64:       return "i64";
+    case DIT_f32:       return "f32";
+    case DIT_f64:       return "f64";
+    case DIT_STRING:    return "string";
+    case DIT_LIST:      return "list";
+    case DIT_TENSOR:    return "tensor";
+    case DIT_FRAME:     return "frame";
+    case DIT_FUNCTION:  return "function";
+    case DIT_NATIVE:    return "native_function";
+    case DIT_MODULE:    return "module";
+    case DIT_TID:       return "tid";
+    case DIT_UNDEFINED: return "any";
+    default:            return "unknown";
+  }
+}
+
 static d_local_registers* create_local_registers() {
   d_local_registers* l = (d_local_registers*) malloc(sizeof(d_local_registers));
   l->length = 0;
@@ -71,12 +93,13 @@ static void new_locals_register(parser_state* psr) {
   psr->locals[psr->locals_length++] = create_local_registers();
 }
 
-static void put_local(parser_state* psr, char* name) {
+static void put_local(parser_state* psr, char* name, d_internal_types vt) {
   d_local_registers* lc = psr->locals[psr->locals_length -1];
   
   if (lc->length >= lc->capacity) {
     lc->capacity += LOCAL_SIZE_FACTOR;
     lc->vars = (char**) realloc(lc->vars, sizeof(char*) * lc->capacity);
+    lc->types = (d_internal_types*) realloc(lc->types, sizeof(d_internal_types) * lc->capacity);
   }
 
   size_t size = strlen(name);
@@ -84,7 +107,9 @@ static void put_local(parser_state* psr, char* name) {
   strcpy(new_name, name);
   new_name[size] = '\0';
 
-  lc->vars[lc->length++] = new_name;
+  int idx = lc->length++;
+  lc->vars[idx] = new_name;
+  lc->types[idx] = vt;
 }
 
 static int get_local(parser_state* psr, char* name) {
@@ -543,6 +568,20 @@ void process_frame(d_vm* vm, bool v) {
   put_instruction(vm, OP_FRAME);
 }
 
+static bool is_numeric_type(d_internal_types type) {
+  switch (type) {
+    case DIT_u8:
+    case DIT_i16:
+    case DIT_i32:
+    case DIT_i64:
+    case DIT_f32:
+    case DIT_f64:
+      return true;
+    default:
+      return false;
+  }
+}
+
 void process_number(d_vm* vm, bool v) {
   UNUSED(v);
   double value;
@@ -572,7 +611,26 @@ void process_number(d_vm* vm, bool v) {
     default:
       FATAL("Invalid number format.");
       break;
-  }    
+  }
+
+  if (parser.c_type != DIT_UNDEFINED) {
+    if (!is_numeric_type(parser.c_type)) {
+      char msg[128];
+      snprintf(msg, sizeof(msg), "Type mismatch: Expected Number but got %s", 
+              d_internal_type_to_string(parser.c_type));
+      FATAL_CURR(msg);
+      return;
+    }
+
+    if (!is_value_in_range(parser.c_type, value)) {
+      char msg[100];
+      sprintf(msg, "Value out of range for the declared type.");
+      FATAL_CURR(msg);
+      return;
+    }
+    
+    /* parser.c_type = DIT_UNDEFINED; */
+  }
 
   put_pair(vm, OP_PUSH, num_to_draxvalue(value));
 }
@@ -617,27 +675,68 @@ void process_mstring(d_vm* vm, bool v) {
   put_pair(vm, OP_DSTR, DS_VAL(copy_dstring(vm, parser.prev.first + 3, parser.prev.length - 6)));
 }
 
+bool is_value_in_range(d_internal_types type, double value) {
+  switch (type) {
+    case DIT_u8:   
+      return (value >= 0 && value <= UINT8_MAX);
+    case DIT_i16:  
+      return (value >= INT16_MIN && value <= INT16_MAX);
+    case DIT_i32:  
+      return (value >= INT32_MIN && value <= INT32_MAX);
+    case DIT_i64:  
+      return (value >= (double)INT64_MIN && value <= (double)INT64_MAX);
+    case DIT_f32:  
+      return (isinf(value) || (value >= -FLT_MAX && value <= FLT_MAX));
+    case DIT_f64:  
+      return true;
+    case DIT_UNDEFINED: 
+      return true;
+    default:       
+      return true;
+  }
+}
+
 void process_variable(d_vm* vm, bool v) {
   UNUSED(v);
   d_token ctk = parser.prev;
   int is_global = IS_GLOBAL_SCOPE(vm);
+  
+  d_internal_types var_type = DIT_UNDEFINED;
 
   char* name = (char*) malloc(sizeof(char) * (ctk.length + 1));
   strncpy(name, ctk.first, ctk.length);
   name[ctk.length] = '\0';
 
   if (parser.is_refr == 1 && get_current_token() == DTK_DIV) {
-    /** disabled */
     DISABLE_REFR_PROCESS();
+    free(name);
     return;
   }
 
+  if (eq_and_next(DTK_COLON)) {
+    switch (get_current_token()) {
+      case DTK_T_u8:   var_type = DIT_u8;  break;
+      case DTK_T_i16:  var_type = DIT_i16; break;
+      case DTK_T_i32:  var_type = DIT_i32; break;
+      case DTK_T_i64:  var_type = DIT_i64; break;
+      case DTK_T_f32:  var_type = DIT_f32; break;
+      case DTK_T_f64:  var_type = DIT_f64; break;
+      case DTK_T_ANY:  var_type = DIT_UNDEFINED; break;
+      default: 
+        FATAL_CURR("Expect valid type after ':'.");
+        free(name);
+        return;
+    }
+    get_next_token();
+  }
+
   if (eq_and_next(DTK_EQ)) {
+    parser.c_type = var_type;
     expression(vm);
     put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
     
     if (!is_global) {
-      put_local(&parser, name);
+      put_local(&parser, name, var_type);
       vm->active_instr->local_range++;
     }
     return;
@@ -645,19 +744,6 @@ void process_variable(d_vm* vm, bool v) {
 
   if (is_global || get_local(&parser, name) == -1) {
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
-
-    bool is_module = false;
-    int i;
-    for (i = 0; str_module_list[i] != NULL; i++) {
-      if (strcmp(str_module_list[i], name) == 0) {
-        is_module = true;
-        break;
-      }
-    }
-
-    if (!is_module) {
-      process_external_ref(vm);
-    }
     return;
   }
 
@@ -722,6 +808,7 @@ static void parse_priorities(d_vm* vm, priorities p) {
   if (v && eq_and_next(DTK_EQ)) {
     FATAL("Invalid assignment target.");
   }
+  parser.c_type = DIT_UNDEFINED; 
 }
 
 static void expression(d_vm* vm) {
@@ -824,7 +911,7 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
       char* s = (char*) malloc(sizeof(char) * (sz + 1));
       strcpy(s, stack_args[i - 1]);
       put_pair(vm, OP_SET_L_ID, (drax_value) s);
-      put_local(&parser, s);
+      put_local(&parser, s, DIT_UNDEFINED);
     }
     vm->active_instr->local_range = f->arity;
 
@@ -1045,6 +1132,7 @@ int __build__(d_vm* vm, const char* input, char* path) {
   parser.has_error = false;
   parser.panic_mode = false;
   parser.active_fun = NULL;
+  parser.c_type = DIT_UNDEFINED;
 
   get_next_token();
 
@@ -1067,6 +1155,8 @@ int __build__(d_vm* vm, const char* input, char* path) {
 
 void dfatal(d_token* token, const char* message) {
   if (parser.panic_mode) return;
+
+  parser.c_type = DIT_UNDEFINED; 
   parser.panic_mode = true;
   if (NULL != parser.file) {
     fprintf(stderr, D_COLOR_RED"Error, '%s:%d'\n"D_COLOR_RESET, parser.file, token->line);

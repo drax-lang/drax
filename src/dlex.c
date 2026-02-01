@@ -21,6 +21,7 @@ static const drax_tokens drax_t[] = {
   {"i64",    DTK_T_i64},
   {"u8",     DTK_T_u8},
   {"and",    DTK_AND},
+  {"any",    DTK_T_ANY},
   {"as",     DTK_AS},
   {"do",     DTK_DO},
   {"else",   DTK_ELSE},

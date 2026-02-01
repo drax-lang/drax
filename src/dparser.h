@@ -28,6 +28,7 @@ typedef struct d_local_registers {
   char** vars;
   int length;
   int capacity;
+  d_internal_types* types;
 } d_local_registers;
 
 typedef struct parser_state {
@@ -41,6 +42,7 @@ typedef struct parser_state {
   drax_function* active_fun;
   int is_refr;
   int is_pipe;
+  d_internal_types c_type;
   bool has_error;
   bool panic_mode;
 } parser_state;
@@ -84,6 +86,8 @@ int __build__(d_vm* vm, const char* input, char* path);
 drax_value process_arguments(d_vm* vm);
 
 drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line);
+
+bool is_value_in_range(d_internal_types type, double value);
 
 callback_table(process_grouping);
 callback_table(process_list);
