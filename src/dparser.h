@@ -113,4 +113,6 @@ callback_table(process_tensor);
 
 void dfatal(d_token* token, const char* message);
 
+int get_realpath(const char* path, char* resolved_path);
+
 #endif

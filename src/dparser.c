@@ -1008,7 +1008,7 @@ void process_if(d_vm* vm, bool v) {
   process_token(DTK_END, "Expect 'end' after if definition.");
 }
 
-static int get_realpath(const char* path, char* resolved_path) {
+int get_realpath(const char* path, char* resolved_path) {
   #ifdef _WIN32
       if (GetFullPathName(path, _PC_PATH_MAX, resolved_path, NULL) == 0) {
         return 0;

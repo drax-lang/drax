@@ -298,10 +298,27 @@ static int import_file(d_vm* vm, drax_value v) {
     return 1;
   }
 
+  char* new_p = normalize_path(vm->active_instr->file, p->chars);
+  if (get_realpath(new_p, new_p) == 0) {
+    fprintf(stderr, "fail to make full path: '%s'.\n", new_p);
+  }
+
+  drax_value ivl;
+  if (get_var_table(vm->imported_files, new_p, &ivl)) {
+    push(vm, ivl);
+    free(new_p);
+    return 0;
+  }
+
+  /**
+   * fix infinity loop in secondary imports
+   * a.file [import] -> (b.file [import] -> b.file)
+   */
+  put_var_table(vm->imported_files, new_p, DRAX_NIL_VAL);
+
   d_vm* itvm = ligth_based_createVM(vm, -2, 1, 1);
 
   int stat = 0;
-  char* new_p = normalize_path(vm->active_instr->file, p->chars);
   if (__build__(itvm, content, new_p)) {
     stat = __run__(itvm, 0);
     free(content);
@@ -317,6 +334,7 @@ static int import_file(d_vm* vm, drax_value v) {
    * first element, for now.
    */
   
+    put_var_table(vm->imported_files, new_p, itvm->exported[0]);
     push(vm, itvm->exported[0]);
     vm->d_ls = itvm->d_ls;
     __clean_vm_tmp__(itvm);
@@ -529,6 +547,10 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       } while (false)
 
   UNUSED(inter_mode);
+
+  if (-1 == vm->vid) {
+    put_var_table(vm->imported_files, vm->active_instr->file, DRAX_NIL_VAL);
+  }
 
   int _ops = 0;
 
@@ -970,6 +992,7 @@ d_vm* createMainVM() {
   vm->gc_meta = (dgc_meta*) malloc(sizeof(dgc_meta));
   vm->gc_meta->n_cycles = 0;
   vm->gc_meta->n_free_structs = 0;
+  vm->imported_files = new_var_table();
 
   /**
    * Created on builtin definitions
@@ -1025,6 +1048,7 @@ d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc, int new_global_
   vm->envs->local = vm_base->envs->local;
   vm->envs->modules = vm_base->envs->modules;
   vm->envs->native = vm_base->envs->native;
+  vm->imported_files = vm_base->imported_files;
 
   vm->call_stack = (dcall_stack*) malloc(sizeof(dcall_stack));
   vm->call_stack->size = CALL_STACK_SIZE;

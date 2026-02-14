@@ -112,6 +112,7 @@ typedef struct d_vm {
   int pstatus;
   int pipeID;
   dgc_meta* gc_meta;
+  d_generic_var_table* imported_files;
 } d_vm;
 
 /* VM */
