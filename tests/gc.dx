@@ -8,9 +8,21 @@ assert(c == {'num_cycles': 0, 'num_free_structs': 0}, "fail to get metadata")
 "discarted"
 "discarted"
 
+mp2 = {
+    a: "used",
+    b: "used"
+}
+
+mp = {
+    a: "discated2",
+    b: "discated3"
+}
+mp = nil
+
 Core.gc_swap()
 c = Core.gc_meta_info()
+
 assert(c.num_cycles >= 1, "fail to process num. cycles")
-assert(c.num_free_structs >= 3, "fail to process num. cycles")
+assert(c.num_free_structs >= 9, "fail to process num. cycles")
 
 print('Garbage Collector done!')
