@@ -92,6 +92,17 @@ typedef uint8_t d_byte_def;
   if (!IS_TID(v)) { \
     DX_ERROR_FN(s); \
     return DS_VAL(new_derror(vm, (char *) "Expected tid as argument")); \
+  }
+
+#define return_if_is_not_time(v, s) \
+  if (!IS_TIME(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected time as argument")); \
   }  
 
+#define return_if_is_not_date(v, s) \
+  if (!IS_DATE(v)) { \
+    DX_ERROR_FN(s); \
+    return DS_VAL(new_derror(vm, (char *) "Expected date as argument")); \
+  } 
 #endif

@@ -17,7 +17,7 @@
 
 #define EXPAND_CAPACITY(limit) ((limit) < 8 ? 8 : (limit) * 2)
 
-typedef enum dstruct_type{
+typedef enum dstruct_type {
   DS_LIST = 3,
   DS_TENSOR,
   DS_FUNCTION,
@@ -27,6 +27,8 @@ typedef enum dstruct_type{
   DS_MODULE,
   DS_ERROR,
   DS_TID,
+  DS_TIME,
+  DS_DATE
 } dstruct_type;
 
 typedef struct d_struct {

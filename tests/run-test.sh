@@ -39,7 +39,11 @@ echo -e "\n\033[43m----------------------\033[0m"
 
 ./bin/drax ./tests/pipe.dx
 
+./bin/drax ./tests/time.dx
+
 ./bin/drax ./tests/gc.dx
+
+./bin/drax ./tests/date.dx
 
 echo "----------------------------------------"
 

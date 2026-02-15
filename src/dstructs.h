@@ -4,12 +4,7 @@
 #include "dhandler.h"
 #include "dtypes.h"
 #include "dvm.h"
-
-#ifndef _WIN32
-  #include <sys/ioctl.h>
-#else
-  #include <windows.h>
-#endif
+#include <time.h>
 
 typedef struct d_vm d_vm;
 
@@ -30,6 +25,9 @@ typedef struct d_vm d_vm;
 #define IS_MODULE(v)      IS_ST_TYPE(v, DS_MODULE)
 #define IS_STRING(v)      IS_ST_TYPE(v, DS_STRING)
 #define IS_TID(v)         IS_ST_TYPE(v, DS_TID)
+#define IS_TIME(v)        IS_ST_TYPE(v, DS_TIME)
+#define IS_DATE(v)        IS_ST_TYPE(v, DS_DATE)
+
 
 #define CAST_ERROR(v)     ((drax_error*) CAST_STRUCT(v))
 #define CAST_FUNCTION(v)  ((drax_function*) CAST_STRUCT(v))
@@ -37,9 +35,11 @@ typedef struct d_vm d_vm;
 #define CAST_MODULE(v)    ((drax_native_module*) CAST_STRUCT(v))
 #define CAST_STRING(v)    ((drax_string*) CAST_STRUCT(v))
 #define CAST_LIST(v)      ((drax_list*) CAST_STRUCT(v))
-#define CAST_TENSOR(v)      ((drax_tensor*) CAST_STRUCT(v))
+#define CAST_TENSOR(v)    ((drax_tensor*) CAST_STRUCT(v))
 #define CAST_FRAME(v)     ((drax_frame*) CAST_STRUCT(v))
 #define CAST_TID(v)       ((drax_tid*) CAST_STRUCT(v))
+#define CAST_TIME(v)      ((drax_time*) CAST_STRUCT(v))
+#define CAST_DATE(v)      ((drax_date*) CAST_STRUCT(v))
 
 typedef drax_value (low_level_callback) (d_vm* g, int* stat);
 
@@ -63,6 +63,7 @@ typedef enum d_internal_types {
   DIT_MODULE   = DS_MODULE,
   DIT_TID      = DS_TID,
   DIT_STRING   = DS_STRING,
+  DIT_TIME     = DS_TIME,
 } d_internal_types;
 
 /**
@@ -108,6 +109,17 @@ typedef struct drax_tensor {
   drax_value* elems;
 } drax_tensor;
 
+typedef struct drax_time {
+  d_struct d_struct;
+  time_t timestamp;
+} drax_time;
+
+typedef struct drax_date {
+  d_struct d_struct;
+  time_t timestamp;
+} drax_date;
+
+
 typedef struct drax_frame {
   d_struct d_struct;
   int length;
@@ -151,6 +163,10 @@ drax_list* new_dlist(d_vm* vm, int cap);
 int tensor_type_is_number(d_internal_types t);
 
 drax_tensor* new_dtensor(d_vm* vm, int cap, d_internal_types type);
+
+drax_time* new_dtime(d_vm* vm);
+
+drax_date* new_ddate(d_vm* vm);
 
 int put_value_dtensor(d_vm* vm, drax_tensor* l, drax_value v, drax_value* r);
 
