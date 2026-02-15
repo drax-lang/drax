@@ -16,8 +16,6 @@
 
 .\bin\drax .\tests\list.dx
 
-.\bin\drax .\tests\tensor.dx
-
 .\bin\drax .\tests\import.dx
 
 .\bin\drax .\tests\math.dx

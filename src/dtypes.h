@@ -19,7 +19,6 @@
 
 typedef enum dstruct_type{
   DS_LIST = 3,
-  DS_TENSOR,
   DS_FUNCTION,
   DS_NATIVE,
   DS_STRING,
@@ -80,7 +79,6 @@ typedef enum d_op_code {
   OP_NIL, 
   OP_TRUE,
   OP_FALSE,
-  OP_TENSOR,
   OP_LIST,
   OP_FRAME,
   OP_DSTR,

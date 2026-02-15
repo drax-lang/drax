@@ -16,7 +16,6 @@
 
 #include "mods/d_mod_os.h"
 #include "mods/d_mod_http.h"
-#include "mods/d_mod_tensor.h"
 #include "mods/d_mod_list.h"
 
 static drax_value __d_assert(d_vm* vm, int* stat) {
@@ -102,7 +101,6 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_FUNCTION: MSR(vm, "function");
       case DS_STRING: MSR(vm, "string");
       case DS_LIST: MSR(vm, "list");
-      case DS_TENSOR: MSR(vm, "tensor");
       case DS_FRAME: MSR(vm, "frame");
       case DS_MODULE: MSR(vm, "module");
       case DS_TID: MSR(vm, "tid");
@@ -1090,8 +1088,6 @@ void create_native_modules(d_vm* vm) {
     {1, "to_uppercase", dstr_to_uppercase },
     {1, "to_lowercase", dstr_to_lowercase },
     {1, "to_number", dstr_to_number },
-    {1, "to_tensor", dstr_to_tensor },
-    {1, "from_tensor", dstr_from_tensor },
   };
 
   put_fun_on_module(string, string_helper, sizeof(string_helper) / sizeof(drax_native_module_helper)); 
@@ -1147,31 +1143,6 @@ void create_native_modules(d_vm* vm) {
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(list));
-
-  /**
-   * Tensor Module
-   */ 
-  drax_native_module* tensor = new_native_module(vm, "Tensor", 15);
-  const drax_native_module_helper tensor_helper[] = {
-    {2, "concat", __d_tensor_concat },
-    {1, "head", __d_tensor_head},
-    {1, "tail", __d_tensor_tail},
-    {1, "length", __d_tensor_length},
-    {1, "is_empty", __d_tensor_is_empty},
-    {1, "is_present", __d_tensor_is_present},
-    {2, "remove_at", __d_tensor_remove_at},
-    {3, "insert_at", __d_tensor_insert_at},
-    {3, "replace_at", __d_tensor_replace_at},
-    {3, "slice", __d_tensor_slice},
-    {2, "at", __d_tensor_at},
-    {1, "sparse", __d_tensor_sparse},
-    {1, "sum", __d_tensor_sum},
-    {2, "add", __d_tensor_add},
-    {1, "type", __d_tensor_type},
-  };
-  
-  put_fun_on_module(tensor, tensor_helper, sizeof(tensor_helper) / sizeof(drax_native_module_helper)); 
-  put_mod_table(vm->envs->modules, DS_VAL(tensor));
 
   /**
    * Socket Module

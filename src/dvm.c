@@ -16,8 +16,6 @@
 
 #include "doutopcode.h"
 
-#include "mods/d_mod_tensor.h"
-
 /* validation only number */
 #define binary_op(vm, op) \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
@@ -153,51 +151,6 @@ static bool values_equal(drax_value a, drax_value b) {
           return false;
         }
       }
-      return true;
-    }
-
-    case DS_TENSOR: {
-      drax_tensor* s1 = CAST_TENSOR(a);
-      drax_tensor* s2 = CAST_TENSOR(b);
-
-      if(s1->_stype != s2->_stype) { return false; }
-      if(s1->length != s2->length) { return false; }
-
-      switch (s1->_stype) {
-        case DIT_u8: {
-          DV_EQS_AND_RETURN(uint8_t, s1, s2);
-          break;
-        }
-        case DIT_i16: {
-          DV_EQS_AND_RETURN(int16_t, s1, s2);
-          break;
-        }
-        case DIT_i32: {
-          DV_EQS_AND_RETURN(int32_t, s1, s2);
-          break;
-        }
-        case DIT_i64: {
-          DV_EQS_AND_RETURN(int64_t, s1, s2);
-          break;
-        }
-        case DIT_f32: {
-          DV_EQS_AND_RETURN(float, s1, s2);
-          break;
-        }
-        case DIT_f64: {
-          DV_EQS_AND_RETURN(double, s1, s2);
-          break;
-        }
-        
-        default:
-          for(i = 0; i < s1->length; i++) {
-            if(!values_equal(s1->elems[i], s2->elems[i])) {
-              return false;
-            }
-          }
-          break;
-      }
-
       return true;
     }
 
@@ -582,25 +535,6 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         push(vm, DS_VAL(l));
         break;
       }
-      VMCase(OP_TENSOR) {
-        drax_value a = GET_VALUE(vm);
-        drax_value lc = pop(vm);
-        int limit = (int) CAST_NUMBER(lc);
-        drax_tensor* scl = new_dtensor(vm, limit, (d_internal_types) a);
-
-        int i;
-        drax_value _er;
-        for (i = 0; i < limit; i++) {
-          if(!put_value_dtensor(vm, scl, peek(vm, (limit -1) - i), &_er)) {
-            raise_drax_error(vm, CAST_ERROR(_er)->chars);
-            return 1;
-          }
-        }
-
-        pop_times(vm, limit);
-        push(vm, DS_VAL(scl));
-        break;
-      }
       VMCase(OP_FRAME) {
         drax_value lc = pop(vm);
         int limit = (int) CAST_NUMBER(lc);
@@ -722,15 +656,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           drax_string* result = new_dstring(vm, n_str, length);
           pop_times(vm, 2);
           push(vm, DS_VAL(result));
-        } else if (IS_TENSOR(peek(vm, 0)) && IS_TENSOR(peek(vm, 1))) {
-          int stat = 0;
-          drax_value _rs = __d_tensor_concat(vm, &stat);
-          if (!stat) {
-            raise_drax_error(vm, CAST_ERROR(_rs)->chars );
-            return 1;
-          }
-          push(vm, DS_VAL(_rs));
-        }  else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
+        } else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
           drax_list* b = CAST_LIST(peek(vm, 0));
           drax_list* a = CAST_LIST(peek(vm, 1));
           int length = a->length + b->length;
@@ -748,17 +674,6 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_ADD) {
-        if (IS_TENSOR(peek(vm, 0)) || IS_TENSOR(peek(vm, 1))) {
-          int stat = 0;
-          drax_value _rs = __d_tensor_add(vm, &stat);
-          if (!stat) {
-            raise_drax_error(vm, CAST_ERROR(_rs)->chars);
-            return 1;
-          }
-          push(vm, DS_VAL(_rs));
-          break;
-        }
-
         binary_op(vm, +);
         break;
       }

@@ -76,12 +76,6 @@ typedef uint8_t d_byte_def;
     return DS_VAL(new_derror(vm, (char *) "Expected list as argument")); \
   }
 
-#define return_if_is_not_tensor(v, s) \
-  if (!IS_TENSOR(v)) { \
-    DX_ERROR_FN(s); \
-    return DS_VAL(new_derror(vm, (char *) "Expected tensor as argument")); \
-  }
-
 #define return_if_is_not_module(v, s) \
   if (!IS_MODULE(v)) { \
     DX_ERROR_FN(s); \

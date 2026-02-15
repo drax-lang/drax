@@ -39,11 +39,6 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         printf("OP_LIST\n");
         break;
       }
-      case OP_TENSOR: {
-        printf("OP_TENSOR\n");
-        ip++;
-        break;
-      }
       case OP_FRAME: {
         printf("OP_FRAME\n");
         break;
