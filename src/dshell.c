@@ -17,7 +17,7 @@ char* b_read_content() {
 
   size_t i = 0;
   for (i = 0; i < sz; i++) {
-      tmp[i] = buffer[i];
+    tmp[i] = buffer[i];
   }
   
   tmp[sz] = '\0';

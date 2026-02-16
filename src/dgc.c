@@ -48,6 +48,7 @@ static void dgc_safe_free(d_vm* vm, drax_value v) {
           free(f->literals[i]);
         }*/
         free(f->keys);
+        free(f->values);
 
         f->keys = NULL;
         f->literals = NULL;
@@ -57,8 +58,8 @@ static void dgc_safe_free(d_vm* vm, drax_value v) {
 
       drax_function* ff = CAST_FUNCTION(v);
       free(ff->instructions->values);
-      free(ff->instructions);
       free(ff->instructions->extrn_ref);
+      free(ff->instructions);
     }
 
     free(sct);
@@ -225,16 +226,14 @@ int dgc_swap(d_vm* vm) {
   while (d != NULL) {
     if (d->checked) {
       d->checked = 0;
+      p = d;
+      d = d->next;
     } else {
       u = d;
       d = d->next;
       p->next = d;
       dgc_safe_free(vm, DS_VAL(u));
-      continue;
     }
-
-    p = d;
-    d = d->next;
   }
   return 1;  
 }

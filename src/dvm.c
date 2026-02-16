@@ -502,7 +502,9 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
   UNUSED(inter_mode);
 
   if (-1 == vm->vid) {
-    put_var_table(vm->imported_files, vm->active_instr->file, DRAX_NIL_VAL);
+    if (vm->active_instr->file && *vm->active_instr->file) {
+      put_var_table(vm->imported_files, vm->active_instr->file, DRAX_NIL_VAL);
+    }
   }
 
   int _ops = 0;

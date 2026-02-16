@@ -38,9 +38,6 @@ typedef enum dlex_types {
   /* modules */
   DTK_IMPORT, DTK_EXPORT,
 
-  /* types */
-  DTK_T_f32, DTK_T_f64, DTK_T_i16, DTK_T_i32, DTK_T_i64, DTK_T_u8,
-
   /* return */
   DTK_RETURN,
 

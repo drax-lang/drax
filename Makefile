@@ -124,12 +124,18 @@ run:
 config:
 	mkdir bin
 
+c_test:
+	$(CC) -o tests/c_test.o tests/c_tests/tests.c src/dlex.c
+	./tests/c_test.o
+
 test:
 ifeq ($(TARGET_OS),WIN32)
-	tests\run-test.bat
+	tests\drax\run-test.bat
 else
-	sh tests/run-test.sh
+	sh tests/drax/run-test.sh
+	make c_test
 endif
 
 clean:
 	rm -rf ./bin/$(APP)
+	rm -rf ./tests/c_test.o

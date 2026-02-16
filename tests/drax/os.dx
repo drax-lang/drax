@@ -30,7 +30,7 @@ assert(r == nil, "os error: unspected env val on os")
 
 ### exit
 
-expect = Os.cmd_with_status("./bin/drax ./tests/os_exit.dx")
+expect = Os.cmd_with_status("./bin/drax ./tests/drax/os_exit.dx")
 
 assert(List.at(expect, 0) == 42, "os error: invalid return (exit)")
 

@@ -14,12 +14,6 @@ curr_lex_state clexs;
 #define NUM_ELEMS(x)  (sizeof(x) / sizeof((x)[0]))
 
 static const drax_tokens drax_t[] = {
-  {"f32",    DTK_T_f32},
-  {"f64",    DTK_T_f64},
-  {"i16",    DTK_T_i16},
-  {"i32",    DTK_T_i32},
-  {"i64",    DTK_T_i64},
-  {"u8",     DTK_T_u8},
   {"and",    DTK_AND},
   {"as",     DTK_AS},
   {"do",     DTK_DO},
@@ -38,31 +32,11 @@ static const drax_tokens drax_t[] = {
 
 /* Helpers */
 static bool is_alpha(const char c) {
-  if (c == 0) return false;
-
-  char accepted_chars[] = "abcdefghijklmnopqrstuvxwyzABCDEFGHIJKLMNOPQRSTUVXWYZ_?";
-  
-  size_t i = 0;
-  for (i = 0; i < 55; i++) {
-    if (c == accepted_chars[i])
-      return true;
-  }
-  
-  return false;
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '?';
 }
 
 static bool is_number(const char c) {
-  if (c == 0) return false;
-
-  char accepted_num[] = "0123456789";
-  
-  size_t i = 0;
-  for (i = 0; i < 11; i++) {
-    if (c == accepted_num[i])
-      return true;
-  }
-  
-  return false;
+  return (c >= '0' && c <= '9');
 }
 
 static bool is_hex_number(const char c) {
@@ -128,6 +102,8 @@ static d_token make_error(const char* reason) {
 }
 
 static d_num_type get_number_type(char c) {
+  if (PREV_TOKEN() != '0') return DNT_DECIMAL;
+
   switch (c) {
   case 'x':
     return DNT_HEX;
@@ -141,6 +117,14 @@ static d_num_type get_number_type(char c) {
   default:
     return DNT_DECIMAL;
   }
+}
+
+static bool is_bin_digit(const char c) {
+  return (c == '0' || c == '1');
+}
+
+static bool is_oct_digit(const char c) {
+  return (c >= '0' && c <= '7');
 }
 
 d_token next_token() {
@@ -174,23 +158,34 @@ d_token next_token() {
       case '9': {
         d_num_type nt = get_number_type(CURR_TOKEN());
 
-        if (nt > 0) {
+        if (nt != DNT_DECIMAL) {
           next_char();
-        }
 
-        while (is_number(CURR_TOKEN()) || (is_hex_number(CURR_TOKEN()) && nt == DNT_HEX)) {
-          next_char();
-        }
-
-        if (CURR_TOKEN() == '.' && nt != DNT_DECIMAL) {
-          return make_error("Unexpected number.");
-        }
-
-        if (CURR_TOKEN() == '.' && is_number(check_next())) {
-          next_char();
-          while (is_number(CURR_TOKEN())) {
-            next_char();
+          if (!is_number(CURR_TOKEN()) && !(nt == DNT_HEX && is_hex_number(CURR_TOKEN()))) {
+            return make_error("Invalid numeric literal: expected digits after prefix.");
           }
+        }
+
+        while (true) {
+          char curr = CURR_TOKEN();
+          if (nt == DNT_DECIMAL && is_number(curr)) { next_char(); }
+          else if (nt == DNT_HEX && is_hex_number(curr)) { next_char(); }
+          else if (nt == DNT_BIN && is_bin_digit(curr))  { next_char(); }
+          else if (nt == DNT_OCT && is_oct_digit(curr))  { next_char(); }
+          else { break; }
+        }
+
+        if (is_alpha(CURR_TOKEN()) || is_number(CURR_TOKEN())) {
+          return make_error("Invalid digit for the selected number base.");
+        }
+
+        if (CURR_TOKEN() == '.' && nt == DNT_DECIMAL) {
+          if (is_number(check_next())) {
+            next_char();
+            while (is_number(CURR_TOKEN())) next_char();
+          }
+        } else if (CURR_TOKEN() == '.' && nt != DNT_DECIMAL) {
+            return make_error("Base-prefixed numbers (hex, bin, oct) cannot have fractions.");
         }
 
         return dmake_number(nt);
@@ -218,7 +213,7 @@ d_token next_token() {
         if(CURR_TOKEN() == ':') {
           next_char();
           return dmake_symbol(DTK_DCOLON);
-        }        
+        }
         return dmake_symbol(DTK_COLON);
       }
       case '|': {
@@ -300,47 +295,33 @@ d_token next_token() {
       }
 
       case '"': {
-        if (CURR_TOKEN() == '"') {
+        if (CURR_TOKEN() == '"' && check_next() == '"') {
           next_char();
-
-          if (CURR_TOKEN() == '"') {
-            int process_string = 1;
-            while (process_string && !IS_EOF()) {
-              next_char();
-              if (CURR_TOKEN() == '"') {
-                next_char();
-                if (CURR_TOKEN() == '"') {
-                  next_char();
-                  if (CURR_TOKEN() == '"') {
-                    next_char();
-                    return dmake_symbol(DTK_MSTRING);
-                  } 
-                }     
-              }
-              
+          next_char();
+          
+          int quotes_count = 0;
+          while (quotes_count < 3 && !IS_EOF()) {
+            if (CURR_TOKEN() == '\n') clexs.line++;
+            
+            if (CURR_TOKEN() == '"') {
+              quotes_count++;
+            } else {
+              quotes_count = 0;
             }
-
+            next_char();
           }
-          return dmake_symbol(DTK_DSTRING); /**new mark */
+
+          if (IS_EOF() && quotes_count < 3) {
+            return make_error("Unterminated multiline string.");
+          }
+
+          return dmake_symbol(DTK_MSTRING);
         }
 
-        int is_scaped = 0;
-        while (!(CURR_TOKEN() == '"' && !is_scaped) && !IS_EOF()) {
-          is_scaped = 0;
-          
+        int is_escaped = 0;
+        while (!(CURR_TOKEN() == '"' && !is_escaped) && !IS_EOF()) {
+          is_escaped = (CURR_TOKEN() == '\\' && !is_escaped);
           if (CURR_TOKEN() == '\n') clexs.line++;
-          if (CURR_TOKEN() == '\\') {
-            char sc = check_next();
-
-            if (sc == '\\') {
-              next_char();
-            } else if (sc == 't') {
-              next_char();
-            } else {
-              is_scaped = 1;
-            }
-          }
-
           next_char();
         }
         
