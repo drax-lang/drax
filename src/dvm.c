@@ -79,28 +79,35 @@ static d_instructions* callstack_pop(d_vm* vm) {
  * Raise Helpers
 */
 
+static void print_trace_step(d_vm* vm, int* last_line) {
+  d_instructions* instr = vm->active_instr;
+  if (instr == NULL) return;
+
+  int idx = vm->ip - instr->values - 1;
+  
+  if (idx < 0 || idx >= instr->instr_count) return;
+
+  if (instr->lines[idx] != 0 && instr->lines[idx] != *last_line) {
+    if (vm->active_instr->file != NULL) {
+      printf(TRACE_DESCRIPTION_LINE_PATH, vm->active_instr->file, instr->lines[idx]);
+      putchar('\n');
+    } else {
+      fprintf(stderr, TRACE_DESCRIPTION_LINE, instr->lines[idx]);
+      putchar('\n');
+    }
+  }
+  *last_line = instr->lines[idx];
+}
+
 static void trace_error(d_vm* vm) {
   int last_line = -1;
-  #define DO_TRACE_ERROR_ROUTINE() \
-    d_instructions* instr = vm->active_instr; \
-    if (instr) { \
-      int idx = vm->ip - instr->values -1; \
-      if (instr->lines[idx] != 0 && instr->lines[idx] != last_line) {\
-        if (vm->active_instr->file != NULL) {\
-          printf(TRACE_DESCRIPTION_LINE_PATH, vm->active_instr->file, instr->lines[idx]);\
-          putchar('\n'); \
-        } else {\
-          fprintf(stderr, TRACE_DESCRIPTION_LINE, instr->lines[idx]); \
-          putchar('\n');} \
-      }\
-      last_line = instr->lines[idx]; \
-    }
 
   while (CURR_CALLSTACK_SIZE(vm) > 0) {
-    DO_TRACE_ERROR_ROUTINE();
+    print_trace_step(vm, &last_line);
     back_scope(vm);
-  };
-  DO_TRACE_ERROR_ROUTINE();
+  }
+  
+  print_trace_step(vm, &last_line);
 }
 
 /* Delegate to drax_print_error */
@@ -876,14 +883,17 @@ static void __clean_vm_tmp__(d_vm* itvm) {
   free(itvm->instructions->lines);
   free(itvm->instructions);
   free(itvm->exported);
-  
+  */
+  itvm->call_stack->count = 0;
+  itvm->stack_count = 0;
+
   free(itvm->call_stack->values);
   free(itvm->call_stack->_ip);
   free(itvm->call_stack);
   
-*/
-  itvm->call_stack->count = 0;
-  itvm->stack_count = 0;
+  free(itvm->stack);
+  free(itvm->envs);
+
   itvm->ip = NULL;
   free(itvm);
 }

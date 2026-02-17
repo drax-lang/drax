@@ -39,13 +39,18 @@ static void print_string(const char* str, int formated) {
   if (!formated) {
     char* tmpstr = str_format_output(str);
     if (tmpstr == NULL) {
-      fprintf(stderr, D_COLOR_RED"runtime error: cannot format string"D_COLOR_RESET);
+      fprintf(stderr, D_COLOR_RED "runtime error: cannot format string" D_COLOR_RESET);
       return;
     }
-    printf(is_teractive_mode ? D_COLOR_GREEN "\"%s\"" D_COLOR_RESET : "%s", tmpstr);
+    
+    if (is_teractive_mode) {
+      printf(D_COLOR_GREEN "\"%s\"" D_COLOR_RESET, tmpstr);
+    } else {
+      printf("\"%s\"", tmpstr);
+    }
     free(tmpstr);
   } else {
-    printf(is_teractive_mode ? D_COLOR_GREEN "\"%s\"" D_COLOR_RESET : "%s", str);
+    printf("%s", str);
   }
 }
 
