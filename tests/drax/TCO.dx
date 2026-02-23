@@ -7,3 +7,13 @@ fun infinity_loop(n) do
 end
 
 print(infinity_loop(0))
+
+fun infinity_loop_pipe(n) do
+  if (n > 1000000) do
+    "Finished with TCO with pipe!"
+  else
+    n + 1 |> infinity_loop_pipe()
+  end
+end
+
+print(infinity_loop_pipe(0))

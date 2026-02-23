@@ -514,9 +514,9 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
           return 1; \
         } \
-        double b = CAST_NUMBER(pop(vm)); \
-        double a = CAST_NUMBER(pop(vm)); \
-        push(vm, v(a op b)); \
+        double bbop = CAST_NUMBER(pop(vm)); \
+        double abop = CAST_NUMBER(pop(vm)); \
+        push(vm, v(abop op bbop)); \
       } while (false)
 
   UNUSED(inter_mode);
@@ -527,6 +527,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
     }
   }
 
+  drax_value a;
   int _ops = 0;
 
   VMDispatch(is_per_batch, _ops) {
@@ -642,8 +643,8 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
           }
 
           low_level_callback* nf = md->fun[idx];
-          int a = md->arity[idx];
-          push(vm, DS_VAL(new_dllcallback(vm, nf, (const char*) k, a)));
+          int art = md->arity[idx];
+          push(vm, DS_VAL(new_dllcallback(vm, nf, (const char*) k, art)));
           break;
         }
         
@@ -651,9 +652,9 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         return 1;
       }
       VMCase(OP_EQUAL) {
-        drax_value b = pop(vm);
-        drax_value a = pop(vm);
-        push(vm, BOOL_VAL(values_equal(a, b)));
+        drax_value beq = pop(vm);
+        drax_value aeq = pop(vm);
+        push(vm, BOOL_VAL(values_equal(aeq, beq)));
         break;
       }
       VMCase(OP_GREATER) {
@@ -666,25 +667,25 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       }
       VMCase(OP_CONCAT) {
         if (IS_STRING(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
-          drax_string* b = CAST_STRING(peek(vm, 0));
-          drax_string* a = CAST_STRING(peek(vm, 1));
+          drax_string* bstr = CAST_STRING(peek(vm, 0));
+          drax_string* astr = CAST_STRING(peek(vm, 1));
 
-          int length = a->length + b->length;
+          int length = astr->length + bstr->length;
           char* n_str = (char*) malloc(length + 1);
-          memcpy(n_str, a->chars, a->length);
-          memcpy(n_str + a->length, b->chars, b->length);
+          memcpy(n_str, astr->chars, astr->length);
+          memcpy(n_str + astr->length, bstr->chars, bstr->length);
           n_str[length] = '\0';
 
           drax_string* result = new_dstring(vm, n_str, length);
           pop_times(vm, 2);
           push(vm, DS_VAL(result));
         } else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
-          drax_list* b = CAST_LIST(peek(vm, 0));
-          drax_list* a = CAST_LIST(peek(vm, 1));
-          int length = a->length + b->length;
+          drax_list* bl = CAST_LIST(peek(vm, 0));
+          drax_list* al = CAST_LIST(peek(vm, 1));
+          int length = al->length + bl->length;
           drax_list* result = new_dlist(vm, length);
-          memcpy(result->elems, a->elems, a->length * sizeof(drax_value));
-          memcpy(result->elems + a->length, b->elems, b->length * sizeof(drax_value));
+          memcpy(result->elems, al->elems, al->length * sizeof(drax_value));
+          memcpy(result->elems + al->length, bl->elems, bl->length * sizeof(drax_value));
 
           result->length = length;
           pop_times(vm, 2);
@@ -745,60 +746,60 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
          * Direct call
          * when the function is on stack
          */
-        drax_value a = GET_VALUE(vm);
+        a = GET_VALUE(vm);
         process_pipe_args(vm, a);
-        drax_value v = peek(vm, a);
-        remove_elem_on_stack(vm, a);
-
-        if (execute_d_function(vm, a, v) == 1) {
-          return 1;
-        }
-        break;
+        goto L_COMMON_CALL;
       }
       VMCase(OP_D_CALL) {
         /**
          * Direct call
          * when the function is on stack
          */
-        drax_value a = GET_VALUE(vm);
-        drax_value v = peek(vm, a);
-        remove_elem_on_stack(vm, a);
+        a = GET_VALUE(vm);
+        
+        L_COMMON_CALL: {
+          drax_value v = peek(vm, a);
+          remove_elem_on_stack(vm, a);
 
-        if (execute_d_function(vm, a, v) == 1) {
-          return 1;
+          if (execute_d_function(vm, a, v) == 1) {
+            return 1;
+          }
         }
         break;
       }
       VMCase(OP_D_CALL_P_T) {
-        /* pipe with tail not impl. */
-        break;
+        a = GET_VALUE(vm);
+        process_pipe_args(vm, a);
+        goto P_T_COMMON_CALL;
       }
       VMCase(OP_D_CALL_T) {
-        int a = (int) GET_VALUE(vm);
-        drax_value v = peek(vm, a);;
-        int i;
-        int frame_start;
-        drax_function* f;
+        a = GET_VALUE(vm);
+        P_T_COMMON_CALL: {
+          drax_value v = peek(vm, a);;
+          drax_value i;
+          int frame_start;
+          drax_function* f;
 
-        if (!IS_FUNCTION(v)) {
-          raise_drax_error(vm, "vm_error: function is not valid!");
-          return 1;
-        }
+          if (!IS_FUNCTION(v)) {
+            raise_drax_error(vm, "vm_error: function is not valid!");
+            return 1;
+          }
 
-        f = CAST_FUNCTION(v);
-        frame_start = vm->stack_count - a - 1;
+          f = CAST_FUNCTION(v);
+          frame_start = vm->stack_count - a - 1;
 
-        for (i = 0; i < a; i++) {
-          drax_value temp_arg = vm->stack[vm->stack_count - a + i];
-          vm->stack[frame_start + i] = temp_arg;
-        }
+          for (i = 0; i < a; i++) {
+            drax_value temp_arg = vm->stack[vm->stack_count - a + i];
+            vm->stack[frame_start + i] = temp_arg;
+          }
 
-        vm->stack_count = frame_start + a;
-        vm->active_instr = f->instructions;
-        vm->ip = f->instructions->values;
+          vm->stack_count = frame_start + a;
+          vm->active_instr = f->instructions;
+          vm->ip = f->instructions->values;
 
-        if (f->instructions->local_range > 0) {
-          zero_new_local_range(vm, f->instructions->local_range);
+          if (f->instructions->local_range > 0) {
+            zero_new_local_range(vm, f->instructions->local_range);
+          }
         }
         break;
       }
