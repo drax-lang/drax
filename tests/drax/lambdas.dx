@@ -125,4 +125,10 @@ end
 
 assert(mult_alloc(1, 2) == 618, "mult_alloc(1, 2) == 618")
 
+vfc = fun(a, b) do
+    a + b
+end
+
+assert(vfc(1, 2) == 3, "vfc(1, 2) == 3")
+
 print("lambda's done!")

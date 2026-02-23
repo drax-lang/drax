@@ -20,6 +20,8 @@
   #define UINT16_MAX 65535
 #endif
 
+#define MAX_STATE_STACK 32
+
 #define callback_table(n) void n(d_vm* vm, bool b);
 
 #define make_op_line(i, l, m, r) [i] = {l, m, r}
@@ -29,6 +31,21 @@ typedef struct d_local_registers {
   int length;
   int capacity;
 } d_local_registers;
+
+typedef enum {
+    PS_DEFAULT,
+    PS_IN_PIPE,
+    PS_IN_MEMBER,
+    PS_IN_LAMBDA,
+    PS_TAIL_POS,
+    PS_IN_REFR,
+    PS_ASSIGNMENT,
+} parser_mode;
+
+typedef struct {
+    parser_mode stack[MAX_STATE_STACK];
+    int top;
+} state_machine;
 
 typedef struct parser_state {
   d_token current;
@@ -40,9 +57,9 @@ typedef struct parser_state {
   int locals_capacity;
   drax_function* active_fun;
   int is_refr;
-  int is_pipe;
   bool has_error;
   bool panic_mode;
+  state_machine machine;
 } parser_state;
 
 typedef enum priorities {

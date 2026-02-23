@@ -15,9 +15,6 @@
 
 #define LOCAL_SIZE_FACTOR 10
 
-#define DISABLE_PIPE_PROCESS() parser.is_pipe = 0
-#define ENABLE_PIPE_PROCESS()  parser.is_pipe = 1
-
 #define DISABLE_REFR_PROCESS() parser.is_refr = 0
 #define ENABLE_REFR_PROCESS()  parser.is_refr = 1
 
@@ -45,6 +42,29 @@ const char *str_module_list[] = {
  "Os",
  NULL,
 };
+
+void push_state(parser_state* psr, parser_mode new_mode) {
+  if (psr->machine.top < MAX_STATE_STACK - 1) {
+    psr->machine.stack[++psr->machine.top] = new_mode;
+  }
+}
+
+parser_mode pop_state(parser_state* psr) {
+  if (psr->machine.top > 0) {
+    return psr->machine.stack[psr->machine.top--];
+  }
+  return PS_DEFAULT;
+}
+
+bool is_in_state(parser_mode mode) {
+  int i;
+  for (i = parser.machine.top; i >= 0; i--) {
+    if (parser.machine.stack[i] == mode) {
+      return true;
+    }
+  }
+  return false;
+}
 
 static d_local_registers* create_local_registers() {
   d_local_registers* l = (d_local_registers*) malloc(sizeof(d_local_registers));
@@ -119,13 +139,11 @@ static void remove_locals_registers(parser_state* psr) {
     psr->locals[0] = create_local_registers(psr);
   }
 
-  DISABLE_PIPE_PROCESS();
   DISABLE_REFR_PROCESS();
 }
 
 static void init_parser(d_vm* vm) {
   vm->active_instr = vm->instructions;
-  DISABLE_PIPE_PROCESS();
   init_locals(&parser);
 }
 
@@ -380,18 +398,18 @@ void process_binary(d_vm* vm, bool v) {
 
 void process_pipe(d_vm* vm, bool v) {
   UNUSED(v);
-  ENABLE_PIPE_PROCESS();
+  push_state(&parser, PS_IN_PIPE);
   
   dlex_types opt = parser.prev.type;
   operation_line* rule = GET_PRIORITY(opt);
   parse_priorities(vm, (priorities)(rule->priorities + 1));
+  pop_state(&parser);
 }
 
 void process_amper(d_vm* vm, bool v) {
   UNUSED(v);
   if (eq_and_next(DTK_PAR_OPEN)) {
-    int _ispipe = parser.is_pipe;
-    DISABLE_PIPE_PROCESS();
+    bool _ispipe = is_in_state(PS_IN_PIPE);
 
     if (parser.active_fun == NULL) {
       FATAL("call out of scope.");
@@ -401,7 +419,7 @@ void process_amper(d_vm* vm, bool v) {
     strcpy(name, parser.active_fun->name);
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
 
-    drax_value arg_count = process_arguments(vm) + _ispipe;
+    drax_value arg_count = process_arguments(vm) + (_ispipe ? 1 : 0);
     put_pair(vm, OP_D_CALL, arg_count);
     return;
   }
@@ -579,8 +597,10 @@ void process_variable(d_vm* vm, bool v) {
   if (eq_and_next(DTK_EQ)) {
     bool last_tail_state = is_tail_call;
     is_tail_call = false;
+    push_state(&parser, PS_ASSIGNMENT);
     expression(vm);
     is_tail_call = last_tail_state;
+    pop_state(&parser);
     put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
     
     if (!is_global) {
@@ -727,6 +747,20 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
     f->name = (char*) malloc(sizeof(char) * (ctk.length + 1));
     strncpy(f->name, ctk.first, ctk.length);
     f->name[ctk.length] = '\0';
+
+    if (is_in_state(PS_ASSIGNMENT)) {
+      FATAL_CURR("syntax error: cannot assign a named function to a variable.");
+      printf(
+        "\n  Named functions are declarations and do not return a value for assignment.\n\n"
+        "  You can proceed by changing this:\n"
+        "    variable = fun %s(...) do ... end\n\n"
+        "  To an anonymous function assignment:\n"
+        "    variable = fun(...) do ... end\n\n"
+        "  Or simply declare it:\n"
+        "    fun %s(...) do ... end\n\n",
+        f->name, f->name
+      );
+    }
   }
 
   if (!is_anonymous && !is_global) {
@@ -873,17 +907,16 @@ drax_value process_arguments(d_vm* vm) {
 
 void process_call(d_vm* vm, bool v) {
   UNUSED(v);
-  int _ispipe = parser.is_pipe;
+  bool _ispipe = is_in_state(PS_IN_PIPE);
   bool _is_tail_call = is_tail_call;
   is_tail_call = false;
 
-if (is_member_call) {
+  if (is_member_call) {
     _is_tail_call = false;
     is_member_call = false;
   }
 
-  DISABLE_PIPE_PROCESS();
-  drax_value arg_count = process_arguments(vm) + _ispipe;
+  drax_value arg_count = process_arguments(vm) + (_ispipe ? 1 : 0);
   d_op_code op;
   dlex_types vv = peek_next_token();
   bool is_last_in_block = (vv == DTK_END);
