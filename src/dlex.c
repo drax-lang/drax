@@ -127,6 +127,18 @@ static bool is_oct_digit(const char c) {
   return (c >= '0' && c <= '7');
 }
 
+d_token peek_token() {
+  const char* saved_current = clexs.current;
+  int saved_line = clexs.line;
+  
+  d_token token = next_token();
+  
+  clexs.current = saved_current;
+  clexs.line = saved_line;
+  
+  return token;
+}
+
 d_token next_token() {
   clexs.first = clexs.current;
 

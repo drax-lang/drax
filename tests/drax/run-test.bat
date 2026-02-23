@@ -26,4 +26,6 @@
 
 .\bin\drax .\tests\drax\pipe.dx
 
+./bin/drax .\tests\drax\TCO.dx
+
 @REM  .\bin\drax .\tests\drax\http\http-only-response-text-plain.dx

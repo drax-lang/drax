@@ -88,6 +88,8 @@ typedef struct curr_lex_state {
 
 void init_lexan(const char* source);
 
+d_token peek_token();
+
 d_token next_token();
 
 #endif

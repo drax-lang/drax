@@ -39,6 +39,8 @@ echo -e "\n\033[43m----------------------\033[0m"
 
 ./bin/drax ./tests/drax/gc.dx
 
+./bin/drax ./tests/drax/TCO.dx
+
 echo "----------------------------------------"
 
 echo -e "\n\033[32mAll tests were executed successfully!\033[0m"

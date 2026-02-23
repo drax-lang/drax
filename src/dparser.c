@@ -24,6 +24,10 @@
 extern int is_teractive_mode;
 parser_state parser;
 parser_builder* current = NULL;
+
+bool is_tail_call = false;
+bool is_member_call = false;
+
 /**
  * Module List
  * 
@@ -284,6 +288,10 @@ static void process_token(dlex_types type, const char* message) {
 
 static dlex_types get_current_token() {
   return parser.current.type;
+}
+
+static dlex_types peek_next_token() {
+  return peek_token().type;
 }
 
 static bool eq_and_next(dlex_types type) {
@@ -569,7 +577,10 @@ void process_variable(d_vm* vm, bool v) {
   }
 
   if (eq_and_next(DTK_EQ)) {
+    bool last_tail_state = is_tail_call;
+    is_tail_call = false;
     expression(vm);
+    is_tail_call = last_tail_state;
     put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
     
     if (!is_global) {
@@ -680,7 +691,7 @@ static void expression_with_lb(d_vm* vm) {
 static void block(d_vm* vm) {
   while ((get_current_token() != DTK_END) && (get_current_token() != DTK_EOF)) {
     int cl = parser.current.line;
-    
+
     expression(vm);
     /*put_instruction(vm, OP_POP);*/
     
@@ -779,6 +790,7 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
     }
   }
 
+  is_tail_call = true;
   if (is_single_line) {
     expression(vm);
   } else {
@@ -825,6 +837,7 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
    */
   put_instruction(vm, f->instructions->extrn_ref_count > 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
   parser.active_fun = NULL;
+  is_tail_call = false;
   return f;
 }
 
@@ -861,9 +874,27 @@ drax_value process_arguments(d_vm* vm) {
 void process_call(d_vm* vm, bool v) {
   UNUSED(v);
   int _ispipe = parser.is_pipe;
+  bool _is_tail_call = is_tail_call;
+  is_tail_call = false;
+
+if (is_member_call) {
+    _is_tail_call = false;
+    is_member_call = false;
+  }
+
   DISABLE_PIPE_PROCESS();
   drax_value arg_count = process_arguments(vm) + _ispipe;
-  put_pair(vm, _ispipe ? OP_D_CALL_P : OP_D_CALL, arg_count);
+  d_op_code op;
+  dlex_types vv = peek_next_token();
+  bool is_last_in_block = (vv == DTK_END);
+
+  if (is_last_in_block && _is_tail_call) {
+    op = _ispipe ? OP_D_CALL_P_T : OP_D_CALL_T;
+  } else {
+    op = _ispipe ? OP_D_CALL_P : OP_D_CALL;
+  }
+
+  put_pair(vm, op, arg_count);
 }
 
 void process_dot(d_vm* vm, bool v) {
@@ -879,6 +910,7 @@ void process_dot(d_vm* vm, bool v) {
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_SET_I_ID);
   } else {
+    is_member_call = true;
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_GET_I_ID);
   }
@@ -967,6 +999,7 @@ static long get_path_max(const char* path) {
 int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_parser(vm);
+  is_tail_call = false;
 
   if (path != NULL) {
     long path_max = get_path_max(path);

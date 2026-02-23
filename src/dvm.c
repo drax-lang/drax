@@ -16,15 +16,21 @@
 
 #include "doutopcode.h"
 
-/* validation only number */
+/**
+ * Direct OP on stack
+ */
 #define binary_op(vm, op) \
-        if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
-          raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
-          return 1; \
-        } \
-        double b = AS_NUMBER(pop(vm)); \
-        double a = AS_NUMBER(pop(vm)); \
-        push(vm, AS_VALUE(a op b)); 
+  do { \
+    drax_value v2 = vm->stack[vm->stack_count - 1]; \
+    drax_value v1 = vm->stack[vm->stack_count - 2]; \
+    if (IS_NUMBER(v1) && IS_NUMBER(v2)) { \
+      vm->stack_count--; \
+      vm->stack[vm->stack_count - 1] = AS_VALUE(AS_NUMBER(v1) op AS_NUMBER(v2)); \
+    } else { \
+      raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
+      return 1; \
+    } \
+  } while (0)
 
 #define back_scope(vm) \
         vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range; \
@@ -57,14 +63,6 @@ static drax_value pop_times(d_vm* vm, int t) {
 static drax_value peek(d_vm* vm, int distance) {
   if (vm->stack_count == 0) return 0;
   return vm->stack[vm->stack_count -1 - distance];
-}
-
-/* VM Call stack */
-
-static void callstack_push(d_vm* vm, d_instructions* v) {
-  vm->call_stack->values[vm->call_stack->count] = v;
-  vm->call_stack->_ip[vm->call_stack->count] = v->_ip;
-  vm->call_stack->count++;
 }
 
 static d_instructions* callstack_pop(d_vm* vm) {
@@ -443,53 +441,68 @@ static void process_pipe_args(d_vm* vm, drax_value a) {
 }
 
 static void remove_elem_on_stack(d_vm* vm, size_t distance) {
-  for (; distance > 0; distance--) {
-    vm->stack[(vm->stack_count - 1) - distance] = vm->stack[vm->stack_count - distance];
+  if (distance == 0) {
+    vm->stack_count--;
+    return;
   }
+
+  drax_value* tgt = &vm->stack[vm->stack_count - 1 - distance];
+  drax_value* src = &vm->stack[vm->stack_count - distance];
+  memmove(tgt, src, sizeof(drax_value) * distance);
   vm->stack_count--;
 }
 
 static int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
-  if (DRAX_NIL_VAL == v) {
+  if (IS_STRUCT(v)) {
+    d_struct* s = (d_struct*) CAST_STRUCT(v);
+
+    if (s->type == DS_FUNCTION) {
+      drax_function* f = (drax_function*) s;
+      
+      if (f->arity != (int) a) {
+        raise_drax_error(vm, MSG_FUNCTION_IS_NOT_DEFINED, f->name ? f->name : "<function>", a);
+        return 1;
+      }
+
+      dcall_stack* cs = vm->call_stack;
+      cs->_ip[cs->count] = vm->ip;
+      cs->values[cs->count] = vm->active_instr;
+      cs->count++;
+
+      vm->active_instr = f->instructions;
+      vm->ip = f->instructions->values;
+      
+      if (f->instructions->local_range > 0) {
+        zero_new_local_range(vm, f->instructions->local_range);
+      }
+      return 0;
+    }
+
+    if (s->type == DS_NATIVE) {
+      drax_os_native* nf = (drax_os_native*) s;
+      if (nf->arity != (int) a) {
+        raise_drax_error(vm, MSG_FUNCTION_IS_NOT_DEFINED, nf->name ? nf->name : "<function>", a);
+        return 1;
+      }
+
+      int scs = 0;
+      drax_value result = nf->function(vm, &scs);
+
+      if (!scs) {
+        raise_drax_error(vm, CAST_ERROR(result)->chars);
+        return 1;
+      }
+      
+      vm->stack[vm->stack_count++] = result;
+      return 0;
+    }
+  }
+
+  if (IS_NIL(v)) {
     raise_drax_error(vm, "nil is not function!\n");
-    return 1;
+  } else {
+    raise_drax_error(vm, "vm_error: function is not valid!\n");
   }
-
-  if (IS_FUNCTION(v)) {
-    drax_function* f = CAST_FUNCTION(v);
-    if (f->arity != (int) a) {
-      raise_drax_error(vm, MSG_FUNCTION_IS_NOT_DEFINED, f->name ? f->name : "<function>", a);
-      return 1;
-    }
-
-    vm->active_instr->_ip = vm->ip;
-    callstack_push(vm, vm->active_instr);
-    zero_new_local_range(vm, f->instructions->local_range);
-    vm->active_instr = f->instructions;
-    vm->ip = f->instructions->values;
-    return 0;
-  }
-
-  if (IS_NATIVE(v)) {
-    int scs = 0;
-    drax_os_native* nf = CAST_NATIVE(v);
-    if (nf->arity != (int) a) {
-      raise_drax_error(vm, MSG_FUNCTION_IS_NOT_DEFINED, nf->name ? nf->name : "<function>", a);
-      return 1;
-    }
-
-    drax_value result = nf->function(vm, &scs);
-
-    if (!scs) {
-      drax_error* e = CAST_ERROR(result);
-      raise_drax_error(vm, e->chars);
-      return 1;
-    }
-    push(vm, result);
-    return 0;
-  }
-  
-  raise_drax_error(vm, "vm_error: function is not valid!\n");
   return 1;
 }
 
@@ -699,8 +712,10 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
         break;
       }
       VMCase(OP_NOT) {
-        drax_value v = pop(vm);
-        push(vm, BOOL_VAL(IS_FALSE(v)));
+        /**
+         * Direct OP on stack
+         */
+        vm->stack[vm->stack_count - 1] = BOOL_VAL(IS_FALSE(vm->stack[vm->stack_count - 1]));
         break;
       }
       VMCase(OP_NEG) {
@@ -751,6 +766,39 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
 
         if (execute_d_function(vm, a, v) == 1) {
           return 1;
+        }
+        break;
+      }
+      VMCase(OP_D_CALL_P_T) {
+        /* pipe with tail not impl. */
+        break;
+      }
+      VMCase(OP_D_CALL_T) {
+        int a = (int) GET_VALUE(vm);
+        drax_value v = peek(vm, a);;
+        int i;
+        int frame_start;
+        drax_function* f;
+
+        if (!IS_FUNCTION(v)) {
+          raise_drax_error(vm, "vm_error: function is not valid!");
+          return 1;
+        }
+
+        f = CAST_FUNCTION(v);
+        frame_start = vm->stack_count - a - 1;
+
+        for (i = 0; i < a; i++) {
+          drax_value temp_arg = vm->stack[vm->stack_count - a + i];
+          vm->stack[frame_start + i] = temp_arg;
+        }
+
+        vm->stack_count = frame_start + a;
+        vm->active_instr = f->instructions;
+        vm->ip = f->instructions->values;
+
+        if (f->instructions->local_range > 0) {
+          zero_new_local_range(vm, f->instructions->local_range);
         }
         break;
       }

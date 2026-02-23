@@ -1,0 +1,9 @@
+fun infinity_loop(n) do
+  if (n > 1000000) do
+    "Finished with TCO!"
+  else
+    infinity_loop(n + 1)
+  end
+end
+
+print(infinity_loop(0))

@@ -99,6 +99,8 @@ typedef enum d_op_code {
   OP_LOOP,
   OP_D_CALL,   /* direct call */
   OP_D_CALL_P,
+  OP_D_CALL_T, /* tail optimization*/
+  OP_D_CALL_P_T,
   OP_CALL_G,   /* global*/
   OP_CALL_L,   /* local*/
   OP_ARGS,     /* arguments */
