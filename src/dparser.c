@@ -22,9 +22,6 @@ extern int is_teractive_mode;
 parser_state parser;
 parser_builder* current = NULL;
 
-bool is_tail_call = false;
-bool is_member_call = false;
-
 /**
  * Module List
  * 
@@ -43,25 +40,46 @@ const char *str_module_list[] = {
  NULL,
 };
 
-void push_state(parser_state* psr, parser_mode new_mode) {
+static void push_state(parser_state* psr, parser_mode new_mode) {
   if (psr->machine.top < MAX_STATE_STACK - 1) {
     psr->machine.stack[++psr->machine.top] = new_mode;
   }
 }
 
-parser_mode pop_state(parser_state* psr) {
+static parser_mode pop_state(parser_state* psr) {
   if (psr->machine.top > 0) {
     return psr->machine.stack[psr->machine.top--];
   }
   return PS_DEFAULT;
 }
 
-bool is_in_state(parser_mode mode) {
+static bool is_in_state(parser_mode mode) {
   int i;
   for (i = parser.machine.top; i >= 0; i--) {
     if (parser.machine.stack[i] == mode) {
       return true;
     }
+  }
+  return false;
+}
+
+static bool is_tail_position_valid() {
+  int i;
+  for (i = parser.machine.top; i >= 0; i--) {
+    parser_mode m = parser.machine.stack[i];
+    
+    if (m == PS_TAIL_POS) return true;
+    if (m == PS_BLOCK_TCO || m == PS_ASSIGNMENT) return false;
+  }
+  return false;
+}
+
+static bool is_pipe_active() {
+  int i;
+  for (i = parser.machine.top; i >= 0; i--) {
+    parser_mode m = parser.machine.stack[i];
+    if (m == PS_IN_PIPE) return true;
+    if (m == PS_BLOCK_TCO || m == PS_ASSIGNMENT) return false;
   }
   return false;
 }
@@ -595,11 +613,8 @@ void process_variable(d_vm* vm, bool v) {
   }
 
   if (eq_and_next(DTK_EQ)) {
-    bool last_tail_state = is_tail_call;
-    is_tail_call = false;
     push_state(&parser, PS_ASSIGNMENT);
     expression(vm);
-    is_tail_call = last_tail_state;
     pop_state(&parser);
     put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
     
@@ -824,12 +839,13 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
     }
   }
 
-  is_tail_call = true;
+  push_state(&parser, PS_TAIL_POS);
   if (is_single_line) {
     expression(vm);
   } else {
     block(vm);
   }
+  pop_state(&parser);
   put_instruction(vm, OP_RETURN);
   vm->active_instr = gi;
   remove_locals_registers(&parser);
@@ -871,7 +887,6 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
    */
   put_instruction(vm, f->instructions->extrn_ref_count > 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
   parser.active_fun = NULL;
-  is_tail_call = false;
   return f;
 }
 
@@ -907,21 +922,28 @@ drax_value process_arguments(d_vm* vm) {
 
 void process_call(d_vm* vm, bool v) {
   UNUSED(v);
-  bool _ispipe = is_in_state(PS_IN_PIPE);
-  bool _is_tail_call = is_tail_call;
-  is_tail_call = false;
+  bool _ispipe = is_pipe_active();
+  bool _is_after_dot = 
+    (GET_INSTRUCTION(vm)->instr_count > 0) &&
+    (GET_INSTRUCTION(vm)->values[GET_INSTRUCTION(vm)->instr_count - 1] == OP_GET_I_ID);
 
-  if (is_member_call) {
-    _is_tail_call = false;
-    is_member_call = false;
+  /**
+   * Block TCO to nested calls
+   */
+  push_state(&parser, PS_BLOCK_TCO);
+  drax_value arg_count = process_arguments(vm) + (_ispipe ? 1 : 0);
+  pop_state(&parser);
+
+  bool _can_tco = is_tail_position_valid();
+  if (_is_after_dot) {
+    _can_tco = false;
   }
 
-  drax_value arg_count = process_arguments(vm) + (_ispipe ? 1 : 0);
   d_op_code op;
   dlex_types vv = peek_next_token();
   bool is_last_in_block = (vv == DTK_END);
 
-  if (is_last_in_block && _is_tail_call) {
+  if (is_last_in_block && _can_tco) {
     op = _ispipe ? OP_D_CALL_P_T : OP_D_CALL_T;
   } else {
     op = _ispipe ? OP_D_CALL_P : OP_D_CALL;
@@ -939,11 +961,12 @@ void process_dot(d_vm* vm, bool v) {
   k[parser.prev.length] = '\0';
 
   if (eq_and_next(DTK_EQ)) {
+    push_state(&parser, PS_ASSIGNMENT);
     expression(vm);
+    pop_state(&parser);
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_SET_I_ID);
   } else {
-    is_member_call = true;
     put_pair(vm, OP_PUSH, (drax_value) k);
     put_instruction(vm, OP_GET_I_ID);
   }
@@ -1032,7 +1055,6 @@ static long get_path_max(const char* path) {
 int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_parser(vm);
-  is_tail_call = false;
 
   if (path != NULL) {
     long path_max = get_path_max(path);

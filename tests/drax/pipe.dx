@@ -22,4 +22,7 @@ r =
 assert(List.at(r, 0) == [123, 1, 2], 'r[0] = [123, 1, 2]')
 assert(List.at(r, 1)()()() == 123, 'r[1]()()() == 123')
 
+opts = Frame.new()
+opts |> Frame.put('port', Number.to_string(1234))
+
 print('Pipe done!')

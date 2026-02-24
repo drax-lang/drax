@@ -35,11 +35,11 @@ typedef struct d_local_registers {
 typedef enum {
     PS_DEFAULT,
     PS_IN_PIPE,
-    PS_IN_MEMBER,
-    PS_IN_LAMBDA,
+    PS_IN_MEMBER_CALL,
     PS_TAIL_POS,
     PS_IN_REFR,
     PS_ASSIGNMENT,
+    PS_BLOCK_TCO,
 } parser_mode;
 
 typedef struct {
