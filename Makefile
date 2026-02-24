@@ -20,7 +20,6 @@ FILES= ./src/dvm.c \
 	   ./src/dstring.c \
 	   ./src/dgc.c \
 	   ./src/deval.c \
-	   ./src/dscheduler.c \
 	   ./src/doutopcode.c \
 	   ./src/mods/d_mod_os.c \
 	   ./src/mods/d_mod_http.c \
@@ -91,6 +90,10 @@ else
 	    -ledit
 endif
 
+ifdef OPTIMIZE
+  FLAGS += -fsanitize=address
+endif
+
 ifeq ($(TARGET_OS),WIN32)
 	DRAX_BUILD_FULL= 
 	FLAGS += -lws2_32
@@ -120,6 +123,10 @@ opcode: $(HTTP_LIB_NAME)
 run:
 	./bin/$(APP)
 
+bug:
+	$(DEFAULT_BUILD) $(DEBUGF)
+	./bin/$(APP) ./bugs/bug.${id}.dx
+
 config:
 	mkdir bin
 
@@ -134,6 +141,20 @@ else
 	sh tests/drax/run-test.sh
 	make c_test
 endif
+
+install:
+	make all
+	sudo cp ./bin/drax /usr/local/bin/drax
+
+valgrind:
+	valgrind --leak-check=full \
+	--show-leak-kinds=all \
+	--track-origins=yes \
+	--verbose \
+	--log-file=valgrind-out.txt \
+	--tool=memcheck --error-exitcode=1 --soname-synonyms=somalloc=none \
+	--extra-debuginfo-path=/usr/lib/debug \
+	./bin/drax /home/jeantux/projects/drax/server/src/app.dx
 
 clean:
 	rm -rf ./bin/$(APP)

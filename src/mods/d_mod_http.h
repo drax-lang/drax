@@ -28,7 +28,6 @@
     #include <arpa/inet.h>
 #endif
 
-#include "../dscheduler.h"
 #include "../dvm.h"
 
 typedef struct dhttp_server {
