@@ -598,11 +598,11 @@ static drax_value __d_number_to_string(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
   return_if_is_not_number(a, stat);
 
-  char *s = (char *) calloc(50, sizeof(char));
+  char *s = (char *) calloc(32, sizeof(char));
   double num = CAST_NUMBER(a);
   
-  snprintf(s, sizeof(s), "%g", num);
-  drax_string* str = new_dstring(vm, s, strlen(s));
+  int len = snprintf(s, 32, "%g", num);
+  drax_string* str = new_dstring(vm, s, len);
   str->chars[strlen(s)] = '\0';
 
   DX_SUCESS_FN(stat);
@@ -1119,7 +1119,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * List Module
    */ 
-  drax_native_module* list = new_native_module(vm, "List", 18);
+  drax_native_module* list = new_native_module(vm, "List", 19);
   const drax_native_module_helper list_helper[] = {
     {2, "concat", __d_list_concat },
     {1, "head", __d_list_head},
@@ -1139,6 +1139,7 @@ void create_native_modules(d_vm* vm) {
     {2, "zip", __d_list_zip},
     {1, "pop", __d_list_pop},
     {1, "shift", __d_list_shift},
+    {2, "map", __d_list_map},
   };
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 

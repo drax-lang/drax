@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -12,6 +14,7 @@
 #include "deval.h"
 
 #include "dbuiltin.h"
+
 
 #define LOCAL_SIZE_FACTOR 10
 
@@ -1037,10 +1040,12 @@ int get_realpath(const char* path, char* resolved_path) {
       if (GetFullPathName(path, _PC_PATH_MAX, resolved_path, NULL) == 0) {
         return 0;
     }
-
     return 1;
   #else
-    return realpath(path, resolved_path);
+    if (realpath(path, resolved_path) == NULL) {
+      return 0;
+    }
+    return 1;
   #endif
 }
 

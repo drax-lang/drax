@@ -73,7 +73,6 @@ WARNING= \
 FLAGS=  -std=c99 \
 		-lm \
 		-Wall  \
-		-ansi \
 		$(WARNING) \
 		$(DWN_CCFLAGS) \
 		$(LIBS) \
