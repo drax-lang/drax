@@ -32,11 +32,6 @@
     } \
   } while (0)
 
-#define back_scope(vm) \
-        vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range; \
-        vm->active_instr = callstack_pop(vm); \
-        vm->ip = vm->active_instr->_ip;
-
 #define STATUS_DCALL_ERROR            0
 #define STATUS_DCALL_SUCCESS          1
 #define STATUS_DCALL_SUCCESS_NO_CLEAR 2
@@ -65,12 +60,35 @@ static drax_value peek(d_vm* vm, int distance) {
   return vm->stack[vm->stack_count -1 - distance];
 }
 
-static d_instructions* callstack_pop(d_vm* vm) {
-  if (vm->call_stack->count == 0) return 0;
-  vm->call_stack->count--;
-  d_instructions* v = vm->call_stack->values[vm->call_stack->count];
-  v->_ip = vm->call_stack->_ip[vm->call_stack->count];
-  return v;
+static void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* module_env) {
+  if (vm->call_stack->count >= vm->call_stack->size) {
+    vm->call_stack->size = vm->call_stack->size + CALL_STACK_SIZE;
+    vm->call_stack->frames = realloc(vm->call_stack->frames, sizeof(d_frame) * vm->call_stack->size);
+  }
+
+  d_frame* frame = &vm->call_stack->frames[vm->call_stack->count++];
+  frame->instr = vm->active_instr;
+  frame->ip = vm->ip;
+  frame->env_global = vm->envs->global;
+
+  vm->active_instr = target;
+  vm->ip = target->values;
+  
+  if (module_env != NULL) {
+    vm->envs->global = module_env;
+  }
+}
+
+static int callstack_pop(d_vm* vm) {
+  if (vm->call_stack->count == 0) return 1;
+
+  d_frame* frame = &vm->call_stack->frames[--vm->call_stack->count];
+
+  vm->active_instr = frame->instr;
+  vm->ip = frame->ip;
+  vm->envs->global = frame->env_global;
+
+  return 0;
 }
 
 /**
@@ -102,7 +120,8 @@ static void trace_error(d_vm* vm) {
 
   while (CURR_CALLSTACK_SIZE(vm) > 0) {
     print_trace_step(vm, &last_line);
-    back_scope(vm);
+    vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range;
+    callstack_pop(vm);
   }
   
   print_trace_step(vm, &last_line);
@@ -235,9 +254,6 @@ static int get_definition(d_vm* vm, int is_local) {
     return STATUS_DCALL_ERROR; \
   }
 
-
-static void __clean_vm_tmp__(d_vm* itvm);
-
 /**
  * import "your/path" as lib
  * 
@@ -273,12 +289,11 @@ static int import_file(d_vm* vm, drax_value v) {
    * a.file [import] -> (b.file [import] -> b.file)
    */
   put_var_table(vm->imported_files, new_p, DRAX_NIL_VAL);
-
-  d_vm* itvm = ligth_based_createVM(vm, -2, 1, 1);
+  callstack_push(vm, new_instructions(), new_var_table());
 
   int stat = 0;
-  if (__build__(itvm, content, new_p)) {
-    stat = __run__(itvm, 0);
+  if (__build__(vm, content, new_p)) {
+    stat = __irun__(vm, 0);
     free(content);
   } else {
     free(content);
@@ -292,11 +307,9 @@ static int import_file(d_vm* vm, drax_value v) {
    * first element, for now.
    */
   
-    put_var_table(vm->imported_files, new_p, itvm->exported[0]);
-    push(vm, itvm->exported[0]);
-    vm->d_ls = itvm->d_ls;
-    __clean_vm_tmp__(itvm);
-    /*if (-1 == vm->vid) dgc_swap(vm);*/
+    put_var_table(vm->imported_files, new_p, vm->exported[0]);
+    push(vm, vm->exported[0]);
+    callstack_pop(vm);
     return stat;
 }
 
@@ -464,13 +477,7 @@ static int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
         return 1;
       }
 
-      dcall_stack* cs = vm->call_stack;
-      cs->_ip[cs->count] = vm->ip;
-      cs->values[cs->count] = vm->active_instr;
-      cs->count++;
-
-      vm->active_instr = f->instructions;
-      vm->ip = f->instructions->values;
+      callstack_push(vm, f->instructions, NULL);
       
       if (f->instructions->local_range > 0) {
         zero_new_local_range(vm, f->instructions->local_range);
@@ -506,7 +513,7 @@ static int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
   return 1;
 }
 
-static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
+static int __start__(d_vm* vm, int inter_mode) {
 
   #define dbin_bool_op(op, v) \
       do { \
@@ -528,9 +535,8 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
   }
 
   drax_value a;
-  int _ops = 0;
 
-  VMDispatch(is_per_batch, _ops) {
+  VMDispatch() {
     VMcond(vm) {
       VMCase(OP_NIL) {
         push(vm, DRAX_NIL_VAL);
@@ -838,10 +844,7 @@ static int __start__(d_vm* vm, int inter_mode, int is_per_batch) {
       VMCase(OP_RETURN) {
         int is_no_instr = (vm->active_instr->instr_count <= 1);
         vm->envs->local->count -= vm->active_instr->local_range;
-        vm->active_instr = callstack_pop(vm);
-        if (vm->active_instr) {
-          vm->ip = vm->active_instr->_ip;
-        }
+        callstack_pop(vm);
 
         if (is_no_instr) push(vm, DRAX_NIL_VAL);
         if (!vm->active_instr) return 0;
@@ -911,46 +914,24 @@ static void __init__(d_vm* vm) {
   vm->ip = vm->active_instr->values;
 }
 
-void __reset__(d_vm* vm) {
-  vm->active_instr = NULL;
-  
+void __reset__(d_vm* vm) { 
   free(vm->instructions->values);
   free(vm->instructions->lines);
   free(vm->instructions);
   
   vm->instructions = new_instructions();
+  vm->active_instr = vm->instructions;
 
   vm->call_stack->count = 0;
   vm->stack_count = 0;
   vm->ip = NULL;
 }
 
-static void __clean_vm_tmp__(d_vm* itvm) { 
-  itvm->active_instr = NULL;
-  /*
-  free(itvm->instructions->values);
-  free(itvm->instructions->lines);
-  free(itvm->instructions);
-  free(itvm->exported);
-  */
-  itvm->call_stack->count = 0;
-  itvm->stack_count = 0;
-
-  free(itvm->call_stack->values);
-  free(itvm->call_stack->_ip);
-  free(itvm->call_stack);
-  
-  free(itvm->stack);
-  free(itvm->envs);
-
-  itvm->ip = NULL;
-  free(itvm);
-}
-
 d_vm* createMainVM() {
   d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
   vm->vid = -1;
   vm->instructions = new_instructions();
+  vm->active_instr = vm->instructions;
   vm->d_ls = NULL;
 
   /**
@@ -980,8 +961,7 @@ d_vm* createMainVM() {
   vm->call_stack = (dcall_stack*) malloc(sizeof(dcall_stack));
   vm->call_stack->size = CALL_STACK_SIZE;
   vm->call_stack->count = 0;
-  vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
-  vm->call_stack->_ip = (drax_value**) malloc(sizeof(drax_value*) * CALL_STACK_SIZE);
+  vm->call_stack->frames = (d_frame*) malloc(sizeof(d_frame) * CALL_STACK_SIZE);
   vm->pstatus = VM_STATUS_STOPED;
   return vm;
 }
@@ -993,48 +973,6 @@ d_vm* createMainVM() {
  *
  * but creates the base environments
  */
-d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc, int new_global_scope) {
-  d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
-  vm->vid = vid;
-  vm->instructions = new_instructions();
-
-  /**
-   * share global nested structs(d_ls)
-   */
-    vm->d_ls = clone_gc ? vm_base->d_ls : NULL;
-
-  /**
-   * Only one item is allowed to be 
-   * exported, for now.
-   */
-  vm->exported = (drax_value*) malloc(sizeof(drax_value) * 1);
-  vm->exported[0] = DRAX_NIL_VAL;
-
-  vm->stack = (drax_value*) malloc(sizeof(drax_value) * MAX_STACK_SIZE);
-  vm->stack_size = MAX_STACK_SIZE;
-  vm->stack_count = 0;
-  vm->envs = new_environment(1, 1, !new_global_scope);
-
-  /**
-   * Created on builtin definitions
-  */
-  if(!new_global_scope) {
-    vm->envs->global = vm_base->envs->global;
-  }
-  vm->envs->local = vm_base->envs->local;
-  vm->envs->modules = vm_base->envs->modules;
-  vm->envs->native = vm_base->envs->native;
-  vm->imported_files = vm_base->imported_files;
-
-  vm->call_stack = (dcall_stack*) malloc(sizeof(dcall_stack));
-  vm->call_stack->size = CALL_STACK_SIZE;
-  vm->call_stack->count = 0;
-  vm->call_stack->values = (d_instructions**) malloc(sizeof(d_instructions*) * CALL_STACK_SIZE);
-  vm->call_stack->_ip = (drax_value**) malloc(sizeof(drax_value*) * CALL_STACK_SIZE);
-  vm->pstatus = VM_STATUS_STOPED;
-
-  return vm;
-}
 
 int __run__(d_vm* vm, int inter_mode) {
   vm->pstatus = VM_STATUS_WORKING;
@@ -1042,7 +980,7 @@ int __run__(d_vm* vm, int inter_mode) {
 
   DEBUG_OP(inspect_opcode(vm->ip, 0));
 
-  int r = __start__(vm, inter_mode, 0);
+  int r = __start__(vm, inter_mode);
   vm->pstatus = VM_STATUS_STOPED;
 
   if (-1 == vm->vid) dgc_swap(vm);
@@ -1050,13 +988,15 @@ int __run__(d_vm* vm, int inter_mode) {
   return r;
 }
 
-int __run_per_batch__(d_vm* vm) {
+int __irun__(d_vm* vm, int inter_mode) {
   vm->pstatus = VM_STATUS_WORKING;
-  int r = __start__(vm, 0, 1);
 
-  if (!vm->active_instr) {
-    vm->pstatus = VM_STATUS_FINISHED;
-  }
+  DEBUG_OP(inspect_opcode(vm->ip, 0));
+
+  int r = __start__(vm, inter_mode);
+  vm->pstatus = VM_STATUS_STOPED;
+
+  if (-1 == vm->vid) dgc_swap(vm);
 
   return r;
 }

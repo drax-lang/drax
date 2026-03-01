@@ -26,7 +26,7 @@
 #endif
 
 
-#define VMDispatch(is_per_batch, ops) while(!is_per_batch || ops++ < 10)
+#define VMDispatch() while(true)
 
 #define VMcond(f) \
      switch (*(f->ip++))
@@ -77,9 +77,14 @@ typedef struct dt_envs {
   d_local_var_table* local; /* Local definitions inside functions */
 } dt_envs;
 
+typedef struct d_frame {
+  d_instructions* instr;
+  drax_value* ip;
+  d_generic_var_table* env_global;
+} d_frame;
+
 typedef struct dcall_stack {
-  d_instructions** values;
-  drax_value** _ip;
+  d_frame* frames;
   int count;
   int size;
 } dcall_stack;
@@ -134,6 +139,6 @@ void __reset__(d_vm* vm);
 
 int __run__(d_vm* curr, int inter_mode);
 
-int __run_per_batch__(d_vm* vm);
+int __irun__(d_vm* curr, int inter_mode);
 
 #endif

@@ -60,6 +60,7 @@ typedef struct parser_state {
   bool has_error;
   bool panic_mode;
   state_machine machine;
+  int scope_depth;
 } parser_state;
 
 typedef enum priorities {
@@ -95,6 +96,8 @@ typedef struct parser_builder {
   scope_type type;
   int curr_level;
 } parser_builder;
+
+int __ibuild__(d_vm* vm, const char* input, char* path);
 
 int __build__(d_vm* vm, const char* input, char* path);
 

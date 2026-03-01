@@ -163,11 +163,6 @@ static void remove_locals_registers(parser_state* psr) {
   DISABLE_REFR_PROCESS();
 }
 
-static void init_parser(d_vm* vm) {
-  vm->active_instr = vm->instructions;
-  init_locals(&parser);
-}
-
 static operation_line op_lines[] = {
   make_op_line(DTK_PAR_OPEN,  process_grouping,    process_call,   iCALL),
   make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
@@ -224,7 +219,7 @@ static operation_line op_lines[] = {
 
 #define FATAL_CURR(v) dfatal(&parser.current, v)
 
-#define IS_GLOBAL_SCOPE(v) (v->instructions == v->active_instr)
+#define IS_GLOBAL_SCOPE() (parser.scope_depth <= 0)
 
 /**
  * VM Helpers
@@ -603,7 +598,7 @@ void process_mstring(d_vm* vm, bool v) {
 void process_variable(d_vm* vm, bool v) {
   UNUSED(v);
   d_token ctk = parser.prev;
-  int is_global = IS_GLOBAL_SCOPE(vm);
+  int is_global = IS_GLOBAL_SCOPE();
 
   char* name = (char*) malloc(sizeof(char) * (ctk.length + 1));
   strncpy(name, ctk.first, ctk.length);
@@ -746,7 +741,7 @@ static void block(d_vm* vm) {
 }
 
 drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) {
-  int is_global = IS_GLOBAL_SCOPE(vm);
+  int is_global = IS_GLOBAL_SCOPE();
   const int max_arity = 255;
   int i;
 
@@ -841,7 +836,7 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
       process_token(DTK_DO, "Expect 'do' before function body.");
     }
   }
-
+  parser.scope_depth++;
   push_state(&parser, PS_TAIL_POS);
   if (is_single_line) {
     expression(vm);
@@ -890,12 +885,13 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
    */
   put_instruction(vm, f->instructions->extrn_ref_count > 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
   parser.active_fun = NULL;
+  parser.scope_depth--;
   return f;
 }
 
 void process_function(d_vm* vm, bool v) {
   UNUSED(v);
-  int is_global = IS_GLOBAL_SCOPE(vm);
+  int is_global = IS_GLOBAL_SCOPE();
   drax_function* f = create_function(vm, false, false);
 
   if (f->name != NULL) {
@@ -1057,9 +1053,46 @@ static long get_path_max(const char* path) {
   #endif
 }
 
+int __ibuild__(d_vm* vm, const char* input, char* path) {
+  init_lexan(input);
+  init_locals(&parser);
+
+  if (path != NULL) {
+    long path_max = get_path_max(path);
+    parser.file = (char*) malloc(sizeof(char) * path_max);
+    if (get_realpath(path, parser.file) == 0) {
+      fprintf(stderr, "fail to make full path: '%s'.\n", path);
+    }
+    vm->active_instr->file = (char*) malloc(sizeof(char) * strlen(parser.file) + 1);
+    strcpy(vm->active_instr->file, parser.file);
+  }
+
+  parser.has_error = false;
+  parser.panic_mode = false;
+  parser.active_fun = NULL;
+
+  get_next_token();
+
+  while (get_current_token() != DTK_EOF) {
+    expression_with_lb(vm);
+    if (!is_teractive_mode) {
+      put_instruction(vm, OP_POP);
+    }
+  }
+
+  if (parser.has_error) {
+    return 0;
+  }
+  remove_locals_registers(&parser);
+  free(parser.locals);
+
+  put_pair(vm, OP_EXIT, 0xff);
+  return 1;
+}
+
 int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
-  init_parser(vm);
+  init_locals(&parser);
 
   if (path != NULL) {
     long path_max = get_path_max(path);

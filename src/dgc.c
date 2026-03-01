@@ -160,8 +160,17 @@ static int dgc_swap_call_stack(d_vm* vm) {
 
   int i;
   for (i = 0; i < vm->call_stack->count; i++) {
-    dgc_swap_ip(vm->call_stack->values[i]->values);
+    d_frame* frame = &vm->call_stack->frames[i];
+
+    if (frame->instr) {
+      dgc_swap_ip(frame->instr->values); 
+    }
+
+    if (frame->env_global) {
+      dgc_swap_generic_table(frame->env_global);
+    }
   }
+  
   DEBUG(printf("--dccallstk end\n\n"));
   return 1;
 }
@@ -202,6 +211,17 @@ static int dgc_swap_modules(d_mod_table* t) {
   return 1;
 }
 
+static int dgc_swap_exported(d_vm* vm) {
+  DEBUG(printf("--dc::exported swap\n"));
+  if (vm->exported == NULL) return 1;
+
+  if (vm->exported[0]) {
+    dgc_mark(vm->exported[0]);
+  }
+  DEBUG(printf("--dc::exported end\n\n"));
+  return 1;
+}
+
 int dgc_swap(d_vm* vm) {
   vm->gc_meta->n_cycles++;
   DEBUG(printf("[GC] swap\n"));
@@ -222,6 +242,8 @@ int dgc_swap(d_vm* vm) {
   dgc_swap_ip(vm->ip);
   
   dgc_swap_call_stack(vm);
+
+  dgc_swap_exported(vm);
 
   while (d != NULL) {
     if (d->checked) {
