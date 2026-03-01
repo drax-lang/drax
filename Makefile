@@ -12,7 +12,6 @@ FILES= ./src/dvm.c \
        ./src/dflags.c \
        ./src/dio.c \
        ./src/dlex.c \
-       ./src/drax.c \
        ./src/dhandler.c \
        ./src/dstructs.c \
        ./src/dbuiltin.c \
@@ -104,6 +103,7 @@ endif
 DEFAULT_BUILD = \
 		$(CC) \
 		$(FILES) \
+		./src/drax.c \
 		$(ASM_LINKS) \
 		$(DRAX_BUILD_FULL) \
 		$(FLAGS)
@@ -131,8 +131,10 @@ config:
 	mkdir bin
 
 c_test:
-	$(CC) -o tests/c_test.o tests/c_tests/tests.c src/dlex.c
-	./tests/c_test.o
+	$(CC) -o tests/c_test_lex.o tests/c_tests/tests_lexer.c src/dlex.c
+	$(CC) -o tests/c_test_parser.o tests/c_tests/tests_parser.c $(FILES) -lm
+	./tests/c_test_lex.o
+	./tests/c_test_parser.o
 
 test:
 ifeq ($(TARGET_OS),WIN32)
@@ -146,16 +148,7 @@ install:
 	make all
 	sudo cp ./bin/drax /usr/local/bin/drax
 
-valgrind:
-	valgrind --leak-check=full \
-	--show-leak-kinds=all \
-	--track-origins=yes \
-	--verbose \
-	--log-file=valgrind-out.txt \
-	--tool=memcheck --error-exitcode=1 --soname-synonyms=somalloc=none \
-	--extra-debuginfo-path=/usr/lib/debug \
-	./bin/drax /home/jeantux/projects/drax/server/src/app.dx
-
 clean:
 	rm -rf ./bin/$(APP)
-	rm -rf ./tests/c_test.o
+	rm -rf ./tests/c_test_lex.o
+	rm -rf ./tests/c_test_parser.o

@@ -157,7 +157,7 @@ static void remove_locals_registers(parser_state* psr) {
 
   if (psr->locals_length == 0) {
     psr->locals_length++;
-    psr->locals[0] = create_local_registers(psr);
+    psr->locals[0] = create_local_registers();
   }
 
   DISABLE_REFR_PROCESS();

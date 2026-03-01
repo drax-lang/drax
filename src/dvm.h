@@ -135,6 +135,8 @@ void zero_new_local_range(d_vm* vm, int range);
 
 void do_call_function_no_validation(d_vm* vm, drax_value f);
 
+dt_envs* new_environment(int ignore_natives, int ignore_local, int ignore_global);
+
 void __reset__(d_vm* vm);
 
 int __run__(d_vm* curr, int inter_mode);

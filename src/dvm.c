@@ -881,7 +881,7 @@ static void initialize_builtin_functions(d_vm* vm) {
   load_callback_fn(vm, &register_builtin);
 }
 
-static dt_envs* new_environment(int ignore_natives, int ignore_local, int ignore_global) {
+dt_envs* new_environment(int ignore_natives, int ignore_local, int ignore_global) {
   dt_envs* e = (dt_envs*) malloc(sizeof(dt_envs));
 
   if (!ignore_global) {
