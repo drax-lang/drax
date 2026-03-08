@@ -359,3 +359,72 @@ drax_value __d_list_zip(d_vm* vm, int* stat) {
   DX_SUCESS_FN(stat);
   return DS_VAL(nl);
 }
+
+drax_value __d_list_map(d_vm* vm, int* stat) {
+  drax_value fn = pop(vm);
+  drax_value lst = pop(vm);
+
+  return_if_is_not_list(lst, stat);
+
+  if (!IS_FUNCTION(fn) && !IS_NATIVE(fn)) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char*) "expected a function as second argument"));
+  }
+
+  drax_list* l1 = CAST_LIST(lst);
+  drax_list* nl = new_dlist(vm, l1->length);
+
+  /**
+   * BARRIER FRAME:
+   * create exit to finish process
+   */
+  d_instructions halt_instr;
+  halt_instr.values = (drax_value*) malloc(sizeof(drax_value));
+  halt_instr.values[0] = OP_EXIT;
+  halt_instr.lines = (int*) malloc(sizeof(int));
+  halt_instr.lines[0] = 0;
+  halt_instr.instr_count = 1;
+  halt_instr.instr_size = 1;
+  halt_instr.local_range = 0;
+  halt_instr.file = NULL;
+
+  int i;
+  for(i = 0; i < l1->length; i++) {
+    push(vm, l1->elems[i]);
+
+    if (IS_NATIVE(fn)) {
+      if (execute_d_function(vm, 1, fn) != 0) {
+        free(halt_instr.values);
+        free(halt_instr.lines);
+        DX_ERROR_FN(stat);
+        return DS_VAL(new_derror(vm, (char*) "error executing native map function"));
+      }
+    } else {
+      callstack_push(vm, &halt_instr, NULL);
+      
+      if (execute_d_function(vm, 1, fn) != 0) {
+        free(halt_instr.values);
+        free(halt_instr.lines);
+        DX_ERROR_FN(stat);
+        return DS_VAL(new_derror(vm, (char*) "error executing map function"));
+      }
+      
+      if (__start__(vm, 0) != 0) {
+        free(halt_instr.values);
+        free(halt_instr.lines);
+        DX_ERROR_FN(stat);
+        return DS_VAL(new_derror(vm, (char*) "runtime error during map evaluation"));
+      }
+      
+      callstack_pop(vm);
+    }
+
+    put_value_dlist(nl, pop(vm));
+  }
+
+  free(halt_instr.values);
+  free(halt_instr.lines);
+
+  DX_SUCESS_FN(stat);
+  return DS_VAL(nl);
+}

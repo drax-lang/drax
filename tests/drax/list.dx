@@ -167,4 +167,14 @@ assert(List.dot([0], [0]) == 0, "list error: expected 0 as result")
 assert(List.dot([5, 6, 7, 8], [2, 3, 4, 5]) == 96, "list error: expected 116 as result")
 assert(List.dot([-5, -6, -7, -8], [-2, -3, -4, -5]) == 96, "list error: expected 116 as result")
 
+# test map
+assert(List.map([1, 2, 3], fun (x) x * 2 end) == [2, 4, 6], "list error: map function did not return expected result")
+assert(List.map([], fun (x) x * 2 end) == [], "list error: map function did not return expected result for empty list")
+
+assert(['sdf=asdf', 'sadfasd=', 'sdfadf=97'] |> List.map(fun(v) do String.split(v, '=') end), [["sdf", "asdf"], ["sadfasd"], ["sdfadf", "97"]])
+
+assert(List.map([1, 2, 3], Number.is_even) == [false, true, false], "list error: map with built-in function did not return expected result")
+
+Core.gc_swap()
+
 print("List done!")

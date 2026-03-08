@@ -137,7 +137,15 @@ void do_call_function_no_validation(d_vm* vm, drax_value f);
 
 dt_envs* new_environment(int ignore_natives, int ignore_local, int ignore_global);
 
+void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* module_env);
+
+int callstack_pop(d_vm* vm);
+
+int execute_d_function(d_vm* vm, drax_value a, drax_value v);
+
 void __reset__(d_vm* vm);
+
+int __start__(d_vm* vm, int inter_mode);
 
 int __run__(d_vm* curr, int inter_mode);
 

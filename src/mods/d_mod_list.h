@@ -52,4 +52,6 @@ drax_value __d_list_shift(d_vm* vm, int* stat);
 
 drax_value __d_list_zip(d_vm* vm, int* stat);
 
+drax_value __d_list_map(d_vm* vm, int* stat);
+
 #endif

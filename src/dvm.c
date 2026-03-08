@@ -60,7 +60,7 @@ static drax_value peek(d_vm* vm, int distance) {
   return vm->stack[vm->stack_count -1 - distance];
 }
 
-static void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* module_env) {
+void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* module_env) {
   if (vm->call_stack->count >= vm->call_stack->size) {
     vm->call_stack->size = vm->call_stack->size + CALL_STACK_SIZE;
     vm->call_stack->frames = realloc(vm->call_stack->frames, sizeof(d_frame) * vm->call_stack->size);
@@ -79,7 +79,7 @@ static void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table
   }
 }
 
-static int callstack_pop(d_vm* vm) {
+int callstack_pop(d_vm* vm) {
   if (vm->call_stack->count == 0) return 1;
 
   d_frame* frame = &vm->call_stack->frames[--vm->call_stack->count];
@@ -465,7 +465,7 @@ static void remove_elem_on_stack(d_vm* vm, size_t distance) {
   vm->stack_count--;
 }
 
-static int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
+int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
   if (IS_STRUCT(v)) {
     d_struct* s = (d_struct*) CAST_STRUCT(v);
 
@@ -513,7 +513,7 @@ static int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
   return 1;
 }
 
-static int __start__(d_vm* vm, int inter_mode) {
+int __start__(d_vm* vm, int inter_mode) {
 
   #define dbin_bool_op(op, v) \
       do { \
