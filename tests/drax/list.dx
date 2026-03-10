@@ -175,6 +175,26 @@ assert(['sdf=asdf', 'sadfasd=', 'sdfadf=97'] |> List.map(fun(v) do String.split(
 
 assert(List.map([1, 2, 3], Number.is_even) == [false, true, false], "list error: map with built-in function did not return expected result")
 
+## filter
+
+assert(List.filter([1, 2, 3, 4, 5, 6], fun (x) x > 3 end) == [4, 5, 6], "list error: filter did not return expected values")
+assert(List.filter([], fun (x) x > 3 end) == [], "list error: filter should return empty list for empty input")
+
+assert(['user=1', 'invalid', 'user=2'] |> List.filter(fun(v) do String.contains(v, '=') end) == ['user=1', 'user=2'], "list error: filter failed to match pattern")
+
+assert(List.filter([1, 2, 3, 4], Number.is_even) == [2, 4], "list error: filter with built-in function failed")
+
+## tap
+
+assert(List.tap([1, 2, 3], fun (x) x * 10 end) == [1, 2, 3], "list error: tap modified the original list")
+
+assert([10, 20, 30]
+|> List.map(fun(x) x / 10 end)
+|> List.tap(fun(l) do return "ignored" end)
+|> List.filter(fun(x) x > 1 end) == [2, 3], "list error: tap interrupted the pipeline")
+
+assert(List.tap([], fun (x) x end) == [], "list error: tap failed on empty list")
+
 Core.gc_swap()
 
 print("List done!")

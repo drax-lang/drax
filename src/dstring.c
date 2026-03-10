@@ -258,3 +258,24 @@ drax_value dstr_to_lowercase(d_vm* vm, int* stat) {
   DX_SUCESS_FN(stat);
   return DS_VAL(new_dstring(vm, lower, strlen(lower)));
 }
+
+drax_value dstr_contains(d_vm *vm, int* stat) {
+  drax_value v1 = pop(vm);
+  drax_value a = pop(vm);
+
+  return_if_is_not_string(v1, stat);
+  return_if_is_not_string(a, stat);
+
+  drax_string* ds_haystack = CAST_STRING(a);
+  drax_string* ds_needle = CAST_STRING(v1);
+
+  if (ds_needle->length == 0) {
+    DX_SUCESS_FN(stat);
+    return DRAX_TRUE_VAL;
+  }
+
+  char* result = strstr(ds_haystack->chars, ds_needle->chars);
+
+  DX_SUCESS_FN(stat);
+  return (result != NULL) ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
+}

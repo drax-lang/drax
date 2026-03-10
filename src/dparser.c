@@ -415,7 +415,6 @@ void process_binary(d_vm* vm, bool v) {
 void process_pipe(d_vm* vm, bool v) {
   UNUSED(v);
   push_state(&parser, PS_IN_PIPE);
-  
   dlex_types opt = parser.prev.type;
   operation_line* rule = GET_PRIORITY(opt);
   parse_priorities(vm, (priorities)(rule->priorities + 1));
@@ -1111,6 +1110,10 @@ int __build__(d_vm* vm, const char* input, char* path) {
   get_next_token();
 
   while (get_current_token() != DTK_EOF) {
+    if (get_current_token() == DTK_LB) {
+      get_next_token();
+      continue;
+    }
     expression_with_lb(vm);
     if (!is_teractive_mode) {
       put_instruction(vm, OP_POP);

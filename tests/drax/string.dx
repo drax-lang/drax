@@ -49,4 +49,12 @@ assert(String.to_lowercase("FOO") == "foo", "string error: fail to lower case")
 assert(String.to_uppercase("abcdefghijklmnopqrstuvwxyz_1234567890") == "ABCDEFGHIJKLMNOPQRSTUVWXYZ_1234567890", "string error: fail to upper case by alphabet")
 assert(String.to_uppercase("foo") == "FOO", "string error: fail to upper case")
 
+## contains
+
+assert(String.contains("florianopolis", "floripa") == false, "string error: false positive in contains")
+assert(String.contains("software developer", "dev") == true, "string error: failed to find substring")
+assert(String.contains("asdf", "") == true, "string error: empty string should be contained in any string")
+
+assert("user_id=123" |> String.contains("="), "string error: pipe contains failed")
+
 print("String done!")

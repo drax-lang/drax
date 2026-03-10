@@ -16,6 +16,8 @@
 
 #include "../dvm.h"
 
+typedef enum { L_MAP, L_FILTER, L_TAP } list_op;
+
 drax_value __d_list_at(d_vm* vm, int* stat);
 
 drax_value __d_list_concat(d_vm* vm, int* stat);
@@ -53,5 +55,9 @@ drax_value __d_list_shift(d_vm* vm, int* stat);
 drax_value __d_list_zip(d_vm* vm, int* stat);
 
 drax_value __d_list_map(d_vm* vm, int* stat);
+
+drax_value __d_list_filter(d_vm* vm, int* stat);
+
+drax_value __d_list_tap(d_vm* vm, int* stat);
 
 #endif

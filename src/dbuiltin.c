@@ -1077,7 +1077,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * String module
    */
-  drax_native_module* string = new_native_module(vm, "String", 10);
+  drax_native_module* string = new_native_module(vm, "String", 11);
   const drax_native_module_helper string_helper[] = {
     {2, "split", dstr_split },
     {1, "length", dstr_length },
@@ -1087,6 +1087,7 @@ void create_native_modules(d_vm* vm) {
     {1, "to_uppercase", dstr_to_uppercase },
     {1, "to_lowercase", dstr_to_lowercase },
     {1, "to_number", dstr_to_number },
+    {2, "contains", dstr_contains },
   };
 
   put_fun_on_module(string, string_helper, sizeof(string_helper) / sizeof(drax_native_module_helper)); 
@@ -1118,7 +1119,7 @@ void create_native_modules(d_vm* vm) {
   /**
    * List Module
    */ 
-  drax_native_module* list = new_native_module(vm, "List", 19);
+  drax_native_module* list = new_native_module(vm, "List", 21);
   const drax_native_module_helper list_helper[] = {
     {2, "concat", __d_list_concat },
     {1, "head", __d_list_head},
@@ -1139,6 +1140,8 @@ void create_native_modules(d_vm* vm) {
     {1, "pop", __d_list_pop},
     {1, "shift", __d_list_shift},
     {2, "map", __d_list_map},
+    {2, "filter", __d_list_filter},
+    {2, "tap", __d_list_tap}
   };
   
   put_fun_on_module(list, list_helper, sizeof(list_helper) / sizeof(drax_native_module_helper)); 

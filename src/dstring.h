@@ -37,6 +37,8 @@ drax_value dstr_to_uppercase(d_vm* vm, int* stat);
 
 drax_value dstr_to_lowercase(d_vm* vm, int* stat);
 
+drax_value dstr_contains(d_vm* vm, int* stat);
+
 int dstr_handle_str_call(d_vm* vm, char* n, int a, drax_value o);
 
 #endif
