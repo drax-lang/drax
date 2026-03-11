@@ -536,19 +536,61 @@ int __start__(d_vm* vm, int inter_mode) {
 
   drax_value a;
 
-  VMDispatch() {
+  #ifdef _COMP_GOTO
+  static void* dispatch_table[] = {
+    [OP_CONST] = &&do_OP_CONST,
+    [OP_NIL] = &&do_OP_NIL, 
+    [OP_TRUE] = &&do_OP_TRUE,
+    [OP_FALSE] = &&do_OP_FALSE,
+    [OP_LIST] = &&do_OP_LIST,
+    [OP_FRAME] = &&do_OP_FRAME,
+    [OP_DSTR] = &&do_OP_DSTR,
+    [OP_POP] = &&do_OP_POP,
+    [OP_PUSH] = &&do_OP_PUSH,
+    [OP_EQUAL] = &&do_OP_EQUAL,
+    [OP_GREATER] = &&do_OP_GREATER,
+    [OP_LESS] = &&do_OP_LESS,
+    [OP_CONCAT] = &&do_OP_CONCAT,
+    [OP_ADD] = &&do_OP_ADD,
+    [OP_SUB] = &&do_OP_SUB,
+    [OP_MUL] = &&do_OP_MUL,
+    [OP_DIV] = &&do_OP_DIV,
+    [OP_NOT] = &&do_OP_NOT,
+    [OP_NEG] = &&do_OP_NEG,
+    [OP_JMP] = &&do_OP_JMP,
+    [OP_JMF] = &&do_OP_JMF,
+    [OP_LOOP] = &&do_OP_LOOP,
+    [OP_D_CALL] = &&do_OP_D_CALL,
+    [OP_D_CALL_P] = &&do_OP_D_CALL_P,
+    [OP_D_CALL_T] = &&do_OP_D_CALL_T,
+    [OP_D_CALL_P_T] = &&do_OP_D_CALL_P_T,
+    [OP_FUN] = &&do_OP_FUN,
+    [OP_SET_G_ID] = &&do_OP_SET_G_ID,
+    [OP_GET_G_ID] = &&do_OP_GET_G_ID,
+    [OP_SET_L_ID] = &&do_OP_SET_L_ID,
+    [OP_GET_L_ID] = &&do_OP_GET_L_ID,
+    [OP_SET_I_ID] = &&do_OP_SET_I_ID,
+    [OP_GET_I_ID] = &&do_OP_GET_I_ID,
+    [OP_IMPORT] = &&do_OP_IMPORT,
+    [OP_EXPORT] = &&do_OP_EXPORT,
+    [OP_RETURN] = &&do_OP_RETURN,
+    [OP_EXIT] = &&do_OP_EXIT,
+  };
+  #endif
+
+  VMDispatch(vm) {
     VMcond(vm) {
       VMCase(OP_NIL) {
         push(vm, DRAX_NIL_VAL);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_TRUE) {
         push(vm, DRAX_TRUE_VAL);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_FALSE) {
         push(vm, DRAX_FALSE_VAL);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_LIST) {
         drax_value lc = pop(vm);
@@ -562,7 +604,7 @@ int __start__(d_vm* vm, int inter_mode) {
 
         pop_times(vm, limit);
         push(vm, DS_VAL(l));
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_FRAME) {
         drax_value lc = pop(vm);
@@ -577,43 +619,43 @@ int __start__(d_vm* vm, int inter_mode) {
 
         pop_times(vm, limit);
         push(vm, DS_VAL(l));
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_DSTR) {
         /* TODO: process db string */
         push(vm, GET_VALUE(vm));
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_CONST) {
         push(vm, GET_VALUE(vm));
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_POP) {
         pop(vm);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_PUSH) {
         push(vm, GET_VALUE(vm));
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_SET_G_ID) {
         drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
         put_var_table(vm->envs->global, k, v);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_GET_G_ID) {
         if(get_definition(vm, 0) == 0) { return 1; }
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_SET_L_ID) {
         char* k = (char*) GET_VALUE(vm);
         put_local_table(vm->envs->local, k, pop(vm));
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_GET_L_ID) {
         if(get_definition(vm, 1) == 0) { return 1; }
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_SET_I_ID) {
         /**
@@ -633,10 +675,10 @@ int __start__(d_vm* vm, int inter_mode) {
         if (IS_FRAME(f)) {
           if(get_value_dframe(CAST_FRAME(f), (char*) k, &val) == -1) {
             push(vm, DRAX_NIL_VAL);
-            break;
+            NEXT_OP(vm);
           }
           push(vm, val);
-          break;
+          NEXT_OP(vm);
         }
 
         if (IS_MODULE(f)) {
@@ -651,7 +693,7 @@ int __start__(d_vm* vm, int inter_mode) {
           low_level_callback* nf = md->fun[idx];
           int art = md->arity[idx];
           push(vm, DS_VAL(new_dllcallback(vm, nf, (const char*) k, art)));
-          break;
+          NEXT_OP(vm);
         }
         
         raise_drax_error(vm, "error: key '%s' is not defined\n", k);
@@ -661,15 +703,15 @@ int __start__(d_vm* vm, int inter_mode) {
         drax_value beq = pop(vm);
         drax_value aeq = pop(vm);
         push(vm, BOOL_VAL(values_equal(aeq, beq)));
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_GREATER) {
         dbin_bool_op(>, BOOL_VAL);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_LESS) {
         dbin_bool_op(<, BOOL_VAL);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_CONCAT) {
         if (IS_STRING(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
@@ -700,30 +742,30 @@ int __start__(d_vm* vm, int inter_mode) {
           raise_drax_error(vm, "Concat with unspected type");
           return 1;
         }
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_ADD) {
         binary_op(vm, +);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_SUB) {
         binary_op(vm, -);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_MUL) {
         binary_op(vm, *);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_DIV) {
         binary_op(vm, /);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_NOT) {
         /**
          * Direct OP on stack
          */
         vm->stack[vm->stack_count - 1] = BOOL_VAL(IS_FALSE(vm->stack[vm->stack_count - 1]));
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_NEG) {
         if (!IS_NUMBER(peek(vm, 0))) {
@@ -732,20 +774,20 @@ int __start__(d_vm* vm, int inter_mode) {
         }
         
         push(vm, NUMBER_VAL(-CAST_NUMBER(pop(vm))));
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_JMP) {
         uint16_t offset = dg16_byte(vm);
         vm->ip += offset;
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_JMF) {
         uint16_t offset = dg16_byte(vm);
         if (IS_FALSE(peek(vm, 0))) vm->ip += offset;
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_LOOP) {
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_D_CALL_P) {
         /**
@@ -771,7 +813,7 @@ int __start__(d_vm* vm, int inter_mode) {
             return 1;
           }
         }
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_D_CALL_P_T) {
         a = GET_VALUE(vm);
@@ -807,7 +849,7 @@ int __start__(d_vm* vm, int inter_mode) {
             zero_new_local_range(vm, f->instructions->local_range);
           }
         }
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_FUN) {
         /**
@@ -830,16 +872,16 @@ int __start__(d_vm* vm, int inter_mode) {
           if(build_self_dep_fn(vm, &v) == 0) { return 1; }
         }
         push(vm, v);
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_IMPORT) {
         if (import_file(vm, pop(vm))) return 1;
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_EXPORT) {
         drax_value v = pop(vm);
         vm->exported[0] = v;
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_RETURN) {
         int is_no_instr = (vm->active_instr->instr_count <= 1);
@@ -848,7 +890,7 @@ int __start__(d_vm* vm, int inter_mode) {
 
         if (is_no_instr) push(vm, DRAX_NIL_VAL);
         if (!vm->active_instr) return 0;
-        break;
+        NEXT_OP(vm);
       }
       VMCase(OP_EXIT) {
         /* check if is stopVM or exit */
@@ -861,12 +903,16 @@ int __start__(d_vm* vm, int inter_mode) {
         }
         return 0;
       }
-      default: {
-        printf("runtime error.\n");
-        return 1;
-      }
+      
+      #ifndef _COMP_GOTO
+        default: {
+          printf("runtime error.\n");
+          return 1;
+        }
+      #endif
     }
   }
+
   return 0;  
 }
 

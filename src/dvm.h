@@ -25,16 +25,33 @@
  #define DEBUG_OP(x)
 #endif
 
-
-#define VMDispatch() while(true)
-
-#define VMcond(f) \
-     switch (*(f->ip++))
-
 #define dg16_byte(f) \
     (f->ip += 2, (uint16_t)((f->ip[-2] << 8) | f->ip[-1]))
 
-#define VMCase(t) case t:
+#ifdef _COMP_GOTO
+  #define VMDispatch(vm) goto *dispatch_table[*(vm->ip++)];
+
+  #define VMcond(f) 
+
+  #define VMCase(t) do_##t:
+
+  #define NEXT_OP(vm) \
+      goto *dispatch_table[*(vm->ip++)]
+
+  #define VMDefault() do_default:
+#else
+  #define VMDispatch(vm) while(true)
+
+  #define VMcond(f) \
+      switch (*(f->ip++))
+
+  #define dg16_byte(f) \
+      (f->ip += 2, (uint16_t)((f->ip[-2] << 8) | f->ip[-1]))
+
+  #define VMCase(t) case t:
+
+  #define NEXT_OP(vm) break
+#endif
 
 #define AS_NUMBER(v) draxvalue_to_num(v)
 #define AS_VALUE(v)  num_to_draxvalue(v)

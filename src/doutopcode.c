@@ -119,16 +119,6 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         ip++;
         break;
       }
-      case OP_CALL_G: {
-        printf("OP_CALL_G, <value>\n");
-        ip++;
-        break;
-      }
-      case OP_CALL_L: {
-        printf("OP_CALL_L, <value>\n");
-        ip++;
-        break;
-      }
       case OP_D_CALL_T: {
         printf("OP_D_CALL_T, <fn::value>\n");
         ip++;

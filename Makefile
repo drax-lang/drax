@@ -81,6 +81,13 @@ ifdef NO_SSL
   FLAGS += -DNO_SSL
 endif
 
+HAS_GOTO = $(shell $(CC) -dM -E - < /dev/null | grep -E "__GNUC__|__clang__" > /dev/null && echo 1 || echo 0)
+
+ifeq ($(HAS_GOTO), 1)
+  $(info Compiler supports goto, enabling _COMP_GOTO)
+  FLAGS += -D_COMP_GOTO
+endif
+
 ifeq ($(LIGHT), 1)
     DRAX_BUILD_FULL= 
 else
@@ -152,3 +159,4 @@ clean:
 	rm -rf ./bin/$(APP)
 	rm -rf ./tests/c_test_lex.o
 	rm -rf ./tests/c_test_parser.o
+	rm -rf ./src/build
