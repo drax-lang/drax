@@ -1,0 +1,2 @@
+assert(nil, "nil must not pass")
+print("reached the end")

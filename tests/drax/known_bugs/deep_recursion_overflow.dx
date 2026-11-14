@@ -1,0 +1,7 @@
+### BUG: unbounded non tail recursion crashes the interpreter (SIGSEGV, exit 139)
+### instead of reporting a stack overflow error (exit 1).
+
+r = Os.cmd_with_status("./bin/drax ./tests/drax/known_bugs/_deep.dx 2>&1")
+assert(List.at(r, 0) == 1, "bug: stack overflow must be a clean error, got status " ++ Number.to_string(List.at(r, 0)))
+
+print("deep_recursion_overflow fixed!")

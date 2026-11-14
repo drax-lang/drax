@@ -1,0 +1,89 @@
+### each closure keeps its own captured value
+fun make_adder(n) do
+    fun (x) x + n end
+end
+
+add1 = make_adder(1)
+add10 = make_adder(10)
+
+assert(add1(5) == 6, "closure error: add1(5)")
+assert(add10(5) == 15, "closure error: add10(5)")
+assert(add1(5) == 6, "closure error: add1 must not be affected by add10")
+
+### closures created in a list
+fun mk(n) do
+    fun () n end
+end
+
+fs = List.map([1, 2, 3], mk)
+assert(List.map(fs, fun (f) f() end) == [1, 2, 3], "closure error: closures created through map")
+
+### capturing more than one variable
+fun make_pair(a, b) do
+    fun (c) a + b + c end
+end
+
+assert(make_pair(1, 2)(3) == 6, "closure error: multi capture")
+assert(make_pair(10, 20)(30) == 60, "closure error: multi capture 2")
+
+### closure that captures a closure
+fun compose(f, g) do
+    fun (x) f(g(x)) end
+end
+
+inc = fun (x) x + 1 end
+dbl = fun (x) x * 2 end
+
+assert(compose(inc, dbl)(5) == 11, "closure error: compose(inc, dbl)(5)")
+assert(compose(dbl, inc)(5) == 12, "closure error: compose(dbl, inc)(5)")
+assert(compose(inc, compose(inc, inc))(0) == 3, "closure error: nested compose")
+
+### currying
+curry = fun (a) fun (b) fun (c) a * b + c end end end
+assert(curry(2)(3)(4) == 10, "closure error: curry")
+
+### parameter shadows a global and does not leak
+x = 10
+fun shadow(x) do x + 1 end
+assert(shadow(1) == 2, "closure error: parameter shadows global")
+assert(x == 10, "closure error: global changed by shadowing parameter")
+
+### local assignment does not leak to the global scope
+y = 5
+fun set_local() do
+    y = 6
+    y
+end
+assert(set_local() == 6, "closure error: local value")
+assert(y == 5, "closure error: local write leaked to global")
+
+### functions as arguments
+fun apply_twice(f, v) do f(f(v)) end
+assert(apply_twice(inc, 0) == 2, "closure error: apply_twice(lambda)")
+assert(apply_twice(Math.floor, 2.5) == 2, "closure error: apply_twice(native)")
+
+fun call_with(f) do f(1) end
+assert(call_with(fun (a) a + 1 end) == 2, "closure error: lambda as argument")
+assert(call_with(Number.to_string) == "1", "closure error: native as argument")
+
+### functions stored in frames and lists
+ops = { add: fun (a, b) a + b end, mul: fun (a, b) a * b end }
+assert(ops.add(2, 3) == 5, "closure error: function in frame (add)")
+assert(ops.mul(2, 3) == 6, "closure error: function in frame (mul)")
+
+fl = [fun () 1 end, fun () 2 end]
+assert(List.at(fl, 0)() == 1, "closure error: function in list [0]")
+assert(List.at(fl, 1)() == 2, "closure error: function in list [1]")
+
+### immediately returned and invoked
+assert((fun () 42 end)() == 42, "closure error: immediate invocation")
+assert(fun (a) a end(7) == 7, "closure error: immediate invocation with arg")
+
+### redefining a named function does not change references taken before
+fun versioned() do 1 end
+v1 = versioned
+fun versioned() do 2 end
+assert(v1() == 1, "closure error: old reference must keep old body")
+assert(versioned() == 2, "closure error: new definition")
+
+print("Closures done!")

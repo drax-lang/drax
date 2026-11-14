@@ -1,0 +1,18 @@
+### BUG: unary operators applied to a call are dropped (no error) when the call
+### is the last expression of an if branch. Same root cause as
+### nontail_recursion_in_if.dx.
+
+fun id(n) do n end
+
+fun neg(n) do
+    if (n > 0) do -id(n) end
+end
+
+fun inv(n) do
+    if (n > 0) do !id(n) end
+end
+
+assert(neg(5) == -5, "bug: -id(5) returned the operand without negating")
+assert(inv(5) == false, "bug: !id(5) returned the operand without negating")
+
+print("unary_on_call_in_if fixed!")

@@ -1,0 +1,11 @@
+### QUESTION: redefining a name with another arity drops the previous arity.
+### Errors use the name/arity form ("function 'f/1' is not defined"), which
+### suggests that both should coexist.
+
+fun f(a) do a end
+fun f(a, b) do a + b end
+
+assert(f(1, 2) == 3, "f/2")
+assert(f(1) == 1, "bug: f/1 vanished after defining f/2")
+
+print("function_overload_by_arity fixed!")

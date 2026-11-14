@@ -1,0 +1,83 @@
+### tail recursion with accumulator
+fun sum_to(n, acc) do
+    if (n == 0) do
+        acc
+    else
+        sum_to(n - 1, acc + n)
+    end
+end
+
+assert(sum_to(10, 0) == 55, "recursion error: sum_to(10)")
+assert(sum_to(100000, 0) == 5000050000, "recursion error: sum_to(100000)")
+assert(sum_to(3000000, 0) == 4500001500000, "recursion error: TCO must not grow the stack")
+
+### tail recursion with early return
+fun find(n, target) do
+    if (n == target) do
+        return n
+    end
+    if (n > 1000000) do
+        return nil
+    end
+    find(n + 1, target)
+end
+
+assert(find(0, 500000) == 500000, "recursion error: early return in tail loop")
+assert(find(0, 2000000) == nil, "recursion error: bound reached")
+
+### tail recursion through pipe
+fun count_down(n) do
+    if (n == 0) do
+        "done"
+    else
+        n - 1 |> count_down()
+    end
+end
+
+assert(count_down(500000) == "done", "recursion error: pipe tail recursion")
+
+### recursion where the call is NOT the last expression of the function
+fun fact(n) do
+    if (n < 2) do
+        return 1
+    end
+    r = fact(n - 1)
+    n * r
+end
+
+assert(fact(1) == 1, "recursion error: fact(1)")
+assert(fact(5) == 120, "recursion error: fact(5)")
+assert(fact(10) == 3628800, "recursion error: fact(10)")
+
+### the early-return style works for non tail calls
+fun depth(n) do
+    if (n == 0) do
+        return 0
+    end
+    1 + depth(n - 1)
+end
+
+assert(depth(0) == 0, "recursion error: depth(0)")
+assert(depth(50) == 50, "recursion error: depth(50)")
+
+### recursion over data
+fun list_sum(l, acc) do
+    if (List.is_empty(l)) do
+        acc
+    else
+        list_sum(List.tail(l), acc + List.at(l, 0))
+    end
+end
+
+assert(list_sum([1, 2, 3, 4], 0) == 10, "recursion error: list_sum")
+assert(list_sum([], 0) == 0, "recursion error: list_sum([])")
+
+### self call operator
+fun self_sum(n, acc) do
+    if (n == 0) do
+        return acc
+    end
+    &(n - 1, acc + n)
+end
+
+print("Recursion done!")

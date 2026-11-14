@@ -1,0 +1,1 @@
+print(import("./tests/drax/errors/does_not_exist.dx"))

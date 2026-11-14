@@ -1,0 +1,43 @@
+### BUG: a call that is the last thing inside an if/else branch is compiled as a
+### tail call (OP_D_CALL_T) even when it is an operand of another expression.
+### Parser heuristic: dparser.c process_call() only checks "next token is `end`".
+### Result: "vm_error: function is not valid!" or a silently wrong value.
+
+fun sum_to(n) do
+    if (n == 0) do
+        0
+    else
+        n + sum_to(n - 1)
+    end
+end
+
+assert(sum_to(5) == 15, "bug: n + sum_to(n - 1) inside else")
+
+fun id(n) do n end
+
+fun in_list(n) do
+    if (n > 0) do [n, id(n)] end
+end
+assert(in_list(2) == [2, 2], "bug: call inside list literal in if")
+
+fun in_frame(n) do
+    if (n > 0) do { a: id(n) } end
+end
+assert(in_frame(2) == { a: 2 }, "bug: call inside frame literal in if")
+
+fun in_concat(n) do
+    if (n > 0) do "x" ++ id("y") end
+end
+assert(in_concat(1) == "xy", "bug: call inside concat in if")
+
+fun in_assign(n) do
+    if (n == 0) do
+        0
+    else
+        x = id(n)
+        x + 1
+    end
+end
+assert(in_assign(5) == 6, "bug: assignment of call inside else")
+
+print("nontail_recursion_in_if fixed!")

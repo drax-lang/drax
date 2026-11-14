@@ -1,0 +1,8 @@
+### BUG: List.tail([]) returns a list whose length is -1.
+
+t = List.tail([])
+assert(List.length(t) == 0, "bug: List.tail([]) has a negative length")
+assert(t == [], "bug: List.tail([]) must equal []")
+assert(List.is_empty(t), "bug: List.tail([]) must be empty")
+
+print("list_tail_empty fixed!")

@@ -1,0 +1,7 @@
+fun deep(n) do
+    if (n == 0) do
+        return 0
+    end
+    1 + deep(n - 1)
+end
+print(deep(100000000))

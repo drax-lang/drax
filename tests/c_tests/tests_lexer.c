@@ -105,6 +105,41 @@ int main() {
   
   all_passed &= run_lexan_test("# comment only", DTK_EOF, 0);
   
+  printf("\n--- multi-character operators ---\n");
+  all_passed &= run_lexan_test("++", DTK_CONCAT, 0);
+  all_passed &= run_lexan_test("|>", DTK_PIPE, 0);
+  all_passed &= run_lexan_test("==", DTK_DEQ, 0);
+  all_passed &= run_lexan_test("!=", DTK_BNG_EQ, 0);
+  all_passed &= run_lexan_test(">=", DTK_BE, 0);
+  all_passed &= run_lexan_test("&", DTK_AMP, 0);
+  all_passed &= run_lexan_test(":", DTK_COLON, 0);
+
+  printf("\n--- keyword boundaries ---\n");
+  all_passed &= run_lexan_test("iffy", DTK_ID, 0);
+  all_passed &= run_lexan_test("ending", DTK_ID, 0);
+  all_passed &= run_lexan_test("nilable", DTK_ID, 0);
+  all_passed &= run_lexan_test("true_value", DTK_ID, 0);
+  all_passed &= run_lexan_test("android", DTK_ID, 0);
+  all_passed &= run_lexan_test("is_even?", DTK_ID, 0);
+  all_passed &= run_lexan_test("IF", DTK_ID, 0);
+
+  printf("\n--- strings ---\n");
+  all_passed &= run_lexan_test("'single quoted'", DTK_STRING, 0);
+  all_passed &= run_lexan_test("'unterminated", DTK_ERROR, 0);
+  all_passed &= run_lexan_test("\"\"\"line1\nline2\"\"\"", DTK_MSTRING, 0);
+
+  printf("\n--- comments ---\n");
+  all_passed &= run_lexan_test("# comment\n42", DTK_NUMBER, DNT_DECIMAL);
+  all_passed &= run_lexan_test("## double hash\nfoo", DTK_ID, 0);
+  all_passed &= run_lexan_test("", DTK_EOF, 0);
+  all_passed &= run_lexan_test("   ", DTK_EOF, 0);
+
+  printf("\n--- invalid input ---\n");
+  all_passed &= run_lexan_test("@", DTK_ERROR, 0);
+  all_passed &= run_lexan_test("0b", DTK_ERROR, 0);
+  all_passed &= run_lexan_test("0xZZ", DTK_ERROR, 0);
+  all_passed &= run_lexan_test("1_000", DTK_ERROR, 0);
+
   printf("\n--- number edge cases ---\n");
   all_passed &= run_lexan_test("0", DTK_NUMBER, DNT_DECIMAL);
   all_passed &= run_lexan_test("007", DTK_NUMBER, DNT_DECIMAL);

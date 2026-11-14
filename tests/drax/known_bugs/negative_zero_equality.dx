@@ -1,0 +1,9 @@
+### BUG: -0 is not equal to 0 (numbers appear to be compared bit by bit).
+### IEEE 754 and every common language say -0 == 0.
+
+assert(-0 == 0, "bug: -0 == 0")
+assert(0 * -1 == 0, "bug: 0 * -1 == 0")
+assert(Math.ceil(-0.5) == 0, "bug: Math.ceil(-0.5) == 0")
+assert(Number.to_string(0 * -1) == "0", "bug: -0 must print as 0")
+
+print("negative_zero_equality fixed!")

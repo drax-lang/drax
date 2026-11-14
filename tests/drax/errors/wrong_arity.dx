@@ -1,0 +1,4 @@
+fun f(a) do
+  a
+end
+f(1, 2)

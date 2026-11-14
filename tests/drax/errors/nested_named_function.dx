@@ -1,0 +1,5 @@
+fun outer() do
+  fun inner() do 1 end
+  inner()
+end
+outer()

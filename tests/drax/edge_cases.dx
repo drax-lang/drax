@@ -1,0 +1,142 @@
+### list edge cases
+assert(List.at([1, 2, 3], 3) == nil, "edge error: List.at out of range")
+assert(List.at([1, 2, 3], -4) == nil, "edge error: List.at negative out of range")
+assert(List.at([], 0) == nil, "edge error: List.at on empty list")
+assert(List.at([1, 2, 3], -1) == 3, "edge error: List.at(-1) is the last")
+assert(List.length([]) == 0, "edge error: length of empty list")
+assert(List.length([[], []]) == 2, "edge error: nested empty lists count")
+assert(List.is_empty([]), "edge error: [] is empty")
+assert(!List.is_empty([nil]), "edge error: [nil] is not empty")
+assert(List.is_present([0]), "edge error: [0] is present")
+assert(List.tail([1]) == [], "edge error: tail of single")
+assert(List.concat([], []) == [], "edge error: concat of empties")
+assert(List.concat([1], []) == [1], "edge error: concat with empty right")
+assert(List.concat([], [1]) == [1], "edge error: concat with empty left")
+assert(List.slice([1, 2, 3], 2, 1) == [], "edge error: slice with start > end")
+assert(List.slice([], 0, 0) == [], "edge error: slice of empty")
+assert(List.sum([1.5, 2.5]) == 4, "edge error: sum of floats")
+
+### lists are immutable: operations return a new list
+orig = [1, 2, 3]
+List.pop(orig)
+List.shift(orig)
+List.remove_at(orig, 0)
+List.insert_at(orig, 0, 9)
+List.replace_at(orig, 0, 9)
+List.concat(orig, [4])
+orig ++ [5]
+assert(orig == [1, 2, 3], "edge error: list was mutated by a list operation")
+
+alias = orig
+orig = List.pop(orig)
+assert(alias == [1, 2, 3], "edge error: alias must keep old list")
+assert(orig == [1, 2], "edge error: rebinding yields new list")
+
+### frame edge cases
+assert(Frame.get({ a: 1 }, "z") == nil, "edge error: Frame.get of missing key")
+assert(Frame.get_or_else({ a: 1 }, "z", 0) == 0, "edge error: Frame.get_or_else default")
+assert(Frame.get_or_else({ a: 1 }, "a", 0) == 1, "edge error: Frame.get_or_else present")
+assert(!Frame.has_key({}, "z"), "edge error: has_key on empty")
+assert(Frame.keys({}) == [], "edge error: keys of empty")
+assert(Frame.values({}) == [], "edge error: values of empty")
+assert({ a: nil } != {}, "edge error: key with nil value is still a key")
+assert(Frame.has_key({ a: nil }, "a"), "edge error: has_key with nil value")
+
+fr = { a: 1 }
+fr2 = Frame.put(fr, "a", 2)
+Frame.put(fr, "b", 3)
+Frame.remove(fr, "a")
+assert(fr == { a: 1 }, "edge error: frame was mutated by a frame operation")
+assert(fr2 == { a: 2 }, "edge error: put returns the new frame")
+
+nested = { a: { b: { c: [1, { d: "deep" }] } } }
+assert(nested.a.b.c == [1, { d: "deep" }], "edge error: deep frame access")
+assert(List.at(nested.a.b.c, 1).d == "deep", "edge error: access through list then frame")
+
+weird = { 'value @ test': 456, 'a-b': 1 }
+assert(Frame.has_key(weird, 'value @ test'), "edge error: quoted key with symbols")
+assert(Frame.keys({ b: 1, a: 2 }) == ["b", "a"], "edge error: keys keep insertion order")
+assert(Frame.to_list(Frame.new_from_list([["x", 1], ["y", 2]])) == [["x", 1], ["y", 2]], "edge error: frame/list roundtrip")
+
+### string edge cases
+assert(String.length("") == 0, "edge error: length of empty string")
+assert(String.contains("", "") == true, "edge error: empty contains empty")
+assert(String.contains("", "a") == false, "edge error: empty does not contain 'a'")
+assert(String.contains("abc", "abcd") == false, "edge error: needle longer than haystack")
+assert(String.split("a,b,,c", ",") == ["a", "b", "", "c"], "edge error: split keeps empty field")
+assert(String.split("abc", ",") == ["abc"], "edge error: split with no match")
+assert(String.split("a,b", ",") == ["a", "b"], "edge error: split basic")
+assert(String.to_uppercase("") == "", "edge error: upper of empty")
+assert(String.to_lowercase("MiXeD 123") == "mixed 123", "edge error: lower with digits")
+assert(String.at("abc", -1) == "c", "edge error: String.at(-1)")
+assert(String.at("abc", 3) == "", "edge error: String.at out of range")
+assert(String.at("", 0) == "", "edge error: String.at on empty")
+assert("tab\there" != "tab here", "edge error: escape sequence is not a space")
+assert(String.length("\"") == 1, "edge error: escaped quote counts as one")
+assert(String.length("""multi
+line""") == 10, "edge error: multiline string length")
+assert(String.length('single') == 6, "edge error: single quoted string")
+assert(String.to_number("0") == 0, "edge error: to_number 0")
+assert(String.to_number("007") == 7, "edge error: to_number leading zeros")
+
+### numbers
+assert(Math.floor(-0.5) == -1, "edge error: floor of negative")
+assert(Math.floor(-2.5) == -3, "edge error: floor of negative 2")
+assert(Math.pow(0, 0) == 1, "edge error: 0^0")
+assert(Math.pow(2, -1) == 0.5, "edge error: negative exponent")
+assert(Math.pow(2, 0.5) == 1.4142135623730951, "edge error: fractional exponent")
+assert(Math.pow(2, 10) == 1024, "edge error: 2^10")
+assert(1 / 0 == 1 / 0, "edge error: division by zero is a stable inf")
+assert(Number.max(1, 1) == 1, "edge error: max of equal")
+assert(Number.min(-0.5, 0.5) == -0.5, "edge error: min of floats")
+assert(Number.is_even(0), "edge error: 0 is even")
+assert(Number.is_odd(-3), "edge error: -3 is odd")
+assert(Number.is_even(-4), "edge error: -4 is even")
+
+### if as an expression
+r = if (true) do 1 else 2 end
+assert(r == 1, "edge error: if expression true branch")
+r = if (false) do 1 else 2 end
+assert(r == 2, "edge error: if expression false branch")
+r = if (1 > 0) do "yes" else "no" end ++ "!"
+assert(r == "yes!", "edge error: if expression inside concat")
+
+nested = if (true) do if (false) do 1 else 2 end else 3 end
+assert(nested == 2, "edge error: nested if expression")
+
+### functions
+fun noop() do end
+assert(noop() == nil, "edge error: empty function returns nil")
+
+fun early(x) do
+    if (x) do
+        return "early"
+    end
+    "late"
+end
+assert(early(true) == "early", "edge error: early return")
+assert(early(false) == "late", "edge error: fall through")
+
+fun ret_first(x) do
+    return x
+    "unreachable"
+end
+assert(ret_first(1) == 1, "edge error: code after return is ignored")
+
+fun many(a, b, c, d, e, f, g, h) do
+    a + b + c + d + e + f + g + h
+end
+assert(many(1, 2, 3, 4, 5, 6, 7, 8) == 36, "edge error: many parameters")
+
+fun ret_frame() do { a: [1, { b: "x" }] } end
+assert(ret_frame().a == [1, { b: "x" }], "edge error: function returning a frame")
+
+fun ret_list() do [1, 2, 3] end
+assert(List.at(ret_list(), 2) == 3, "edge error: function returning a list")
+
+### pipe
+assert(5 |> Number.to_string() |> String.length() == 1, "edge error: pipe through modules")
+assert("a,b" |> String.split(",") |> List.length() == 2, "edge error: pipe with extra argument")
+assert([3, 4] |> List.hypot() == 5, "edge error: pipe into list function")
+
+print("Edge cases done!")

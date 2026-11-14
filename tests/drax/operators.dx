@@ -1,0 +1,119 @@
+### arithmetic: precedence and associativity
+assert(10 - 3 - 2 == 5, "operators error: subtraction must be left associative")
+assert(100 / 10 / 5 == 2, "operators error: division must be left associative")
+assert(2 + 3 * 4 == 14, "operators error: * binds tighter than +")
+assert((2 + 3) * 4 == 20, "operators error: parentheses override precedence")
+assert(2 * 3 + 4 * 5 == 26, "operators error: mixed precedence")
+assert(1 - 2 * 3 == -5, "operators error: 1 - 2 * 3")
+
+### unary minus
+assert(-5 + 2 == -3, "operators error: unary minus then add")
+assert(2 - -3 == 5, "operators error: binary minus followed by unary minus")
+assert(2 * -3 == -6, "operators error: multiply by negative")
+assert(-(2 + 3) == -5, "operators error: unary minus on group")
+assert(--3 == 3, "operators error: double negation")
+
+### floats
+assert(0.1 + 0.2 == 0.30000000000000004, "operators error: float addition is IEEE754")
+assert(7 / 2 == 3.5, "operators error: division yields float")
+assert(1 / 4 == 0.25, "operators error: 1 / 4")
+assert(-7 / 2 == -3.5, "operators error: negative division")
+
+### comparison
+assert(1 < 2, "operators error: 1 < 2")
+assert(!(2 < 1), "operators error: !(2 < 1)")
+assert(2 <= 2, "operators error: 2 <= 2")
+assert(2 >= 2, "operators error: 2 >= 2")
+assert(!(3 >= 4), "operators error: !(3 >= 4)")
+assert(1 != 2, "operators error: 1 != 2")
+assert(!(1 != 1), "operators error: !(1 != 1)")
+assert(-1 < 0, "operators error: -1 < 0")
+assert(1.5 > 1, "operators error: 1.5 > 1")
+assert(1 + 1 == 2 and 2 * 2 == 4, "operators error: arithmetic inside comparison")
+
+### equality is structural and type aware
+assert(1 == 1, "operators error: number equality")
+assert(1 != "1", "operators error: number vs string")
+assert("a" == "a", "operators error: string equality")
+assert("a" != "b", "operators error: string inequality")
+assert("" == "", "operators error: empty string equality")
+assert(true == true, "operators error: boolean equality")
+assert(true != false, "operators error: boolean inequality")
+assert(nil == nil, "operators error: nil == nil")
+assert(nil != false, "operators error: nil is not false")
+assert(nil != 0, "operators error: nil is not 0")
+assert(nil != "", "operators error: nil is not empty string")
+assert([] == [], "operators error: empty list equality")
+assert({} == {}, "operators error: empty frame equality")
+assert([] != {}, "operators error: list vs frame")
+assert([1, [2, [3]]] == [1, [2, [3]]], "operators error: nested list equality")
+assert([1, [2, [3]]] != [1, [2, [4]]], "operators error: nested list inequality")
+assert([1, 2, 3] != [1, 2], "operators error: list length mismatch")
+assert([1, 2] != [2, 1], "operators error: list order matters")
+assert({ a: { b: 1 } } == { a: { b: 1 } }, "operators error: nested frame equality")
+assert({ a: { b: 1 } } != { a: { b: 2 } }, "operators error: nested frame inequality")
+
+### logic
+assert(true and true, "operators error: true and true")
+assert(!(true and false), "operators error: true and false")
+assert(false or true, "operators error: false or true")
+assert(!(false or false), "operators error: false or false")
+assert(!false, "operators error: !false")
+assert(!!true, "operators error: !!true")
+assert(1 < 2 and 2 < 3 and 3 < 4, "operators error: chained and")
+assert(1 > 2 or 2 > 3 or 3 < 4, "operators error: chained or")
+assert((true or false) and true, "operators error: grouped logic")
+assert(true or false and false, "operators error: and binds tighter than or")
+
+### and/or return the deciding operand
+assert((true and nil) == nil, "operators error: true and nil")
+assert((nil or 3) == 3, "operators error: nil or 3")
+assert((1 and 2) == 2, "operators error: 1 and 2")
+assert((false or "x") == "x", "operators error: false or 'x'")
+
+### truthiness: only nil and false are falsy
+fun truthy(v) do
+    if (v) do true else false end
+end
+
+assert(truthy(true), "operators error: true is truthy")
+assert(!truthy(false), "operators error: false is falsy")
+assert(!truthy(nil), "operators error: nil is falsy")
+assert(truthy(0), "operators error: 0 is truthy")
+assert(truthy(""), "operators error: empty string is truthy")
+assert(truthy([]), "operators error: empty list is truthy")
+assert(truthy({}), "operators error: empty frame is truthy")
+assert(!nil, "operators error: !nil")
+assert(!!0, "operators error: !!0")
+
+### short circuit: the right side must not be evaluated
+fun boom() do
+    assert(false, "operators error: short circuit evaluated the right side")
+end
+
+assert(!(false and boom()), "operators error: false and boom()")
+assert(true or boom(), "operators error: true or boom()")
+
+### string concat
+assert("a" ++ "b" ++ "c" == "abc", "operators error: chained concat")
+assert("" ++ "" == "", "operators error: empty concat")
+assert("a" ++ "" == "a", "operators error: concat identity")
+assert([1] ++ [2] ++ [3] == [1, 2, 3], "operators error: chained list concat")
+assert([] ++ [] == [], "operators error: empty list concat")
+assert(String.length("ab" ++ "cd") == 4, "operators error: length of concat")
+
+### numeric literals
+assert(0xff == 255, "operators error: hex literal")
+assert(0xFF == 255, "operators error: hex literal upper")
+assert(0b101 == 5, "operators error: bin literal")
+assert(0o17 == 15, "operators error: oct literal")
+assert(0x10 + 0b11 + 0o7 == 26, "operators error: mixed base literals")
+assert(0 == 0.0, "operators error: 0 == 0.0")
+assert(1.0 == 1, "operators error: 1.0 == 1")
+
+### comments
+x = 1 # trailing comment
+## double hash comment
+assert(x == 1, "operators error: comment handling")
+
+print("Operators done!")

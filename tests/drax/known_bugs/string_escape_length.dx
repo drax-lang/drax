@@ -1,0 +1,8 @@
+### BUG (inconsistency): \" is converted when the string is read, but \n and \t
+### are kept as two characters by the lexer and only expanded by print.
+
+assert(String.length("\"") == 1, "escaped quote is one char")
+assert(String.length("a\nb") == 3, "bug: \\n must count as one char")
+assert(String.length("a\tb") == 3, "bug: \\t must count as one char")
+
+print("string_escape_length fixed!")

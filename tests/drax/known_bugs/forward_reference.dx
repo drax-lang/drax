@@ -1,0 +1,15 @@
+### LIMITATION / design question: a function cannot call a global function that
+### is defined later, so mutual recursion is impossible even at top level.
+### Fails with "'is_odd_r' is not defined".
+
+fun is_even_r(n) do
+    if (n == 0) do true else is_odd_r(n - 1) end
+end
+
+fun is_odd_r(n) do
+    if (n == 0) do false else is_even_r(n - 1) end
+end
+
+assert(is_even_r(10), "bug: mutual recursion")
+
+print("forward_reference fixed!")

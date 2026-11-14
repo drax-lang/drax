@@ -1,4 +1,5 @@
-expect = Os.cmd_with_status("./bin/drax ./tests/expressions.line_break.dx")
+expect = Os.cmd_with_status("./bin/drax ./tests/drax/expressions.line_break.dx 2>&1")
 assert(List.at(expect, 0) == 1, "epression fail: do not accept invalid expression")
+assert(String.contains(List.at(expect, 1), "unspected expression"), "epression fail: wrong error for invalid expression")
 
 print("expressions done!")

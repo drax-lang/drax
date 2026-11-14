@@ -1,0 +1,55 @@
+### Every snippet in tests/drax/errors must fail with exit code 1 and
+### report the expected message, instead of crashing or being silently accepted.
+
+fun run(name) do
+    Os.cmd_with_status("./bin/drax ./tests/drax/errors/" ++ name ++ ".dx 2>&1")
+end
+
+fun expect_error(name, message) do
+    r = run(name)
+    status = List.at(r, 0)
+    output = List.at(r, 1)
+    assert(status == 1, "errors error: '" ++ name ++ "' must exit with status 1, got " ++ Number.to_string(status))
+    assert(String.contains(output, message), "errors error: '" ++ name ++ "' must report '" ++ message ++ "', got: " ++ output)
+end
+
+### runtime errors
+expect_error("undefined_var", "'undefined_var' is not defined")
+expect_error("wrong_arity", "'f/2' is not defined")
+expect_error("concat_number", "Concat with unspected type")
+expect_error("concat_list_number", "Concat with unspected type")
+expect_error("arith_string", "Bad argument in arithmetic expression")
+expect_error("compare_string", "Bad argument in arithmetic expression")
+expect_error("missing_key", "key 'c' is not defined")
+expect_error("call_number", "function is not valid")
+expect_error("list_length_non_list", "Expected list as argument")
+expect_error("list_at_non_list", "Expected list as argument")
+expect_error("list_sum_non_number", "Expected number as argument")
+expect_error("map_non_function", "Expected a function as second argument")
+expect_error("frame_put_bad_key", "Expected string as argument")
+expect_error("number_to_string_bad", "Expected number as argument")
+expect_error("assert_false", "boom")
+expect_error("assert_missing_message", "assert/1")
+expect_error("missing_import", "not found")
+
+### syntax errors are reported before anything runs
+expect_error("unterminated_string", "Unterminated string")
+expect_error("unterminated_mstring", "Unterminated multiline string")
+expect_error("bad_hex", "expected digits after prefix")
+expect_error("bad_binary", "Invalid digit for the selected number base")
+expect_error("unfinished_expression", "Expect expression")
+expect_error("unexpected_token", "Unexpected token")
+expect_error("nested_named_function", "named functions are only accepted in the global scope")
+
+### the error must point to the file and to the line
+expect_error("line_number_reported", "line_number_reported.dx:3")
+
+### a failing script must not run code that comes after the error
+r = run("assert_false")
+assert(!String.contains(List.at(r, 1), "after"), "errors error: code after the failure must not run")
+
+### error does not leak into the caller, the interpreter keeps working
+assert(List.at(run("undefined_var"), 0) == 1, "errors error: first failing run")
+assert(List.at(run("undefined_var"), 0) == 1, "errors error: second failing run")
+
+print("Errors done!")

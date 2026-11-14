@@ -28,4 +28,14 @@
 
 ./bin/drax .\tests\drax\TCO.dx
 
+.\bin\drax .\tests\drax\operators.dx
+
+.\bin\drax .\tests\drax\types.dx
+
+.\bin\drax .\tests\drax\closures.dx
+
+.\bin\drax .\tests\drax\recursion.dx
+
+.\bin\drax .\tests\drax\edge_cases.dx
+
 @REM  .\bin\drax .\tests\drax\http\http-only-response-text-plain.dx

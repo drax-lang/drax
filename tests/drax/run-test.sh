@@ -41,6 +41,18 @@ echo -e "\n\033[43m----------------------\033[0m"
 
 ./bin/drax ./tests/drax/TCO.dx
 
+./bin/drax ./tests/drax/operators.dx
+
+./bin/drax ./tests/drax/types.dx
+
+./bin/drax ./tests/drax/closures.dx
+
+./bin/drax ./tests/drax/recursion.dx
+
+./bin/drax ./tests/drax/edge_cases.dx
+
+./bin/drax ./tests/drax/errors.dx
+
 echo "----------------------------------------"
 
 echo -e "\n\033[32mAll tests were executed successfully!\033[0m"
