@@ -1,9 +1,0 @@
-### BUG: assert only fails for the boolean `false`. nil, 0 and "" pass silently,
-### so `assert(Frame.get(f, "missing"), msg)` never catches a missing key.
-### The expected result is a failure with exit code 1, which the runner checks
-### through assert_non_boolean_runner below.
-
-r = Os.cmd_with_status("./bin/drax ./tests/drax/known_bugs/_assert_nil.dx 2>&1")
-assert(List.at(r, 0) == 1, "bug: assert(nil, msg) must fail")
-
-print("assert_non_boolean fixed!")

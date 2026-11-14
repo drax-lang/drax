@@ -40,7 +40,25 @@
 
 /* VM stack. */
 
+/**
+ * The value stack grows on demand (limited by the memory),
+ * the same way the stack of an Erlang process does.
+ */
+static void grow_stack(d_vm* vm) {
+  int new_size = vm->stack_size * 2;
+  drax_value* ns = (drax_value*) realloc(vm->stack, sizeof(drax_value) * new_size);
+
+  if (ns == NULL) {
+    fprintf(stderr, "fatal: out of memory to grow the stack.\n");
+    exit(1);
+  }
+
+  vm->stack = ns;
+  vm->stack_size = new_size;
+}
+
 void push(d_vm* vm, drax_value v) {
+  if (vm->stack_count >= vm->stack_size) grow_stack(vm);
   vm->stack[vm->stack_count++] = v;
 }
 
@@ -62,14 +80,24 @@ static drax_value peek(d_vm* vm, int distance) {
 
 void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* module_env) {
   if (vm->call_stack->count >= vm->call_stack->size) {
-    vm->call_stack->size = vm->call_stack->size + CALL_STACK_SIZE;
-    vm->call_stack->frames = realloc(vm->call_stack->frames, sizeof(d_frame) * vm->call_stack->size);
+    int new_size = vm->call_stack->size * 2;
+    d_frame* nf = (d_frame*) realloc(vm->call_stack->frames, sizeof(d_frame) * new_size);
+
+    if (nf == NULL) {
+      fprintf(stderr, "fatal: out of memory to grow the call stack.\n");
+      exit(1);
+    }
+
+    vm->call_stack->frames = nf;
+    vm->call_stack->size = new_size;
   }
 
   d_frame* frame = &vm->call_stack->frames[vm->call_stack->count++];
   frame->instr = vm->active_instr;
   frame->ip = vm->ip;
   frame->env_global = vm->envs->global;
+  frame->stack_base = vm->stack_count;
+  frame->local_base = vm->envs->local->count;
 
   vm->active_instr = target;
   vm->ip = target->values;
@@ -95,15 +123,21 @@ int callstack_pop(d_vm* vm) {
  * Raise Helpers
 */
 
-static void print_trace_step(d_vm* vm, int* last_line) {
+/* deep recursion can have millions of frames, only the top ones are printed */
+#define MAX_TRACE_LINES 20
+
+/* returns 1 when a line was printed */
+static int print_trace_step(d_vm* vm, int* last_line) {
   d_instructions* instr = vm->active_instr;
-  if (instr == NULL) return;
+  int printed = 0;
+  if (instr == NULL) return 0;
 
   int idx = vm->ip - instr->values - 1;
   
-  if (idx < 0 || idx >= instr->instr_count) return;
+  if (idx < 0 || idx >= instr->instr_count) return 0;
 
   if (instr->lines[idx] != 0 && instr->lines[idx] != *last_line) {
+    printed = 1;
     if (vm->active_instr->file != NULL) {
       printf(TRACE_DESCRIPTION_LINE_PATH, vm->active_instr->file, instr->lines[idx]);
       putchar('\n');
@@ -113,14 +147,22 @@ static void print_trace_step(d_vm* vm, int* last_line) {
     }
   }
   *last_line = instr->lines[idx];
+  return printed;
 }
 
 static void trace_error(d_vm* vm) {
   int last_line = -1;
 
+  int printed = 0;
+
   while (CURR_CALLSTACK_SIZE(vm) > 0) {
-    print_trace_step(vm, &last_line);
-    vm->envs->local->count = vm->envs->local->count - vm->active_instr->local_range;
+    if (printed < MAX_TRACE_LINES) {
+      printed += print_trace_step(vm, &last_line);
+    } else {
+      printf("  ... %d more frame(s)\n", CURR_CALLSTACK_SIZE(vm));
+      return; /* __reset__ clears the remaining frames */
+    }
+
     callstack_pop(vm);
   }
   
@@ -223,8 +265,13 @@ static bool values_equal(drax_value a, drax_value b) {
  * 
  */
 void zero_new_local_range(d_vm* vm, int range) {
+  if (!ensure_local_table_capacity(vm->envs->local, range)) {
+    fprintf(stderr, "fatal: out of memory to grow the local stack.\n");
+    exit(1);
+  }
+
   vm->envs->local->count += range;
-  memset(&vm->envs->local->array[vm->envs->local->count - range], 0, sizeof(drax_value) * range);
+  memset(&vm->envs->local->array[vm->envs->local->count - range], 0, sizeof(d_local_var_node) * range);
 }
 
 static int get_definition(d_vm* vm, int is_local) { 
@@ -477,7 +524,18 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
         return 1;
       }
 
+      if (vm->call_stack->count >= vm->max_call_depth) {
+        raise_drax_error(vm, MSG_STACK_OVERFLOW);
+        return 1;
+      }
+
       callstack_push(vm, f->instructions, NULL);
+
+      /**
+       * the arguments are on the top of the stack and are
+       * consumed by the function prologue (OP_SET_L_ID).
+       */
+      CURR_FRAME(vm)->stack_base = vm->stack_count - (int) a;
       
       if (f->instructions->local_range > 0) {
         zero_new_local_range(vm, f->instructions->local_range);
@@ -496,11 +554,14 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
       drax_value result = nf->function(vm, &scs);
 
       if (!scs) {
-        raise_drax_error(vm, CAST_ERROR(result)->chars);
+        /* an empty error was already reported */
+        if (CAST_ERROR(result)->length > 0) {
+          raise_drax_error(vm, CAST_ERROR(result)->chars);
+        }
         return 1;
       }
       
-      vm->stack[vm->stack_count++] = result;
+      push(vm, result);
       return 0;
     }
   }
@@ -821,27 +882,46 @@ int __start__(d_vm* vm, int inter_mode) {
         goto P_T_COMMON_CALL;
       }
       VMCase(OP_D_CALL_T) {
+        /**
+         * Tail call (last call optimization).
+         *
+         * The call is the last thing the current function does, so
+         * the current frame is reused: everything the function left
+         * on the value stack and its locals are discarded and the
+         * arguments are moved to the base of the frame.
+         *
+         * A loop written with tail recursion runs in constant memory.
+         */
         a = GET_VALUE(vm);
         P_T_COMMON_CALL: {
-          drax_value v = peek(vm, a);;
-          drax_value i;
-          int frame_start;
+          drax_value v = peek(vm, a);
           drax_function* f;
+          d_frame* fr;
 
-          if (!IS_FUNCTION(v)) {
-            raise_drax_error(vm, "vm_error: function is not valid!");
-            return 1;
+          if (!IS_FUNCTION(v) || vm->call_stack->count == 0) {
+            /**
+             * natives and invalid values use the default
+             * call, the next instruction is a OP_RETURN.
+             */
+            goto L_COMMON_CALL;
           }
 
           f = CAST_FUNCTION(v);
-          frame_start = vm->stack_count - a - 1;
-
-          for (i = 0; i < a; i++) {
-            drax_value temp_arg = vm->stack[vm->stack_count - a + i];
-            vm->stack[frame_start + i] = temp_arg;
+          if (f->arity != (int) a) {
+            raise_drax_error(vm, MSG_FUNCTION_IS_NOT_DEFINED, f->name ? f->name : "<function>", a);
+            return 1;
           }
 
-          vm->stack_count = frame_start + a;
+          fr = CURR_FRAME(vm);
+
+          memmove(
+            &vm->stack[fr->stack_base],
+            &vm->stack[vm->stack_count - a],
+            sizeof(drax_value) * a
+          );
+
+          vm->stack_count = fr->stack_base + (int) a;
+          vm->envs->local->count = fr->local_base;
           vm->active_instr = f->instructions;
           vm->ip = f->instructions->values;
 
@@ -884,11 +964,25 @@ int __start__(d_vm* vm, int inter_mode) {
         NEXT_OP(vm);
       }
       VMCase(OP_RETURN) {
-        int is_no_instr = (vm->active_instr->instr_count <= 1);
-        vm->envs->local->count -= vm->active_instr->local_range;
-        callstack_pop(vm);
+        if (vm->call_stack->count == 0) {
+          /* return outside of a function */
+          NEXT_OP(vm);
+        }
 
-        if (is_no_instr) push(vm, DRAX_NIL_VAL);
+        /**
+         * The result is the top of the stack (nil if the
+         * function did not produce a value), everything else
+         * the function left on the stack is discarded.
+         */
+        d_frame* fr = CURR_FRAME(vm);
+        drax_value result = (vm->stack_count > fr->stack_base) ?
+          vm->stack[vm->stack_count - 1] : DRAX_NIL_VAL;
+
+        vm->stack_count = fr->stack_base;
+        vm->envs->local->count = fr->local_base;
+        callstack_pop(vm);
+        push(vm, result);
+
         if (!vm->active_instr) return 0;
         NEXT_OP(vm);
       }
@@ -970,6 +1064,7 @@ void __reset__(d_vm* vm) {
 
   vm->call_stack->count = 0;
   vm->stack_count = 0;
+  vm->envs->local->count = 0;
   vm->ip = NULL;
 }
 
@@ -1009,6 +1104,18 @@ d_vm* createMainVM() {
   vm->call_stack->count = 0;
   vm->call_stack->frames = (d_frame*) malloc(sizeof(d_frame) * CALL_STACK_SIZE);
   vm->pstatus = VM_STATUS_STOPED;
+
+  /**
+   * DRAX_MAX_CALL_DEPTH overrides the limit of non tail calls.
+   */
+  vm->native_nesting = 0;
+  vm->max_call_depth = MAX_CALL_DEPTH;
+  const char* env_depth = getenv("DRAX_MAX_CALL_DEPTH");
+  if (env_depth != NULL) {
+    long d = strtol(env_depth, NULL, 10);
+    if (d > 0 && d <= INT32_MAX) vm->max_call_depth = (int) d;
+  }
+
   return vm;
 }
 

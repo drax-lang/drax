@@ -395,9 +395,16 @@ static drax_value __d_list_iterator(d_vm* vm, int* stat, list_op op) {
     if (IS_NATIVE(fn)) {
       if (execute_d_function(vm, 1, fn) != 0) goto exec_error;
     } else {
+      if (vm->native_nesting >= MAX_NATIVE_NESTING) goto nesting_error;
+
       callstack_push(vm, &halt_instr, NULL);
       if (execute_d_function(vm, 1, fn) != 0) goto exec_error;
-      if (__start__(vm, 0) != 0) goto exec_error;
+
+      vm->native_nesting++;
+      int r = __start__(vm, 0);
+      vm->native_nesting--;
+
+      if (r != 0) goto exec_error;
       callstack_pop(vm);
     }
 
@@ -422,9 +429,18 @@ static drax_value __d_list_iterator(d_vm* vm, int* stat, list_op op) {
   *stat = 1;
   return (op == L_TAP) ? lst : DS_VAL(nl);
 
-  exec_error:
+  nesting_error:
     *stat = 0;
-    push(vm, DS_VAL(new_derror(vm, (char*) "Runtime error during list iteration")));
+    push(vm, DS_VAL(new_derror(vm, (char*) MSG_NATIVE_OVERFLOW)));
+    goto cleanup;
+
+  exec_error:
+    /**
+     * the error was already reported (and the VM reset) by the
+     * callback, an empty error only propagates the failure.
+     */
+    *stat = 0;
+    push(vm, DS_VAL(new_derror(vm, (char*) "")));
 
   cleanup:
     free(halt_instr.values);

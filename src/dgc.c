@@ -111,8 +111,8 @@ static int dgc_swap_locals(d_local_var_table* t) {
 
   int i;
   for (i = t->count; i > 0; i--) {
-    if (t->array[i - 1] == NULL) continue;
-    dgc_mark(t->array[i - 1]->value);
+    if (t->array[i - 1].key == 0) continue;
+    dgc_mark(t->array[i - 1].value);
   }
   DEBUG(printf("--dc::locals end\n\n"));
   return 1;

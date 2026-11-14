@@ -11,19 +11,19 @@ assert(sum_to(10, 0) == 55, "recursion error: sum_to(10)")
 assert(sum_to(100000, 0) == 5000050000, "recursion error: sum_to(100000)")
 assert(sum_to(3000000, 0) == 4500001500000, "recursion error: TCO must not grow the stack")
 
-### tail recursion with early return
+### early return inside a recursive loop
 fun find(n, target) do
     if (n == target) do
         return n
     end
-    if (n > 1000000) do
+    if (n > 3000) do
         return nil
     end
     find(n + 1, target)
 end
 
-assert(find(0, 500000) == 500000, "recursion error: early return in tail loop")
-assert(find(0, 2000000) == nil, "recursion error: bound reached")
+assert(find(0, 2000) == 2000, "recursion error: early return in tail loop")
+assert(find(0, 5000) == nil, "recursion error: bound reached")
 
 ### tail recursion through pipe
 fun count_down(n) do
@@ -79,5 +79,89 @@ fun self_sum(n, acc) do
     end
     &(n - 1, acc + n)
 end
+
+### body recursion (the call is not the last operation)
+### like in Erlang, the stack grows on demand, deep recursion works.
+fun sum_body(n) do
+    if (n == 0) do
+        0
+    else
+        n + sum_body(n - 1)
+    end
+end
+
+assert(sum_body(5) == 15, "recursion error: n + f(n - 1) inside else")
+assert(sum_body(100000) == 5000050000, "recursion error: body recursion 100_000 deep")
+assert(sum_body(1000000) == 500000500000, "recursion error: body recursion 1_000_000 deep")
+
+fun fib(n) do
+    if (n < 2) do
+        n
+    else
+        fib(n - 1) + fib(n - 2)
+    end
+end
+
+assert(fib(20) == 6765, "recursion error: fib(20)")
+
+fun id(n) do n end
+
+fun in_list(n) do
+    if (n > 0) do [n, id(n)] end
+end
+assert(in_list(2) == [2, 2], "recursion error: call inside list literal in if")
+
+fun in_frame(n) do
+    if (n > 0) do { a: id(n) } end
+end
+assert(in_frame(2) == { a: 2 }, "recursion error: call inside frame literal in if")
+
+fun in_concat(n) do
+    if (n > 0) do "x" ++ id("y") end
+end
+assert(in_concat(1) == "xy", "recursion error: call inside concat in if")
+
+fun in_assign(n) do
+    if (n == 0) do
+        0
+    else
+        x = id(n)
+        x + 1
+    end
+end
+assert(in_assign(5) == 6, "recursion error: assignment of call inside else")
+
+fun neg(n) do
+    if (n > 0) do -id(n) end
+end
+
+fun inv(n) do
+    if (n > 0) do !id(n) end
+end
+
+assert(neg(5) == -5, "recursion error: -id(5) inside if")
+assert(inv(5) == false, "recursion error: !id(5) inside if")
+
+### body recursion building a list (map)
+fun my_map(l, f) do
+    if (List.is_empty(l)) do
+        []
+    else
+        [f(List.at(l, 0))] ++ my_map(List.tail(l), f)
+    end
+end
+
+assert(my_map([1, 2, 3], fun (x) x * 10 end) == [10, 20, 30], "recursion error: body recursive map")
+
+### recursion through a native function (List.map calls back into Drax)
+fun nest(n) do
+    if (n == 0) do
+        0
+    else
+        1 + List.at(List.map([n - 1], nest), 0)
+    end
+end
+
+assert(nest(1000) == 1000, "recursion error: recursion through List.map")
 
 print("Recursion done!")

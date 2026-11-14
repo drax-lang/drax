@@ -55,7 +55,7 @@ void put_value_dlist(drax_list* l, drax_value v) {
 drax_error* new_derror(d_vm* vm, char* msg) {
   drax_error* v = ALLOCATE_DSTRUCT(vm, drax_error, DS_ERROR);
   int sz = strlen(msg);
-  char* m = (char*) malloc(sz * sizeof(char));
+  char* m = (char*) malloc((sz + 1) * sizeof(char));
   strcpy((char*)m, msg);
 
   v->chars = m;

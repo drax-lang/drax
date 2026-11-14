@@ -1,0 +1,9 @@
+fun nest(n) do
+    if (n == 0) do
+        0
+    else
+        List.at(List.map([n - 1], nest), 0)
+    end
+end
+
+print(nest(100000))

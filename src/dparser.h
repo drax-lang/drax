@@ -36,11 +36,20 @@ typedef enum {
     PS_DEFAULT,
     PS_IN_PIPE,
     PS_IN_MEMBER_CALL,
-    PS_TAIL_POS,
     PS_IN_REFR,
     PS_ASSIGNMENT,
-    PS_BLOCK_TCO,
+    PS_IN_ARGS,
 } parser_mode;
+
+/**
+ * Positions of the call instructions emitted inside
+ * the function being compiled, used to find tail calls.
+ */
+typedef struct d_call_sites {
+  int* pos;
+  int count;
+  int capacity;
+} d_call_sites;
 
 typedef struct {
     parser_mode stack[MAX_STATE_STACK];
@@ -61,6 +70,7 @@ typedef struct parser_state {
   bool panic_mode;
   state_machine machine;
   int scope_depth;
+  d_call_sites* call_sites;
 } parser_state;
 
 typedef enum priorities {

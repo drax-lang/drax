@@ -29,6 +29,8 @@ expect_error("map_non_function", "Expected a function as second argument")
 expect_error("frame_put_bad_key", "Expected string as argument")
 expect_error("number_to_string_bad", "Expected number as argument")
 expect_error("assert_false", "boom")
+expect_error("assert_nil", "nil must not pass")
+expect_error("assert_long_message", "custom assertion message")
 expect_error("assert_missing_message", "assert/1")
 expect_error("missing_import", "not found")
 
@@ -40,6 +42,20 @@ expect_error("bad_binary", "Invalid digit for the selected number base")
 expect_error("unfinished_expression", "Expect expression")
 expect_error("unexpected_token", "Unexpected token")
 expect_error("nested_named_function", "named functions are only accepted in the global scope")
+
+### unbounded body recursion ends with a clean error (exit 1), not a crash.
+### a low limit keeps the test fast, the default limit is 10_000_000 calls.
+r = Os.cmd_with_status("DRAX_MAX_CALL_DEPTH=10000 ./bin/drax ./tests/drax/errors/stack_overflow.dx 2>&1")
+assert(List.at(r, 0) == 1, "errors error: stack overflow must exit with status 1")
+assert(String.contains(List.at(r, 1), "stack overflow"), "errors error: stack overflow message")
+
+### recursion through a native function (List.map) is limited by the C stack,
+### it must end with a clean error, not a crash.
+expect_error("native_nesting_overflow", "too many nested calls through native functions")
+
+### an error inside a callback is reported once, with its real message
+expect_error("map_callback_error", "Bad argument in arithmetic expression")
+assert(!String.contains(List.at(run("map_callback_error"), 1), "Runtime error during list iteration"), "errors error: callback error reported more than once")
 
 ### the error must point to the file and to the line
 expect_error("line_number_reported", "line_number_reported.dx:3")

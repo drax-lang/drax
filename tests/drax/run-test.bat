@@ -36,6 +36,10 @@
 
 .\bin\drax .\tests\drax\recursion.dx
 
+set DRAX_MAX_CALL_DEPTH=1000
+.\bin\drax .\tests\drax\tail_calls.dx
+set DRAX_MAX_CALL_DEPTH=
+
 .\bin\drax .\tests\drax\edge_cases.dx
 
 @REM  .\bin\drax .\tests\drax\http\http-only-response-text-plain.dx

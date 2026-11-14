@@ -61,11 +61,15 @@
 
 #define CURR_CALLSTACK_SIZE(vm) vm->call_stack->count
 
+#define CURR_FRAME(vm) (&vm->call_stack->frames[vm->call_stack->count - 1])
+
 /* Trace messages */
 #define TRACE_DESCRIPTION_LINE      "  line: %d"
 #define TRACE_DESCRIPTION_LINE_PATH "  %s:%d"
 
 /* Common messages */
+#define MSG_STACK_OVERFLOW          "stack overflow: the maximum call depth was exceeded."
+#define MSG_NATIVE_OVERFLOW         "stack overflow: too many nested calls through native functions (List.map, List.filter, List.tap)."
 #define MSG_NAME_IS_NOT_DEFINED     "'%s' is not defined."
 #define MSG_NUMBER_OF_INVALID_ARGS  "Number of invalid arguments, expected %d arguments."
 #define MSG_BAD_AGR_ARITH_OP        "Bad argument in arithmetic expression."
@@ -94,10 +98,19 @@ typedef struct dt_envs {
   d_local_var_table* local; /* Local definitions inside functions */
 } dt_envs;
 
+/**
+ * A call frame keeps the state of the caller (instr, ip, env_global) and
+ * where the callee data begins on the value stack and on the local stack.
+ *
+ * stack_base/local_base are used by OP_RETURN to drop everything the
+ * callee left behind, and by tail calls to reuse the frame.
+ */
 typedef struct d_frame {
   d_instructions* instr;
   drax_value* ip;
   d_generic_var_table* env_global;
+  int stack_base;
+  int local_base;
 } d_frame;
 
 typedef struct dcall_stack {
@@ -133,6 +146,8 @@ typedef struct d_vm {
   d_struct* d_ls;
   int pstatus;
   int pipeID;
+  int max_call_depth; /* see MAX_CALL_DEPTH and DRAX_MAX_CALL_DEPTH */
+  int native_nesting; /* nested VM loops started by native functions */
   dgc_meta* gc_meta;
   d_generic_var_table* imported_files;
 } d_vm;

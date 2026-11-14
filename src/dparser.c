@@ -66,23 +66,12 @@ static bool is_in_state(parser_mode mode) {
   return false;
 }
 
-static bool is_tail_position_valid() {
-  int i;
-  for (i = parser.machine.top; i >= 0; i--) {
-    parser_mode m = parser.machine.stack[i];
-    
-    if (m == PS_TAIL_POS) return true;
-    if (m == PS_BLOCK_TCO || m == PS_ASSIGNMENT) return false;
-  }
-  return false;
-}
-
 static bool is_pipe_active() {
   int i;
   for (i = parser.machine.top; i >= 0; i--) {
     parser_mode m = parser.machine.stack[i];
     if (m == PS_IN_PIPE) return true;
-    if (m == PS_BLOCK_TCO || m == PS_ASSIGNMENT) return false;
+    if (m == PS_IN_ARGS || m == PS_ASSIGNMENT) return false;
   }
   return false;
 }
@@ -298,6 +287,67 @@ static void put_pair(d_vm* vm, d_op_code o, drax_value v) {
   put_instruction(vm, v);
 }
 
+/**
+ * Tail calls
+ *
+ * A call is a tail call when, after it, the function has nothing
+ * left to do but return its result. Like in Erlang, this is a
+ * property of the position of the call, not of the syntax used:
+ *
+ *   f(x)                       -> tail
+ *   if (c) do f(x) else g(x) end -> both are tail
+ *   return f(x)                -> tail
+ *   c and f(x) / c or f(x)     -> f(x) is tail
+ *   n + f(x), -f(x), [f(x)]    -> not tail (there is work after the call)
+ *   y = f(x)                   -> not tail
+ *
+ * Every call emitted inside a function is recorded. When the function
+ * is complete, each call whose next instruction (following the
+ * unconditional jumps) is OP_RETURN becomes a tail call.
+ */
+static void put_call(d_vm* vm, d_op_code o, drax_value arg_count) {
+  d_call_sites* cs = parser.call_sites;
+
+  if (cs != NULL) {
+    if (cs->count >= cs->capacity) {
+      cs->capacity = cs->capacity == 0 ? 16 : cs->capacity * 2;
+      cs->pos = (int*) realloc(cs->pos, sizeof(int) * cs->capacity);
+    }
+    cs->pos[cs->count++] = GET_INSTRUCTION(vm)->instr_count;
+  }
+
+  put_pair(vm, o, arg_count);
+}
+
+static bool leads_to_return(d_instructions* instr, int ip) {
+  while (ip < instr->instr_count) {
+    drax_value op = instr->values[ip];
+
+    if (op == OP_RETURN) return true;
+    if (op != OP_JMP) return false;
+
+    /* jumps are always forward, so this loop always ends */
+    uint16_t offset = (uint16_t)((instr->values[ip + 1] << 8) | instr->values[ip + 2]);
+    ip = ip + 3 + offset;
+  }
+
+  return false;
+}
+
+static void optimize_tail_calls(d_instructions* instr, d_call_sites* cs) {
+  int i;
+  for (i = 0; i < cs->count; i++) {
+    int p = cs->pos[i];
+    if (!leads_to_return(instr, p + 2)) continue;
+
+    if (instr->values[p] == OP_D_CALL) {
+      instr->values[p] = OP_D_CALL_T;
+    } else if (instr->values[p] == OP_D_CALL_P) {
+      instr->values[p] = OP_D_CALL_P_T;
+    }
+  }
+}
+
 /* Lexer Helpers */
 
 static void get_next_token() {
@@ -322,10 +372,6 @@ static void process_token(dlex_types type, const char* message) {
 
 static dlex_types get_current_token() {
   return parser.current.type;
-}
-
-static dlex_types peek_next_token() {
-  return peek_token().type;
 }
 
 static bool eq_and_next(dlex_types type) {
@@ -430,12 +476,14 @@ void process_amper(d_vm* vm, bool v) {
       FATAL("call out of scope.");
     }
 
-    char* name = (char*) malloc(strlen(parser.active_fun->name) * sizeof(char));
+    char* name = (char*) malloc((strlen(parser.active_fun->name) + 1) * sizeof(char));
     strcpy(name, parser.active_fun->name);
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
 
+    push_state(&parser, PS_IN_ARGS);
     drax_value arg_count = process_arguments(vm) + (_ispipe ? 1 : 0);
-    put_pair(vm, OP_D_CALL, arg_count);
+    pop_state(&parser);
+    put_call(vm, _ispipe ? OP_D_CALL_P : OP_D_CALL, arg_count);
     return;
   }
 
@@ -619,6 +667,16 @@ void process_variable(d_vm* vm, bool v) {
       put_local(&parser, name);
       vm->active_instr->local_range++;
     }
+
+    /**
+     * an assignment is an expression and evaluates to the assigned
+     * value (like a match in Erlang), so it can be used anywhere an
+     * expression is expected, including as the last expression of a
+     * function or of an if branch.
+     */
+    char* get_name = (char*) malloc(sizeof(char) * (ctk.length + 1));
+    strcpy(get_name, name);
+    put_pair(vm, is_global ? OP_GET_G_ID : OP_GET_L_ID, (drax_value) get_name);
     return;
   }
 
@@ -836,14 +894,21 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
     }
   }
   parser.scope_depth++;
-  push_state(&parser, PS_TAIL_POS);
+
+  d_call_sites* outer_call_sites = parser.call_sites;
+  d_call_sites call_sites = { NULL, 0, 0 };
+  parser.call_sites = &call_sites;
+
   if (is_single_line) {
     expression(vm);
   } else {
     block(vm);
   }
-  pop_state(&parser);
   put_instruction(vm, OP_RETURN);
+
+  optimize_tail_calls(vm->active_instr, &call_sites);
+  free(call_sites.pos);
+  parser.call_sites = outer_call_sites;
   vm->active_instr = gi;
   remove_locals_registers(&parser);
 
@@ -921,33 +986,16 @@ drax_value process_arguments(d_vm* vm) {
 void process_call(d_vm* vm, bool v) {
   UNUSED(v);
   bool _ispipe = is_pipe_active();
-  bool _is_after_dot = 
-    (GET_INSTRUCTION(vm)->instr_count > 0) &&
-    (GET_INSTRUCTION(vm)->values[GET_INSTRUCTION(vm)->instr_count - 1] == OP_GET_I_ID);
 
   /**
-   * Block TCO to nested calls
+   * the arguments are not part of the pipe
    */
-  push_state(&parser, PS_BLOCK_TCO);
+  push_state(&parser, PS_IN_ARGS);
   drax_value arg_count = process_arguments(vm) + (_ispipe ? 1 : 0);
   pop_state(&parser);
 
-  bool _can_tco = is_tail_position_valid();
-  if (_is_after_dot) {
-    _can_tco = false;
-  }
-
-  d_op_code op;
-  dlex_types vv = peek_next_token();
-  bool is_last_in_block = (vv == DTK_END);
-
-  if (is_last_in_block && _can_tco) {
-    op = _ispipe ? OP_D_CALL_P_T : OP_D_CALL_T;
-  } else {
-    op = _ispipe ? OP_D_CALL_P : OP_D_CALL;
-  }
-
-  put_pair(vm, op, arg_count);
+  /* may become a tail call, see optimize_tail_calls */
+  put_call(vm, _ispipe ? OP_D_CALL_P : OP_D_CALL, arg_count);
 }
 
 void process_dot(d_vm* vm, bool v) {
@@ -1008,6 +1056,9 @@ void process_if(d_vm* vm, bool v) {
     remove_u = 1;
   }
 
+  /* an empty branch evaluates to nil */
+  if (!remove_u) put_instruction(vm, OP_NIL);
+
   int else_jump = put_jmp(vm, OP_JMP);
 
   patch_jump(vm, then_jump);
@@ -1024,6 +1075,9 @@ void process_if(d_vm* vm, bool v) {
       remove_u = 1;
     }
   }
+
+  /* without else (or with an empty else) the if evaluates to nil */
+  if (!remove_u) put_instruction(vm, OP_NIL);
 
   patch_jump(vm, else_jump);
 

@@ -21,14 +21,10 @@ static drax_value __d_assert(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
   drax_value a = pop(vm);
 
-  if (!IS_BOOL(a)) {
+  /* only nil and false are falsy */
+  if (!IS_NIL(a) && (!IS_BOOL(a) || CAST_BOOL(a))) {
     DX_SUCESS_FN(stat);
     return DRAX_TRUE_VAL;
-  }
-
-  if (CAST_BOOL(a)) {
-     DX_SUCESS_FN(stat);
-     return DRAX_TRUE_VAL;
   }
   
   DX_ERROR_FN(stat);

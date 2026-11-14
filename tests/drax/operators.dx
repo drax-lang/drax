@@ -86,6 +86,12 @@ assert(truthy({}), "operators error: empty frame is truthy")
 assert(!nil, "operators error: !nil")
 assert(!!0, "operators error: !!0")
 
+### assert accepts every truthy value and rejects only nil and false
+assert(0, "operators error: assert(0) must pass")
+assert("", "operators error: assert(empty string) must pass")
+assert([], "operators error: assert([]) must pass")
+assert({}, "operators error: assert({}) must pass")
+
 ### short circuit: the right side must not be evaluated
 fun boom() do
     assert(false, "operators error: short circuit evaluated the right side")

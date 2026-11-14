@@ -25,6 +25,10 @@ typedef struct d_generic_var_table {
 
 /* Local envinronment */
 
+/**
+ * Local slots are stored inline (no allocation per variable).
+ * A slot with key == 0 is unused.
+ */
 typedef struct d_local_var_node {
   size_t key;
   drax_value value;
@@ -33,7 +37,7 @@ typedef struct d_local_var_node {
 typedef struct d_local_var_table {
   int count;
   int limit;
-  d_local_var_node** array;
+  d_local_var_node* array;
 } d_local_var_table;
 
 /* Function envinronment */
@@ -82,6 +86,8 @@ d_local_var_table* new_local_table();
 void put_local_table(d_local_var_table* t, char* name, drax_value value);
 
 int get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value);
+
+int ensure_local_table_capacity(d_local_var_table* t, int extra);
 
 
 /**

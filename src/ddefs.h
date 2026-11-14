@@ -19,6 +19,30 @@
 
 #define CALL_STACK_SIZE (MAX_INSTRUCTIONS * STACK_OP_SIZE)
 
+/**
+ * Maximum depth of non tail calls (body recursion).
+ *
+ * The value stack, the local stack and the call stack grow on demand,
+ * like the stack of an Erlang process. This limit only exists to give a
+ * clean error instead of exhausting the memory of the machine.
+ *
+ * Tail calls never count towards this limit.
+ * Override at build time with: make DWN_CCFLAGS=-DMAX_CALL_DEPTH=<n>
+ */
+#ifndef MAX_CALL_DEPTH
+  #define MAX_CALL_DEPTH 10000000
+#endif
+
+/**
+ * Native functions that call Drax functions (List.map, List.filter,
+ * List.tap) run a nested VM loop on the C stack. This is the maximum
+ * number of those loops nested inside each other (recursion that goes
+ * through a native function), it keeps the C stack safe.
+ */
+#ifndef MAX_NATIVE_NESTING
+  #define MAX_NATIVE_NESTING 5000
+#endif
+
 #define MAX_SIZE_TABLE 0.85
 
 #define MODE_T_MAX ((mode_t)-1)

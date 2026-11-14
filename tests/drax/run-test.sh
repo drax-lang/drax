@@ -49,6 +49,9 @@ echo -e "\n\033[43m----------------------\033[0m"
 
 ./bin/drax ./tests/drax/recursion.dx
 
+# every loop in this file must be a tail call: a low call depth proves it
+DRAX_MAX_CALL_DEPTH=1000 ./bin/drax ./tests/drax/tail_calls.dx
+
 ./bin/drax ./tests/drax/edge_cases.dx
 
 ./bin/drax ./tests/drax/errors.dx

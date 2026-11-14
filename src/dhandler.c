@@ -173,9 +173,30 @@ d_local_var_table* new_local_table() {
   d_local_var_table* t = (d_local_var_table*) malloc(sizeof(d_local_var_table));
   t->count = 0;
   t->limit = MAX_LOCAL_INSTRUCTIONS;
-  t->array = (d_local_var_node**) malloc(sizeof(d_local_var_node*) * MAX_LOCAL_INSTRUCTIONS);
+  t->array = (d_local_var_node*) calloc(MAX_LOCAL_INSTRUCTIONS, sizeof(d_local_var_node));
 
   return t;
+}
+
+/**
+ * Grows the local table to fit 'extra' new slots.
+ * The table grows like the stack of an Erlang process: on demand,
+ * limited only by the available memory.
+ *
+ * returns 0 when there is no memory available.
+ */
+int ensure_local_table_capacity(d_local_var_table* t, int extra) {
+  if (t->count + extra <= t->limit) return 1;
+
+  int new_limit = t->limit * 2;
+  while (new_limit < t->count + extra) new_limit *= 2;
+
+  d_local_var_node* na = (d_local_var_node*) realloc(t->array, sizeof(d_local_var_node) * new_limit);
+  if (na == NULL) return 0;
+
+  t->array = na;
+  t->limit = new_limit;
+  return 1;
 }
 
 /**
@@ -183,15 +204,9 @@ d_local_var_table* new_local_table() {
  * it is based on the slots of each function
  */
 void put_local_table(d_local_var_table* t, char* name, drax_value value) {
-  if (t->count >= t->limit) {
-    t->limit = t->limit + MAX_LOCAL_INSTRUCTIONS;
-    t->array = (d_local_var_node**) realloc(t->array, sizeof(d_local_var_node*) * t->limit);
-  }
+  if (t->count <= 0) return;
 
-  d_local_var_node* node = malloc(sizeof(d_local_var_node));
-  node->key = fnv1a_hash(name, strlen(name));
-  node->value = value;
-
+  size_t key = fnv1a_hash(name, strlen(name));
   int next_index = t->count - 1;
   /**
    * check which is the next unused index.
@@ -205,11 +220,12 @@ void put_local_table(d_local_var_table* t, char* name, drax_value value) {
    * while loop will stop at the first 0
    * next_index  =>  (8)
    */
-  while (next_index > 0 && t->array[next_index] != 0) {
+  while (next_index > 0 && t->array[next_index].key != 0) {
     next_index--;
   }
 
-  t->array[next_index] = node;
+  t->array[next_index].key = key;
+  t->array[next_index].value = value;
 }
 
 int get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value) {
@@ -221,8 +237,8 @@ int get_local_table(d_local_var_table* t, int local_range, char* name, drax_valu
 
   int i;
   for (i = init; i < t->count; i++) {
-    if ((t->array[i] != 0) && (t->array[i]->key == key)) {
-      *value = t->array[i]->value;
+    if ((t->array[i].key != 0) && (t->array[i].key == key)) {
+      *value = t->array[i].value;
       return 1;
     }
   }

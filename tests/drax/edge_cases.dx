@@ -98,6 +98,36 @@ r = if (true) do 1 else 2 end
 assert(r == 1, "edge error: if expression true branch")
 r = if (false) do 1 else 2 end
 assert(r == 2, "edge error: if expression false branch")
+r = if (false) do 1 end
+assert(r == nil, "edge error: if without else returns nil")
+r = if (true) do end
+assert(r == nil, "edge error: empty then branch returns nil")
+r = if (false) do 1 else end
+assert(r == nil, "edge error: empty else branch returns nil")
+
+fun maybe(x) do
+    if (x) do 1 end
+end
+assert(maybe(false) == nil, "edge error: function ending in a false if returns nil")
+assert(typeof(maybe(false)) == "nil", "edge error: typeof of false if without else")
+assert(maybe(true) == 1, "edge error: function ending in a true if")
+
+### assignment is an expression and evaluates to the assigned value
+fun last_assign() do
+    x = 42
+end
+assert(last_assign() == 42, "edge error: assignment as last expression")
+
+fun assign_in_branch(c) do
+    if (c) do
+        y = "then"
+    else
+        y = "else"
+    end
+end
+assert(assign_in_branch(true) == "then", "edge error: assignment in then branch")
+assert(assign_in_branch(false) == "else", "edge error: assignment in else branch")
+
 r = if (1 > 0) do "yes" else "no" end ++ "!"
 assert(r == "yes!", "edge error: if expression inside concat")
 

@@ -1,0 +1,172 @@
+### Tail calls (last call optimization)
+###
+### This file runs with DRAX_MAX_CALL_DEPTH=1000 (see run-test.sh), so every
+### loop below fails with "stack overflow" if its call is not optimized.
+### Each loop runs N times, a lot more than the depth limit.
+
+N = 100000
+
+### if / else: tail call in the else branch
+fun count_else(n) do
+    if (n == 0) do
+        "done"
+    else
+        count_else(n - 1)
+    end
+end
+assert(count_else(N) == "done", "tail call error: else branch")
+
+### if / else: tail call in the then branch
+fun count_then(n) do
+    if (n > 0) do
+        count_then(n - 1)
+    else
+        "done"
+    end
+end
+assert(count_then(N) == "done", "tail call error: then branch")
+
+### tail call after an `if` without else (early return)
+fun find(n, target) do
+    if (n == target) do
+        return n
+    end
+    find(n + 1, target)
+end
+assert(find(0, N) == N, "tail call error: call after if statement")
+
+### explicit return
+fun count_return(n) do
+    if (n == 0) do
+        return "done"
+    end
+    return count_return(n - 1)
+end
+assert(count_return(N) == "done", "tail call error: return f(x)")
+
+### nested if
+fun count_nested(n) do
+    if (n > 0) do
+        if (Number.is_even(n)) do
+            count_nested(n - 1)
+        else
+            count_nested(n - 1)
+        end
+    else
+        "done"
+    end
+end
+assert(count_nested(N) == "done", "tail call error: nested if")
+
+### right side of `and` / `or`
+fun all_positive(l) do
+    List.is_empty(l) or (List.at(l, 0) > 0 and all_positive(List.tail(l)))
+end
+
+fun count_or(n) do
+    n == 0 or count_or(n - 1)
+end
+
+fun count_and(n) do
+    n > 0 and count_and(n - 1)
+end
+
+assert(count_or(N) == true, "tail call error: right side of or")
+assert(count_and(N) == false, "tail call error: right side of and")
+assert(all_positive([1, 2, 3]), "tail call error: and/or combined")
+assert(!all_positive([1, -2, 3]), "tail call error: and/or combined (false)")
+
+### pipe
+fun count_pipe(n) do
+    if (n == 0) do
+        "done"
+    else
+        n - 1 |> count_pipe()
+    end
+end
+assert(count_pipe(N) == "done", "tail call error: pipe")
+
+### self call operator
+fun count_self(n, acc) do
+    if (n == 0) do
+        return acc
+    end
+    &(n - 1, acc + 1)
+end
+assert(count_self(N, 0) == N, "tail call error: self call operator")
+
+### statements and locals before the tail call must not leak
+fun count_with_statements(n, acc) do
+    a = n * 2
+    b = Number.to_string(a)
+    1 + 1
+    "ignored value"
+    if (n == 0) do
+        return acc
+    end
+    count_with_statements(n - 1, acc + 1)
+end
+assert(count_with_statements(N, 0) == N, "tail call error: statements before the call")
+
+### accumulator
+fun sum_to(n, acc) do
+    if (n == 0) do acc else sum_to(n - 1, acc + n) end
+end
+assert(sum_to(N, 0) == 5000050000, "tail call error: accumulator")
+
+### mutual recursion between different functions
+fun ping(n, other) do
+    if (n == 0) do "ping" else other(n - 1, ping) end
+end
+
+fun pong(n, other) do
+    if (n == 0) do "pong" else other(n - 1, pong) end
+end
+
+assert(ping(N, pong) == "ping", "tail call error: mutual recursion (even)")
+assert(ping(N + 1, pong) == "pong", "tail call error: mutual recursion (odd)")
+
+### functions with different number of locals calling each other
+fun small(n, big_fn) do
+    if (n == 0) do "small" else big_fn(n - 1, small) end
+end
+
+fun big(n, small_fn) do
+    a = 1
+    b = 2
+    c = 3
+    d = a + b + c
+    if (n == 0) do "big" else small_fn(n - 1, big) end
+end
+
+assert(small(N, big) == "small", "tail call error: different local ranges")
+
+### lambdas
+count_lambda = fun (self, n) do
+    if (n == 0) do "done" else self(self, n - 1) end
+end
+assert(count_lambda(count_lambda, N) == "done", "tail call error: lambda")
+
+### function stored in a frame
+fun count_member(n, m) do
+    if (n == 0) do "done" else m.next(n - 1, m) end
+end
+assert(count_member(N, { next: count_member }) == "done", "tail call error: member call")
+
+### a native function in tail position
+fun to_text(n) do
+    if (n == 0) do Number.to_string(n) else to_text(n - 1) end
+end
+assert(to_text(N) == "0", "tail call error: native in tail position")
+
+### tail recursive loops inside a callback (List.map)
+assert(List.map([N, N], count_else) == ["done", "done"], "tail call error: loop inside List.map")
+
+### building a list in a tail recursive loop
+fun range(n, acc) do
+    if (n == 0) do acc else range(n - 1, [n] ++ acc) end
+end
+assert(List.length(range(5000, [])) == 5000, "tail call error: list accumulator")
+assert(List.at(range(5000, []), 0) == 1, "tail call error: list accumulator order")
+
+print("Tail calls done!")
