@@ -163,6 +163,24 @@ static void remove_locals_registers(parser_state* psr) {
   DISABLE_REFR_PROCESS();
 }
 
+/* releases the locals of every scope (end of a build) */
+static void free_all_locals(parser_state* psr) {
+  int i, j;
+  for (i = 0; i < psr->locals_length; i++) {
+    d_local_registers* lc = psr->locals[i];
+    for (j = 0; j < lc->length; j++) {
+      free(lc->vars[j]);
+    }
+    free(lc->vars);
+    free(lc);
+  }
+
+  free(psr->locals);
+  psr->locals = NULL;
+  psr->locals_length = 0;
+  psr->locals_capacity = 0;
+}
+
 static operation_line op_lines[] = {
   make_op_line(DTK_PAR_OPEN,  process_grouping,    process_call,   iCALL),
   make_op_line(DTK_PAR_CLOSE, NULL,                NULL,           iNONE),
@@ -306,11 +324,11 @@ static void put_call(d_vm* vm, d_op_code o, drax_value arg_count) {
  * Functions are identified by name and arity, like in Erlang:
  * "sum/1" and "sum/2" are different functions.
  */
-static char* name_with_arity(const char* name, drax_value arity) {
+static char* name_with_arity(d_vm* vm, const char* name, drax_value arity) {
   size_t sz = strlen(name) + 16;
   char* n = (char*) malloc(sizeof(char) * sz);
   snprintf(n, sz, "%s/%d", name, (int) arity);
-  return n;
+  return dpool_add(vm, n);
 }
 
 static bool leads_to_return(d_instructions* instr, int ip) {
@@ -466,9 +484,13 @@ void process_amper(d_vm* vm, bool v) {
   if (eq_and_next(DTK_PAR_OPEN)) {
     bool _ispipe = is_in_state(PS_IN_PIPE);
 
-    if (parser.active_fun == NULL) {
-      FATAL("call out of scope.");
+    if (parser.active_fun == NULL || parser.active_fun->name == NULL) {
+      FATAL("'&' can only be used inside a named function.");
+      return;
     }
+
+    /* the arguments can define lambdas, which change active_fun */
+    const char* fn_name = parser.active_fun->name;
 
     int name_pos = GET_INSTRUCTION(vm)->instr_count;
     put_pair(vm, OP_GET_G_ID, (drax_value) NULL);
@@ -478,7 +500,7 @@ void process_amper(d_vm* vm, bool v) {
     pop_state(&parser);
 
     GET_INSTRUCTION(vm)->values[name_pos + 1] =
-      (drax_value) name_with_arity(parser.active_fun->name, arg_count);
+      (drax_value) name_with_arity(vm, fn_name, arg_count);
     put_call(vm, _ispipe ? OP_D_CALL_P : OP_D_CALL, arg_count);
     return;
   }
@@ -535,18 +557,14 @@ void process_frame(d_vm* vm, bool v) {
   do {
     char* name;
     if(eq_and_next(DTK_ID)) {
-      name = (char*) malloc(sizeof(char) * (parser.prev.length + 1));
-      strncpy(name, parser.prev.first, parser.prev.length);
-      name[parser.prev.length] = '\0';
+      name = dpool_strndup(vm, parser.prev.first, parser.prev.length);
     } else {
 
       if(
         eq_and_next(DTK_STRING) ||
         eq_and_next(DTK_DSTRING)
       ) {
-        name = (char*) malloc(sizeof(char) * (parser.prev.length - 1));
-        strncpy(name, parser.prev.first + 1, parser.prev.length - 2);
-        name[parser.prev.length - 2] = '\0';
+        name = dpool_strndup(vm, parser.prev.first + 1, parser.prev.length - 2);
       } else {
         FATAL_CURR("Expect 'identifier' as an key.");
         return;
@@ -643,9 +661,7 @@ void process_variable(d_vm* vm, bool v) {
   d_token ctk = parser.prev;
   int is_global = IS_GLOBAL_SCOPE();
 
-  char* name = (char*) malloc(sizeof(char) * (ctk.length + 1));
-  strncpy(name, ctk.first, ctk.length);
-  name[ctk.length] = '\0';
+  char* name = dpool_strndup(vm, ctk.first, ctk.length);
 
   if (parser.is_refr == 1 && get_current_token() == DTK_DIV) {
     /** disabled */
@@ -670,8 +686,7 @@ void process_variable(d_vm* vm, bool v) {
      * expression is expected, including as the last expression of a
      * function or of an if branch.
      */
-    char* get_name = (char*) malloc(sizeof(char) * (ctk.length + 1));
-    strcpy(get_name, name);
+    char* get_name = dpool_strndup(vm, name, ctk.length);
     put_pair(vm, is_global ? OP_GET_G_ID : OP_GET_L_ID, (drax_value) get_name);
     return;
   }
@@ -802,6 +817,7 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
 
   d_instructions* gi = vm->active_instr;
   drax_function* f = new_function(vm);
+  drax_function* outer_fun = parser.active_fun;
   parser.active_fun = f;
   f->instructions->file = vm->active_instr->file;
   vm->active_instr = f->instructions;
@@ -812,9 +828,7 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
   if (!is_anonymous) {
     get_next_token();
     d_token ctk = parser.prev;
-    f->name = (char*) malloc(sizeof(char) * (ctk.length + 1));
-    strncpy(f->name, ctk.first, ctk.length);
-    f->name[ctk.length] = '\0';
+    f->name = dpool_strndup(vm, ctk.first, ctk.length);
 
     if (is_in_state(PS_ASSIGNMENT)) {
       FATAL_CURR("syntax error: cannot assign a named function to a variable.");
@@ -870,8 +884,7 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
 
     for (i = f->arity; i > 0 ; i--) {
       size_t sz = strlen(stack_args[i - 1]);
-      char* s = (char*) malloc(sizeof(char) * (sz + 1));
-      strcpy(s, stack_args[i - 1]);
+      char* s = dpool_strndup(vm, stack_args[i - 1], sz);
       put_pair(vm, OP_SET_L_ID, (drax_value) s);
       put_local(&parser, s);
     }
@@ -945,7 +958,8 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
    * has external references.
    */
   put_instruction(vm, f->instructions->extrn_ref_count > 0 ? DRAX_TRUE_VAL : DRAX_FALSE_VAL);
-  parser.active_fun = NULL;
+  /* nested functions: the enclosing one is active again */
+  parser.active_fun = outer_fun;
   parser.scope_depth--;
   return f;
 }
@@ -965,12 +979,10 @@ void process_function(d_vm* vm, bool v) {
     d_op_code set_op = is_global ? OP_SET_G_ID : OP_SET_L_ID;
     d_op_code get_op = is_global ? OP_GET_G_ID : OP_GET_L_ID;
 
-    put_pair(vm, set_op, (drax_value) name_with_arity(f->name, f->arity));
-    put_pair(vm, get_op, (drax_value) name_with_arity(f->name, f->arity));
+    put_pair(vm, set_op, (drax_value) name_with_arity(vm, f->name, f->arity));
+    put_pair(vm, get_op, (drax_value) name_with_arity(vm, f->name, f->arity));
 
-    char* n = (char*) malloc(strlen(f->name) + 1);
-    strcpy(n, f->name);
-    put_pair(vm, set_op, (drax_value) n);
+    put_pair(vm, set_op, (drax_value) f->name);
   }
 }
 
@@ -1025,8 +1037,8 @@ void process_call(d_vm* vm, bool v) {
   if (callee >= 0) {
     drax_value* operand = &GET_INSTRUCTION(vm)->values[callee + 1];
     char* old_name = (char*) *operand;
-    *operand = (drax_value) name_with_arity(old_name, arg_count);
-    free(old_name);
+    /* the old name stays in the string pool of the VM */
+    *operand = (drax_value) name_with_arity(vm, old_name, arg_count);
   }
 
   /* may become a tail call, see optimize_tail_calls */
@@ -1037,9 +1049,7 @@ void process_dot(d_vm* vm, bool v) {
   UNUSED(v);
   process_token(DTK_ID, "Expect 'identifier' after '.'.");
 
-  char* k = malloc(sizeof(char) * parser.prev.length + 1);
-  memcpy(k, parser.prev.first, parser.prev.length);
-  k[parser.prev.length] = '\0';
+  char* k = dpool_strndup(vm, parser.prev.first, parser.prev.length);
 
   if (eq_and_next(DTK_EQ)) {
     push_state(&parser, PS_ASSIGNMENT);
@@ -1144,15 +1154,16 @@ static long get_path_max(const char* path) {
 int __ibuild__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_locals(&parser);
+  parser.last_global_instr = NULL;
+  parser.last_global_load = -1;
 
   if (path != NULL) {
     long path_max = get_path_max(path);
-    parser.file = (char*) malloc(sizeof(char) * path_max);
+    parser.file = dpool_add(vm, (char*) malloc(sizeof(char) * path_max));
     if (get_realpath(path, parser.file) == 0) {
       fprintf(stderr, "fail to make full path: '%s'.\n", path);
     }
-    vm->active_instr->file = (char*) malloc(sizeof(char) * strlen(parser.file) + 1);
-    strcpy(vm->active_instr->file, parser.file);
+    vm->active_instr->file = parser.file;
   }
 
   parser.has_error = false;
@@ -1168,11 +1179,11 @@ int __ibuild__(d_vm* vm, const char* input, char* path) {
     }
   }
 
+  free_all_locals(&parser);
+
   if (parser.has_error) {
     return 0;
   }
-  remove_locals_registers(&parser);
-  free(parser.locals);
 
   put_pair(vm, OP_EXIT, 0xff);
   return 1;
@@ -1181,15 +1192,16 @@ int __ibuild__(d_vm* vm, const char* input, char* path) {
 int __build__(d_vm* vm, const char* input, char* path) {
   init_lexan(input);
   init_locals(&parser);
+  parser.last_global_instr = NULL;
+  parser.last_global_load = -1;
 
   if (path != NULL) {
     long path_max = get_path_max(path);
-    parser.file = (char*) malloc(sizeof(char) * path_max);
+    parser.file = dpool_add(vm, (char*) malloc(sizeof(char) * path_max));
     if (get_realpath(path, parser.file) == 0) {
       fprintf(stderr, "fail to make full path: '%s'.\n", path);
     }
-    vm->active_instr->file = (char*) malloc(sizeof(char) * strlen(parser.file) + 1);
-    strcpy(vm->active_instr->file, parser.file);
+    vm->active_instr->file = parser.file;
   }
 
   parser.has_error = false;
@@ -1209,11 +1221,11 @@ int __build__(d_vm* vm, const char* input, char* path) {
     }
   }
 
+  free_all_locals(&parser);
+
   if (parser.has_error) {
     return 0;
   }
-  remove_locals_registers(&parser);
-  free(parser.locals);
 
   put_pair(vm, OP_EXIT, 0xff);
   return 1;

@@ -19,6 +19,18 @@
 
 int is_teractive_mode = 0;
 
+/**
+ * The VM is destroyed when the process ends, also when the program
+ * calls Os.exit (exit() runs the atexit handlers).
+ */
+static d_vm* main_vm = NULL;
+
+static void destroy_main_vm(void) {
+  d_vm* vm = main_vm;
+  main_vm = NULL;
+  __destroy__(vm);
+}
+
 static int interactive_shell(d_vm* v) {
   is_teractive_mode = 1;
   initial_info();
@@ -26,9 +38,11 @@ static int interactive_shell(d_vm* v) {
   while (1) {
     #ifdef _B_BUILF_FULL
       char* input = readline("> ");
+      if (input == NULL) break;
       add_history(input);
     #else
       char* input = b_read_content();
+      if (input == NULL) break;
     #endif
     
     if (__build__(v, input, NULL)) {
@@ -69,6 +83,8 @@ int main(int argc, char** argv) {
 
   /* create init vm */
   d_vm* gdvm = createMainVM();
+  main_vm = gdvm;
+  atexit(destroy_main_vm);
   
   switch (bmode) {
     case BI_PROCESS_DEFAULT:

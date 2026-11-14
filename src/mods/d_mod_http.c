@@ -12,7 +12,7 @@
     dhttp_server* configs = (dhttp_server*) malloc(sizeof(dhttp_server));
     configs->server_fd = INVALID_SOCKET;
     configs->new_socket = INVALID_SOCKET;
-    configs->address = (struct addrinfo*) malloc(sizeof(struct addrinfo));
+    configs->address = NULL;
 
     WSADATA wsaData;
     int iResult;
@@ -105,19 +105,19 @@
     configs->address->sin_port = htons(iport);
 
     if (inet_pton(AF_INET, host, &configs->address->sin_addr) <= 0) {
-      close(configs->server_fd);
+      free_http_server((drax_value) configs);
       *fail = 1;
       return DS_VAL(new_derror(vm, (char *) "server error, Unsupported host!"));
     }
 
     if (bind(configs->server_fd, (struct sockaddr *) configs->address, sizeof(*configs->address)) < 0) {
-      close(configs->server_fd);
+      free_http_server((drax_value) configs);
       *fail = 1;
       return DS_VAL(new_derror(vm, (char *) "server error, fail to bind!"));
     }
 
     if (listen(configs->server_fd, 3) < 0) {
-      close(configs->server_fd);
+      free_http_server((drax_value) configs);
       *fail = 1;
       return DS_VAL(new_derror(vm, (char *) "server error, fail to listen!"));
     }
@@ -152,6 +152,8 @@
     if ((configs->new_socket = accept(configs->server_fd, (struct sockaddr *) configs->address,
     (socklen_t*) &addrlen)) < 0) {
       close(configs->server_fd);
+      configs->server_fd = -1;
+      configs->new_socket = -1;
       *res = DS_VAL(new_derror(vm, (char *) "server error, fail to accept connection!"));
       return 0;
     }
@@ -165,28 +167,28 @@
     UNUSED(vm);
     if(!aconf) { return 0; }
     int bffsz = 16384;
-    char* buffer = (char*) malloc(bffsz * sizeof(char));
+    char* buffer = (char*) malloc((bffsz + 1) * sizeof(char));
 
     dhttp_server* configs = (dhttp_server*) aconf;
-    recv(configs->new_socket, buffer, bffsz, 0);
-    char* nc = replace_special_char(buffer);
-    free(buffer);
+    int n = recv(configs->new_socket, buffer, bffsz, 0);
+    buffer[n > 0 ? n : 0] = '\0';
 
-    return nc;
+    return buffer;
   }
 #else
   char* receive_http_server(d_vm* vm, drax_value aconf) {
     UNUSED(vm);
     if(!aconf) { return 0; }
     int bffsz = 16384;
-    char* buffer = (char*) malloc(bffsz * sizeof(char));
+    char* buffer = (char*) malloc((bffsz + 1) * sizeof(char));
 
     dhttp_server* configs = (dhttp_server*) aconf;
-    read(configs->new_socket, buffer, bffsz);
-    char* nc = replace_special_char(buffer);
-    free(buffer);
+    ssize_t n = read(configs->new_socket, buffer, bffsz);
 
-    return nc;
+    /* the request is not NUL terminated */
+    buffer[n > 0 ? n : 0] = '\0';
+
+    return buffer;
   }
 #endif
 
@@ -195,8 +197,7 @@
     UNUSED(vm);
     if(!aconf) { return 0; }
     dhttp_server* configs = (dhttp_server*) aconf;
-    char* data = str_format_output(s);
-    ssize_t r = send(configs->new_socket, data, strlen(data), 0 );
+    ssize_t r = send(configs->new_socket, s, strlen(s), 0 );
     return -1 != r ;
   }
 #else
@@ -205,9 +206,16 @@
     if(!aconf) { return 0; }
 
     dhttp_server* configs = (dhttp_server*) aconf;
-    char* data = str_format_output(s);
-    ssize_t r = write(configs->new_socket, data, strlen(data));
-    return -1 != r ;
+    size_t len = strlen(s);
+    size_t sent = 0;
+
+    while (sent < len) {
+      ssize_t r = write(configs->new_socket, s + sent, len - sent);
+      if (r <= 0) return 0;
+      sent += (size_t) r;
+    }
+
+    return 1;
   }
 #endif
 
@@ -217,6 +225,7 @@
     if(!v) { return 0; }
     dhttp_server* configs = (dhttp_server*) v;
     closesocket(configs->new_socket);
+    configs->new_socket = INVALID_SOCKET;
     return 1;
   }
 #else
@@ -224,7 +233,8 @@
     UNUSED(vm);
     if(!v) { return 0; }
     dhttp_server* configs = (dhttp_server*) v;
-    close((int) configs->new_socket);
+    if (configs->new_socket >= 0) close((int) configs->new_socket);
+    configs->new_socket = -1;
     return 1;
   }
 #endif
@@ -235,6 +245,7 @@
     if(!v) { return 0; }
     dhttp_server* configs = (dhttp_server*) v;
     closesocket(configs->server_fd);
+    configs->server_fd = INVALID_SOCKET;
     WSACleanup();
     return 1;
 }
@@ -243,8 +254,29 @@
     UNUSED(vm);
     if(!v) { return 0; }
     dhttp_server* configs = (dhttp_server*) v;
-    close((int) configs->server_fd);
+    if (configs->server_fd >= 0) close((int) configs->server_fd);
+    configs->server_fd = -1;
     return 1;
+  }
+#endif
+
+#ifdef _WIN32
+  void free_http_server(drax_value v) {
+    if (!v) return;
+    dhttp_server* configs = (dhttp_server*) v;
+    if (configs->new_socket != INVALID_SOCKET) closesocket(configs->new_socket);
+    if (configs->server_fd != INVALID_SOCKET) closesocket(configs->server_fd);
+    if (configs->address != NULL) freeaddrinfo(configs->address);
+    free(configs);
+  }
+#else
+  void free_http_server(drax_value v) {
+    if (!v) return;
+    dhttp_server* configs = (dhttp_server*) v;
+    if (configs->new_socket >= 0) close(configs->new_socket);
+    if (configs->server_fd >= 0) close(configs->server_fd);
+    free(configs->address);
+    free(configs);
   }
 #endif
 

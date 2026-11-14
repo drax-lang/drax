@@ -16,15 +16,20 @@
 #define ALLOCATE_DSTRUCT_ORPHAN(b, type, d_struct_type) \
     (type*) allocate_struct(b, sizeof(type), d_struct_type, 1)
 
+/* memory used by the structs, it makes the GC run automatically */
+#define GC_TRACK(vm, n) ((vm)->gc_meta->bytes += (size_t) (n))
+
 static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type, int is_orphan) {
-  d_struct* d = (d_struct*) malloc(sizeof(d_struct) * size);
+  d_struct* d = (d_struct*) malloc(size);
   d->type = type;
   d->checked = 0;
+  d->next = NULL;
   if (!is_orphan) {
     d->next = vm->d_ls;
     vm->d_ls = d;
   }
 
+  GC_TRACK(vm, size);
   return d;
 }
 
@@ -37,8 +42,10 @@ static d_struct* allocate_struct(d_vm* vm, size_t size, dstruct_type type, int i
 drax_list* new_dlist(d_vm* vm, int cap) {
   drax_list* l = ALLOCATE_DSTRUCT(vm, drax_list, DS_LIST);
   l->length = 0;
-  l->cap = cap == 0 ? LIST_PRE_SIZE : cap;
+  l->cap = cap <= 0 ? LIST_PRE_SIZE : cap;
   l->elems = malloc(sizeof(drax_value) * l->cap);
+  l->owner = NULL;
+  GC_TRACK(vm, sizeof(drax_value) * l->cap);
   return l;
 }
 
@@ -56,6 +63,7 @@ drax_error* new_derror(d_vm* vm, char* msg) {
   drax_error* v = ALLOCATE_DSTRUCT(vm, drax_error, DS_ERROR);
   int sz = strlen(msg);
   char* m = (char*) malloc((sz + 1) * sizeof(char));
+  GC_TRACK(vm, sz + 1);
   strcpy((char*)m, msg);
 
   v->chars = m;
@@ -76,12 +84,14 @@ drax_function* new_function(d_vm* vm) {
   f->arity = 0;
   f->name = NULL;
   f->instructions = new_instructions();
+  GC_TRACK(vm, sizeof(d_instructions) + MAX_INSTRUCTIONS * (sizeof(drax_value) + sizeof(int)));
 
   return f;
 }
 
 static drax_string* allocate_string(d_vm* vm, char* chars, int length, uint32_t hash) {
   drax_string* string = ALLOCATE_DSTRUCT(vm, drax_string, DS_STRING);
+  GC_TRACK(vm, length + 1);
   string->length = length;
   string->chars = chars;
   string->hash = hash;
@@ -134,7 +144,8 @@ drax_string* copy_dstring(d_vm* vm, const char* chars, int length) {
 drax_frame* new_dframe(d_vm* vm, int cap) {
   drax_frame* l = ALLOCATE_DSTRUCT(vm, drax_frame, DS_FRAME);
   l->length = 0;
-  l->cap = cap == 0 ? 8 : cap;
+  l->cap = cap <= 0 ? 8 : cap;
+  GC_TRACK(vm, (sizeof(drax_value) + sizeof(char*) + sizeof(int) + 16) * l->cap);
   l->values = (drax_value*) malloc(sizeof(drax_value) * l->cap);
   l->literals = (char**) malloc(sizeof(char*) * l->cap);
   l->keys = (int*) malloc(sizeof(int) * l->cap);
@@ -174,15 +185,38 @@ void put_value_dframe(drax_frame* l, char* k, drax_value v) {
     return;
   }
 
-  l->keys[l->length] = fnv1a_hash(k, strlen(k));
-  l->literals[l->length] = k;
+  /* the frame owns a copy of the key */
+  size_t klen = strlen(k);
+  char* key = (char*) malloc(klen + 1);
+  memcpy(key, k, klen + 1);
+
+  l->keys[l->length] = fnv1a_hash(k, klen);
+  l->literals[l->length] = key;
   l->values[l->length] = v;
   l->length++;
+}
+
+/**
+ * Copies 'count' entries of 'src' (from 'si') to 'dst' (from 'di').
+ * Each frame owns its keys, so the keys are duplicated.
+ */
+void copy_dframe_entries(drax_frame* dst, int di, drax_frame* src, int si, int count) {
+  int i;
+  for (i = 0; i < count; i++) {
+    size_t klen = strlen(src->literals[si + i]);
+    char* key = (char*) malloc(klen + 1);
+    memcpy(key, src->literals[si + i], klen + 1);
+
+    dst->keys[di + i] = src->keys[si + i];
+    dst->literals[di + i] = key;
+    dst->values[di + i] = src->values[si + i];
+  }
 }
 
 drax_tid* new_dtid(d_vm* vm, drax_value value) {
   drax_tid* t = ALLOCATE_DSTRUCT(vm, drax_tid, DS_TID);
   t->value = value;
+  t->destroy = NULL;
   return t;
 }
 

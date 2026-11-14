@@ -465,13 +465,15 @@ static drax_value __d_cmd(d_vm* vm, int* stat) {
   return_if_is_not_string(a, stat);
 
   char buf[4096];
+  buf[0] = '\0'; /* d_command does not write on failure */
   double status = (double) d_command(CAST_STRING(a)->chars, buf, sizeof(buf));
-  char* r = replace_special_char(buf);
 
   if (status != 0) {
     DX_ERROR_FN(stat);
     return DS_VAL(new_derror(vm, (char *) "Fail to execute command"));
   }
+
+  char* r = replace_special_char(buf);
   DX_SUCESS_FN(stat);
   return DS_VAL(new_dstring(vm, r, strlen(r)));
 }
@@ -482,6 +484,7 @@ static drax_value __d_cmd_with_status(d_vm* vm, int* stat) {
   return_if_is_not_string(a, stat);
 
   char buf[4096];
+  buf[0] = '\0'; /* d_command does not write on failure */
   double status = (double) d_command(CAST_STRING(a)->chars, buf, sizeof(buf));
   char* r = replace_special_char(buf);
 
@@ -659,11 +662,8 @@ static drax_value __d_frame_put(d_vm* vm, int* stat) {
   
   drax_frame* o = CAST_FRAME(a);
   drax_frame* n = new_dframe(vm, o->length + 1);
+  copy_dframe_entries(n, 0, o, 0, o->length);
   n->length = o->length;
-
-  memcpy(n->keys, o->keys, o->length * sizeof(int));
-  memcpy(n->literals, o->literals, o->length * sizeof(char*));
-  memcpy(n->values, o->values, o->length * sizeof(drax_value));
 
   put_value_dframe(n, CAST_STRING(b)->chars, c);
 
@@ -684,10 +684,8 @@ static drax_value __d_frame_merge(d_vm* vm, int* stat) {
   drax_frame* nf1 = new_dframe(vm, f1->length);
   
   if (f1->length > 0) {
+    copy_dframe_entries(nf1, 0, f1, 0, f1->length);
     nf1->length = f1->length;  
-    memcpy(nf1->keys, f1->keys, f1->length * sizeof(int));
-    memcpy(nf1->literals, f1->literals, f1->length * sizeof(char*));
-    memcpy(nf1->values, f1->values, f1->length * sizeof(drax_value));
   }
 
   int i;
@@ -696,8 +694,6 @@ static drax_value __d_frame_merge(d_vm* vm, int* stat) {
       nf1->keys[i] = f2->keys[i];
       nf1->values[i] = f2->values[i];
     } else {
-      char *s = (char *) malloc((strlen(f2->literals[i]) + 1) * sizeof(char));
-      strcpy(s, f2->literals[i]);
       put_value_dframe(nf1, f2->literals[i], f2->values[i]);
     }
   }
@@ -807,16 +803,11 @@ static drax_value __d_frame_remove(d_vm* vm, int* stat) {
   }
 
   drax_frame* nf = new_dframe(vm, f->length - 1);
-  nf->length = f->length - 1;
-  
-  memcpy(nf->keys, f->keys, idx * sizeof(int));
-  memcpy(nf->literals, f->literals, idx * sizeof(char*));
-  memcpy(nf->values, f->values, idx * sizeof(drax_value));
+  int bf = (f->length - 1 - idx);
 
-  int bf = (nf->length - idx);
-  memcpy(nf->keys + idx, f->keys + idx + 1, bf * sizeof(int));
-  memcpy(nf->literals + idx, f->literals + idx + 1, bf * sizeof(char*));
-  memcpy(nf->values + idx, f->values + idx + 1, bf * sizeof(drax_value));
+  copy_dframe_entries(nf, 0, f, 0, idx);
+  copy_dframe_entries(nf, idx, f, idx + 1, bf);
+  nf->length = f->length - 1;
 
   DX_SUCESS_FN(stat);
   return DS_VAL(nf);
@@ -892,9 +883,8 @@ static drax_value __d_frame_new(d_vm* vm, int* stat) {
     drax_list* l1 = CAST_LIST(l->elems[i]);
 
     return_if_is_not_string(l1->elems[0], stat);
-    char *s = (char *) malloc((CAST_STRING(l1->elems[0])->length + 1) * sizeof(char));
-    strcpy(s, CAST_STRING(l1->elems[0])->chars);
-    put_value_dframe(f, s, l1->elems[1]);
+    /* the frame keeps its own copy of the key */
+    put_value_dframe(f, CAST_STRING(l1->elems[0])->chars, l1->elems[1]);
   }
   
   DX_SUCESS_FN(stat);
@@ -950,6 +940,7 @@ static drax_value __d_start_server(d_vm* vm, int* stat) {
 
   if (!fail) {
     drax_tid* tid = new_dtid(vm, ctx);
+    tid->destroy = free_http_server;
     res = DS_VAL(tid);
     DX_SUCESS_FN(stat);
   } else {
@@ -994,6 +985,12 @@ static drax_value __d_receive_server(d_vm* vm, int* stat) {
   return_if_is_not_tid(v, stat);
   drax_tid* tid = CAST_TID(v);
   char* res = receive_http_server(vm, tid->value);
+  if (res == NULL) {
+    DX_SUCESS_FN(stat);
+    return DRAX_NIL_VAL;
+  }
+
+  /* the string owns the buffer */
   drax_string* s = new_dstring(vm, res, strlen(res));
 
   DX_SUCESS_FN(stat);

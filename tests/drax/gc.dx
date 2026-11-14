@@ -1,7 +1,8 @@
 ## garbage collector
 
 c = Core.gc_meta_info()
-assert(c == {'num_cycles': 0, 'num_free_structs': 0}, "fail to get metadata")
+assert(Frame.keys(c) == ['num_cycles', 'num_free_structs'], "fail to get metadata")
+assert(c.num_cycles >= 0 and c.num_free_structs >= 0, "fail to get metadata values")
 
 # unuseds values
 "discarted"
@@ -24,5 +25,74 @@ c = Core.gc_meta_info()
 
 assert(c.num_cycles >= 1, "fail to process num. cycles")
 assert(c.num_free_structs >= 9, "fail to process num. cycles")
+
+### values in use survive a cycle in the middle of the execution
+
+# a closure created and called right away is referenced only by the call
+fun make_runner(tag) do
+    fun (n) do
+        Core.gc_swap()
+        result = [n, tag]
+    end
+end
+
+r = make_runner("alive")(7)
+assert(r == [7, "alive"], "gc error: function being executed was collected")
+
+# closures keep their captured values
+fun make_counter(start) do
+    fun () start + 1 end
+end
+counter = make_counter(41)
+Core.gc_swap()
+assert(counter() == 42, "gc error: captured value was collected")
+
+# the tail of a list shares the elements of a list that is not referenced
+fun make_tail() do
+    List.tail([1, "two", [3]])
+end
+t = make_tail()
+Core.gc_swap()
+assert(t == ["two", [3]], "gc error: tail lost its elements")
+assert(List.tail(t) == [[3]], "gc error: tail of a tail")
+
+# frames keep their own copy of the keys
+k = "dyn" ++ "amic"
+fr = Frame.put({}, k, 1)
+k = nil
+Core.gc_swap()
+assert(Frame.keys(fr) == ["dynamic"], "gc error: frame key was collected")
+assert(Frame.get(Frame.remove(Frame.merge(fr, { other: 2 }), "other"), "dynamic") == 1, "gc error: copied frame keys")
+
+# values on the stack while a callback runs (List.map) survive
+mapped = List.map([1, 2, 3], fun (x) do
+    Core.gc_swap()
+    "item " ++ Number.to_string(x)
+end)
+assert(mapped == ["item 1", "item 2", "item 3"], "gc error: values of List.map collected")
+
+# deeply nested data is marked without recursion (no C stack overflow)
+fun nest(n, acc) do
+    if (n == 0) do acc else nest(n - 1, [n, acc]) end
+end
+deep = nest(300000, [])
+Core.gc_swap()
+assert(List.at(deep, 0) == 1, "gc error: deeply nested list")
+
+### the collector runs automatically
+before = Core.gc_meta_info().num_cycles
+
+fun churn(n) do
+    if (n == 0) do
+        0
+    else
+        garbage = [n, { key: "value " ++ Number.to_string(n) }, fun () n end]
+        churn(n - 1)
+    end
+end
+
+churn(200000)
+after = Core.gc_meta_info().num_cycles
+assert(after > before, "gc error: the collector did not run automatically")
 
 print('Garbage Collector done!')

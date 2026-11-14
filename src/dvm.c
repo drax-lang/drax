@@ -98,6 +98,7 @@ void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* modul
   frame->env_global = vm->envs->global;
   frame->stack_base = vm->stack_count;
   frame->local_base = vm->envs->local->count;
+  frame->callee = DRAX_NIL_VAL;
 
   vm->active_instr = target;
   vm->ip = target->values;
@@ -362,6 +363,7 @@ static int import_file(d_vm* vm, drax_value v) {
 
   if (!IS_STRING(v)) {
     raise_drax_error(vm, "import with unexpected type, the argument must be a string");
+    return 1;
   }
 
   drax_string* p = CAST_STRING(v);
@@ -379,6 +381,7 @@ static int import_file(d_vm* vm, drax_value v) {
   if (get_var_table(vm->imported_files, new_p, &ivl)) {
     push(vm, ivl);
     free(new_p);
+    free(content);
     return 0;
   }
 
@@ -387,28 +390,42 @@ static int import_file(d_vm* vm, drax_value v) {
    * a.file [import] -> (b.file [import] -> b.file)
    */
   put_var_table(vm->imported_files, new_p, DRAX_NIL_VAL);
-  callstack_push(vm, new_instructions(), new_var_table());
+
+  /**
+   * the module runs with its own code and global scope, both
+   * are released after the import: what the module exports is
+   * kept by the imported_files table (a GC root).
+   */
+  d_instructions* module_code = new_instructions();
+  d_generic_var_table* module_env = new_var_table();
+  callstack_push(vm, module_code, module_env);
 
   int stat = 0;
   if (__build__(vm, content, new_p)) {
     stat = __irun__(vm, 0);
-    free(content);
   } else {
-    free(content);
-    return 1;
+    stat = 1;
+  }
+  free(content);
+
+  if (stat == 0) {
+    /**
+     * Define exported value on global
+     * 
+     * vm->exported[0] -> is used only the 
+     * first element, for now.
+     */
+    put_var_table(vm->imported_files, new_p, vm->exported[0]);
+    callstack_pop(vm);
+    push(vm, vm->exported[0]);
+  } else if (vm->active_instr == module_code) {
+    callstack_pop(vm);
   }
 
-  /**
-   * Define exported value on global
-   * 
-   * vm->exported[0] -> is used only the 
-   * first element, for now.
-   */
-  
-    put_var_table(vm->imported_files, new_p, vm->exported[0]);
-    push(vm, vm->exported[0]);
-    callstack_pop(vm);
-    return stat;
+  free(new_p);
+  free_instructions(module_code);
+  free_var_table(vm, module_env);
+  return stat;
 }
 
 /**
@@ -441,7 +458,6 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
   new_fn->arity = f->arity;
 
   new_fn->instructions->file = f->instructions->file;
-  new_fn->instructions->lines = f->instructions->lines;
   new_fn->instructions->local_range = f->instructions->local_range + n_refs;
   new_fn->instructions->extrn_ref_count = 0;
   new_fn->instructions->_ip = f->instructions->_ip;
@@ -500,6 +516,11 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
       new_fn->instructions->values,
       sizeof(drax_value) * (new_fn->instructions->instr_size + 1)
     );
+
+    new_fn->instructions->lines = (int*) realloc(
+      new_fn->instructions->lines,
+      sizeof(int) * (new_fn->instructions->instr_size + 1)
+    );
   }
 
   *v = DS_VAL(new_fn);
@@ -512,6 +533,17 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
       f->instructions->values,
       i_new * sizeof(drax_value)
     );
+    memcpy(
+      new_fn->instructions->lines,
+      f->instructions->lines,
+      i_new * sizeof(int)
+    );
+  }
+
+  /* the captured values are defined on the line where the function starts */
+  int first_line = f->instructions->instr_count > 0 ? f->instructions->lines[0] : 0;
+  for (i = i_new; i < i_new + (n_found * 4); i++) {
+    new_fn->instructions->lines[i] = first_line;
   }
 
   for (i = 0; i < n_refs; i++) {
@@ -533,6 +565,7 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
 
   for (i = i_new; i < new_fn->instructions->instr_count; i++, old_i++) {
     new_fn->instructions->values[i] = f->instructions->values[old_i];
+    new_fn->instructions->lines[i] = f->instructions->lines[old_i];
 
     for (j = 0; j < n_refs; j++) {
       d_extrn_ref r = f->instructions->extrn_ref[j];
@@ -599,6 +632,7 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
        * consumed by the function prologue (OP_SET_L_ID).
        */
       CURR_FRAME(vm)->stack_base = vm->stack_count - (int) a;
+      CURR_FRAME(vm)->callee = v;
       
       if (f->instructions->local_range > 0) {
         zero_new_local_range(vm, f->instructions->local_range);
@@ -941,6 +975,9 @@ int __start__(d_vm* vm, int inter_mode) {
         a = GET_VALUE(vm);
         
         L_COMMON_CALL: {
+          /* safe point: the function and the arguments are on the stack */
+          dgc_maybe_collect(vm);
+
           drax_value v = peek(vm, a);
           remove_elem_on_stack(vm, a);
 
@@ -968,6 +1005,8 @@ int __start__(d_vm* vm, int inter_mode) {
          */
         a = GET_VALUE(vm);
         P_T_COMMON_CALL: {
+          dgc_maybe_collect(vm);
+
           drax_value v = peek(vm, a);
           drax_function* f;
           d_frame* fr;
@@ -996,6 +1035,7 @@ int __start__(d_vm* vm, int inter_mode) {
 
           vm->stack_count = fr->stack_base + (int) a;
           vm->envs->local->count = fr->local_base;
+          fr->callee = v;
           vm->active_instr = f->instructions;
           vm->ip = f->instructions->values;
 
@@ -1115,6 +1155,70 @@ dt_envs* new_environment(int ignore_natives, int ignore_local, int ignore_global
 
 
 /**
+ * String pool
+ *
+ * Names created by the compiler are operands of instructions and
+ * are shared by a function and its closures, so they are owned by
+ * the VM and released by __destroy__.
+ */
+char* dpool_add(d_vm* vm, char* s) {
+  d_str_pool* p = vm->str_pool;
+
+  if (p->count >= p->cap) {
+    p->cap = p->cap == 0 ? 64 : p->cap * 2;
+    p->items = (char**) realloc(p->items, sizeof(char*) * p->cap);
+  }
+
+  p->items[p->count++] = s;
+  return s;
+}
+
+char* dpool_strndup(d_vm* vm, const char* s, size_t n) {
+  char* r = (char*) malloc(n + 1);
+  memcpy(r, s, n);
+  r[n] = '\0';
+  return dpool_add(vm, r);
+}
+
+/**
+ * Releases all the memory of the VM.
+ */
+void __destroy__(d_vm* vm) {
+  int i;
+  if (vm == NULL) return;
+
+  dgc_free_all(vm);
+  free(vm->gc_meta);
+
+  free_instructions(vm->instructions);
+
+  free_var_table(vm, vm->envs->global);
+  free_var_table(vm, vm->imported_files);
+
+  free(vm->envs->local->array);
+  free(vm->envs->local);
+
+  free(vm->envs->native->pairs);
+  free(vm->envs->native);
+
+  free(vm->envs->modules->modules);
+  free(vm->envs->modules);
+  free(vm->envs);
+
+  for (i = 0; i < vm->str_pool->count; i++) {
+    free(vm->str_pool->items[i]);
+  }
+  free(vm->str_pool->items);
+  free(vm->str_pool);
+
+  free(vm->call_stack->frames);
+  free(vm->call_stack);
+  free(vm->stack);
+  free(vm->exported);
+  free(vm);
+}
+
+/**
  * Create a new drax vm
 */
 
@@ -1129,9 +1233,7 @@ static void __init__(d_vm* vm) {
 }
 
 void __reset__(d_vm* vm) { 
-  free(vm->instructions->values);
-  free(vm->instructions->lines);
-  free(vm->instructions);
+  free_instructions(vm->instructions);
   
   vm->instructions = new_instructions();
   vm->active_instr = vm->instructions;
@@ -1164,7 +1266,17 @@ d_vm* createMainVM() {
   vm->gc_meta = (dgc_meta*) malloc(sizeof(dgc_meta));
   vm->gc_meta->n_cycles = 0;
   vm->gc_meta->n_free_structs = 0;
+  vm->gc_meta->bytes = 0;
+  vm->gc_meta->next_gc = GC_INITIAL_THRESHOLD;
+  vm->gc_meta->gray = NULL;
+  vm->gc_meta->gray_count = 0;
+  vm->gc_meta->gray_cap = 0;
   vm->imported_files = new_var_table();
+
+  vm->str_pool = (d_str_pool*) malloc(sizeof(d_str_pool));
+  vm->str_pool->items = NULL;
+  vm->str_pool->count = 0;
+  vm->str_pool->cap = 0;
 
   /**
    * Created on builtin definitions

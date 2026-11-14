@@ -151,6 +151,19 @@ else
 	make c_test
 endif
 
+# runs the tests with AddressSanitizer and LeakSanitizer: any memory
+# error or leak (also in the scripts that end with an error) fails.
+# The second run collects all the time (4 KB threshold), so a value
+# that is not reachable from the GC roots becomes a use after free.
+MEMCHECK_FLAGS = -g -fsanitize=address -fno-omit-frame-pointer
+
+memcheck:
+	$(MAKE) all LIGHT=1 DWN_CCFLAGS="$(MEMCHECK_FLAGS)"
+	DRAX_MEMCHECK=1 ASAN_OPTIONS=detect_leaks=1:abort_on_error=0 sh tests/drax/run-test.sh
+	$(MAKE) all LIGHT=1 DWN_CCFLAGS="$(MEMCHECK_FLAGS) -DGC_INITIAL_THRESHOLD=4096"
+	DRAX_MEMCHECK=1 ASAN_OPTIONS=detect_leaks=1:abort_on_error=0 sh tests/drax/run-test.sh
+	$(MAKE) all
+
 install:
 	make all
 	sudo cp ./bin/drax /usr/local/bin/drax

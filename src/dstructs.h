@@ -95,6 +95,12 @@ typedef struct drax_list {
   int length;
   int cap;
   drax_value* elems;
+  /**
+   * NULL when the list owns 'elems'. A list that shares the
+   * elements of another one (List.tail) points to the owner,
+   * which is kept alive while the list is used.
+   */
+  struct drax_list* owner;
 } drax_list;
 
 typedef struct drax_frame {
@@ -129,9 +135,13 @@ typedef struct drax_function {
 typedef struct drax_tid {
   d_struct d_struct;
   drax_value value;
+  /* releases 'value' (a native resource) when the GC frees the struct */
+  void (*destroy)(drax_value value);
 } drax_tid;
 
 void put_value_dlist(drax_list* l, drax_value v);
+
+void copy_dframe_entries(drax_frame* dst, int di, drax_frame* src, int si, int count);
 
 drax_error* new_derror(d_vm* vm, char* msg);
 

@@ -1,0 +1,21 @@
+### Memory stays bounded while a program creates garbage.
+###
+### run-test.sh runs this file with a limit on the memory of the process
+### (ulimit -v), so it fails if the garbage is not collected while the
+### program runs: without collection it needs a few GB.
+
+fun churn(n, acc) do
+    if (n == 0) do
+        acc
+    else
+        list = [n, n + 1, n + 2, n + 3]
+        text = "item " ++ Number.to_string(n)
+        frame = { id: n, text: text, list: list }
+        closure = fun () frame end
+        churn(n - 1, acc + List.length(closure().list))
+    end
+end
+
+assert(churn(1000000, 0) == 4000000, "gc memory error: wrong result")
+
+print("GC memory done!")

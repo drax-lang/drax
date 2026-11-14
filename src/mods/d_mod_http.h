@@ -54,4 +54,7 @@ ssize_t send_http_server(d_vm* vm, drax_value aconf, char* s);
 
 int disconnect_client_http_server(d_vm* vm, drax_value aconf);
 
+/* closes the sockets that are still open and releases the server */
+void free_http_server(drax_value v);
+
 #endif

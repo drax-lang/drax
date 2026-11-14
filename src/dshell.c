@@ -10,17 +10,11 @@ static char buffer[BUFFER_SIZE];
 
 char* b_read_content() {
   fputs(BSLL_CHAR, stdout);
-  fgets(buffer, BUFFER_SIZE, stdin);
+  if (fgets(buffer, BUFFER_SIZE, stdin) == NULL) return NULL;
 
-  size_t sz = strlen(buffer + 1);
-  char* tmp = (char*) malloc(sz * sizeof(char));
-
-  size_t i = 0;
-  for (i = 0; i < sz; i++) {
-    tmp[i] = buffer[i];
-  }
-  
-  tmp[sz] = '\0';
+  size_t sz = strlen(buffer);
+  char* tmp = (char*) malloc((sz + 1) * sizeof(char));
+  memcpy(tmp, buffer, sz + 1);
 
   return tmp;
 }

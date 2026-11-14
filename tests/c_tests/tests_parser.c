@@ -14,18 +14,11 @@ int is_teractive_mode = 0;
 #include "../../src/dlex.h"
 
 d_vm* setup_vm() {
-  d_vm* vm = (d_vm*) malloc(sizeof(d_vm));
-  vm->active_instr = new_instructions();
-  vm->stack_count = 0;
-  vm->envs = new_environment(0, 0, 0);
-  return vm;
+  return createMainVM();
 }
 
 void teardown_vm(d_vm* vm) {
-  free(vm->envs->global);
-  free(vm->envs->local);
-  free(vm->envs);
-  free(vm);
+  __destroy__(vm);
 }
 
 int run_parser_test(const char* input, d_op_code* expected_ops, int op_count) {

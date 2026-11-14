@@ -2,260 +2,337 @@
 #include "dgc.h"
 
 /**
- * The safe free function remove safely the
- * value from the memory, checking if the value
- * is a drax value or a native value.
-*/
-static void dgc_safe_free(d_vm* vm, drax_value v) {
-  if (v == 0) return;
+ * Garbage collector (mark and sweep).
+ *
+ * Every struct (string, list, frame, function, ...) is on the list
+ * vm->d_ls. A cycle marks everything reachable from the roots and frees
+ * the rest. It runs automatically (see dgc_maybe_collect) and can be
+ * started with Core.gc_swap().
+ *
+ * Roots: value stack, locals, globals (current and of every frame),
+ * natives, modules, the exported value, imported modules, the function
+ * running in each frame and the instructions being executed.
+ *
+ * Marking uses an explicit stack (gray list) instead of recursion, so
+ * deeply nested data (a list inside a list, a million times) does not
+ * overflow the C stack.
+ */
 
-  if (IS_NUMBER(v) || IS_BOOL(v) || IS_NIL(v)) return;
+/* Mark */
 
-  /* check if is char* */
+static void gray_push(d_vm* vm, drax_value v) {
+  dgc_meta* m = vm->gc_meta;
 
-  if (IS_STRUCT(v)) {
-    vm->gc_meta->n_free_structs++;
-    /**
-     * If is checked then the value is used
-    */
-    d_struct* sct = CAST_STRUCT(v);
-    if (sct->checked) return;
+  if (m->gray_count >= m->gray_cap) {
+    int new_cap = m->gray_cap == 0 ? 256 : m->gray_cap * 2;
+    drax_value* ng = (drax_value*) realloc(m->gray, sizeof(drax_value) * new_cap);
 
-    DEBUG(printf("  -- dgc free\n"));
-    if (IS_STRING(v)) {
-      DEBUG(printf("    -- dgc string free\n"));
-      drax_string* s = CAST_STRING(v);
-      
-      if (NULL != s->chars) {
-        free(s->chars);
-        s->chars = NULL;
-      }
-    } else if (IS_ERROR(v)) {
-      DEBUG(printf("    -- dgc error free\n"));
-      drax_error* e = CAST_ERROR(v);
-      
-      if (NULL != e->chars) {
-        free(e->chars);
-        e->chars = NULL;
-      }
-    } else if (IS_FRAME(v)) {
-      DEBUG(printf("    -- dgc frame free\n"));
-      drax_frame* f = CAST_FRAME(v);
-      
-      if (NULL != f->literals) {
-        /*int i;
-        for (i = 0; i < f->length; i++) {
-          free(f->literals[i]);
-        }*/
-        free(f->keys);
-        free(f->values);
-
-        f->keys = NULL;
-        f->literals = NULL;
-      }
-    } else if (IS_FUNCTION(v)) {
-      DEBUG(printf("    -- dgc function free\n"));
-
-      drax_function* ff = CAST_FUNCTION(v);
-      free(ff->instructions->values);
-      free(ff->instructions->extrn_ref);
-      free(ff->instructions);
+    if (ng == NULL) {
+      fprintf(stderr, "fatal: out of memory on garbage collector.\n");
+      exit(1);
     }
 
-    free(sct);
-    sct = NULL;
+    m->gray = ng;
+    m->gray_cap = new_cap;
   }
+
+  m->gray[m->gray_count++] = v;
 }
 
-static void dgc_mark(drax_value v) {
-  if (v == 0) return;
+static void dgc_mark(d_vm* vm, drax_value v) {
+  if (v == 0 || !IS_STRUCT(v)) return;
 
-  if IS_STRUCT(v) {
-    DEBUG(printf("marked\n"));
-    CAST_STRUCT(v)->checked = 1;
+  d_struct* s = CAST_STRUCT(v);
+  if (s->checked) return;
 
-    /* if is list mark all elements */
-    if (IS_LIST(v)) {
-      drax_list* l = CAST_LIST(v);
-      int i;
-      for (i = 0; i < l->length; i++) {
-        dgc_mark(l->elems[i]);
-      }
-    } else if (IS_FRAME(v)) {
-      drax_frame* f = CAST_FRAME(v);
-      int i;
-      for (i = 0; i < f->length; i++) {
-        dgc_mark(f->values[i]);
-      }
-    } else if (IS_FUNCTION(v)) {
-      DEBUG(printf("  --marked function\n"));
-      drax_function* f = CAST_FUNCTION(v);
-      int i;
-      for (i = 0; i < f->instructions->instr_count; i++) {
-        if (f->instructions->values[i] == v) continue;
+  s->checked = 1;
+  gray_push(vm, v);
+}
 
-        dgc_mark(f->instructions->values[i]);
-      }
-    }
+/**
+ * Instructions keep constants (strings, functions) between the
+ * operations. Raw operands (names, opcodes) are not structs and
+ * are ignored by dgc_mark.
+ */
+static void dgc_mark_instructions(d_vm* vm, d_instructions* instr) {
+  if (instr == NULL || instr->values == NULL) return;
+
+  int i;
+  for (i = 0; i < instr->instr_count; i++) {
+    dgc_mark(vm, instr->values[i]);
   }
 }
 
 /**
- * Swap local variables
- * 
- * cycle through all elements from the final
+ * Marks the constants of a block from 'ip' to the end.
+ *
+ * Used for the code being executed. The top level code (of the main
+ * file and of an imported module) only jumps forward, so a constant
+ * before 'ip' is never used again. The code of a function can run
+ * again, but the function itself is marked (it is the callee of a
+ * frame), which marks all of its instructions.
  */
-static int dgc_swap_locals(d_local_var_table* t) {
-  DEBUG(printf("--dc::locals swap\n"));
-  if (t->count <= 0) return 1;
+static void dgc_mark_instructions_from(d_vm* vm, d_instructions* instr, drax_value* ip) {
+  if (instr == NULL || instr->values == NULL || ip == NULL) return;
+
+  int start = (int) (ip - instr->values);
+  if (start < 0 || start > instr->instr_count) start = 0;
 
   int i;
-  for (i = t->count; i > 0; i--) {
-    if (t->array[i - 1].key == 0) continue;
-    dgc_mark(t->array[i - 1].value);
+  for (i = start; i < instr->instr_count; i++) {
+    dgc_mark(vm, instr->values[i]);
   }
-  DEBUG(printf("--dc::locals end\n\n"));
-  return 1;
 }
 
-static int dgc_swap_generic_table(d_generic_var_table* t) {
-  DEBUG(printf("--dc::global swap\n"));
-  if (t->size <= 0) return 1;
+static void dgc_mark_children(d_vm* vm, drax_value v) {
+  int i;
+
+  switch (DRAX_STYPEOF(v)) {
+    case DS_LIST: {
+      drax_list* l = CAST_LIST(v);
+      for (i = 0; i < l->length; i++) {
+        dgc_mark(vm, l->elems[i]);
+      }
+
+      if (l->owner != NULL) {
+        dgc_mark(vm, DS_VAL(l->owner));
+      }
+      break;
+    }
+
+    case DS_FRAME: {
+      drax_frame* f = CAST_FRAME(v);
+      for (i = 0; i < f->length; i++) {
+        dgc_mark(vm, f->values[i]);
+      }
+      break;
+    }
+
+    case DS_FUNCTION:
+      dgc_mark_instructions(vm, CAST_FUNCTION(v)->instructions);
+      break;
+
+    default:
+      break;
+  }
+}
+
+static void dgc_drain(d_vm* vm) {
+  dgc_meta* m = vm->gc_meta;
+
+  while (m->gray_count > 0) {
+    drax_value v = m->gray[--m->gray_count];
+    dgc_mark_children(vm, v);
+  }
+}
+
+static void dgc_mark_var_table(d_vm* vm, d_generic_var_table* t) {
+  if (t == NULL) return;
 
   int i;
   for (i = 0; i < t->size; i++) {
-    if (t->array[i] != NULL) {
-      drax_generic_var_node* current = t->array[i];
-      while (current != NULL) {
-        drax_generic_var_node* next = current->next;
-        dgc_mark(current->value);
-        current = next;
-      }
+    drax_generic_var_node* current = t->array[i];
+    while (current != NULL) {
+      dgc_mark(vm, current->value);
+      current = current->next;
     }
   }
-  DEBUG(printf("--dc::global end\n\n"));
-  return 1;
 }
 
-static void dgc_swap_ip(drax_value* ip) {
-  DEBUG(printf("--dcgIP swap\n"));
-  drax_value* c_ip = ip;
+static void dgc_mark_roots(d_vm* vm) {
+  int i;
 
-  while (true) {
-    if (
-      c_ip == NULL || 
-      ((*(c_ip) == 0) && (*(c_ip + 1) == 0) &&(*(c_ip + 2) == 0))
-    ) break;
-
-    dgc_mark((*c_ip));
-    c_ip++;
+  /* value stack */
+  for (i = 0; i < vm->stack_count; i++) {
+    dgc_mark(vm, vm->stack[i]);
   }
 
-  DEBUG(printf("--dcgIP end\n"));
-}
+  /* locals */
+  d_local_var_table* l = vm->envs->local;
+  for (i = 0; i < l->count; i++) {
+    if (l->array[i].key != 0) dgc_mark(vm, l->array[i].value);
+  }
 
-static int dgc_swap_call_stack(d_vm* vm) {
-  DEBUG(printf("--dccallstk swap\n"));
-  if (vm->call_stack->count <= 0) return 1;
+  /* globals, natives and modules */
+  dgc_mark_var_table(vm, vm->envs->global);
 
-  int i;
+  for (i = 0; i < vm->envs->native->count; i++) {
+    dgc_mark(vm, vm->envs->native->pairs[i].value);
+  }
+
+  for (i = 0; i < vm->envs->modules->count; i++) {
+    dgc_mark(vm, vm->envs->modules->modules[i]);
+  }
+
+  /* exported value and imported modules */
+  if (vm->exported != NULL) dgc_mark(vm, vm->exported[0]);
+  dgc_mark_var_table(vm, vm->imported_files);
+
+  /* code being executed */
+  dgc_mark_instructions_from(vm, vm->active_instr, vm->ip);
+
   for (i = 0; i < vm->call_stack->count; i++) {
     d_frame* frame = &vm->call_stack->frames[i];
+    dgc_mark(vm, frame->callee);
+    dgc_mark_instructions_from(vm, frame->instr, frame->ip);
+    dgc_mark_var_table(vm, frame->env_global);
+  }
 
-    if (frame->instr) {
-      dgc_swap_ip(frame->instr->values); 
+  dgc_drain(vm);
+}
+
+/* Sweep */
+
+static size_t dgc_size_of(d_struct* d) {
+  switch (d->type) {
+    case DS_LIST: {
+      drax_list* l = (drax_list*) d;
+      return sizeof(drax_list) + (l->owner == NULL ? sizeof(drax_value) * l->cap : 0);
+    }
+    case DS_STRING:
+      return sizeof(drax_string) + ((drax_string*) d)->length + 1;
+    case DS_ERROR:
+      return sizeof(drax_error) + ((drax_error*) d)->length + 1;
+    case DS_FRAME:
+      return sizeof(drax_frame) + (sizeof(drax_value) + sizeof(char*) + sizeof(int) + 16) * ((drax_frame*) d)->cap;
+    case DS_FUNCTION: {
+      d_instructions* i = ((drax_function*) d)->instructions;
+      return sizeof(drax_function) + sizeof(d_instructions) + i->instr_size * (sizeof(drax_value) + sizeof(int));
+    }
+    case DS_NATIVE:
+      return sizeof(drax_os_native);
+    case DS_MODULE:
+      return sizeof(drax_native_module);
+    case DS_TID:
+      return sizeof(drax_tid);
+  }
+
+  return sizeof(d_struct);
+}
+
+void free_instructions(d_instructions* instr) {
+  if (instr == NULL) return;
+
+  free(instr->values);
+  free(instr->lines);
+  free(instr->extrn_ref);
+  free(instr);
+}
+
+/**
+ * Frees a struct and everything it owns.
+ *
+ * Names and file paths used by functions belong to the string
+ * pool of the VM (shared by a function and its closures).
+ */
+static void dgc_free_struct(d_struct* d) {
+  int i;
+
+  switch (d->type) {
+    case DS_STRING:
+      free(((drax_string*) d)->chars);
+      break;
+
+    case DS_ERROR:
+      free(((drax_error*) d)->chars);
+      break;
+
+    case DS_LIST: {
+      drax_list* l = (drax_list*) d;
+      /* a list that shares the buffer of another one does not own it */
+      if (l->owner == NULL) free(l->elems);
+      break;
     }
 
-    if (frame->env_global) {
-      dgc_swap_generic_table(frame->env_global);
+    case DS_FRAME: {
+      drax_frame* f = (drax_frame*) d;
+      for (i = 0; i < f->length; i++) {
+        free(f->literals[i]);
+      }
+      free(f->literals);
+      free(f->keys);
+      free(f->values);
+      break;
+    }
+
+    case DS_FUNCTION:
+      free_instructions(((drax_function*) d)->instructions);
+      break;
+
+    case DS_MODULE: {
+      drax_native_module* m = (drax_native_module*) d;
+      free(m->arity);
+      free(m->fun);
+      free(m->fn_names);
+      break;
+    }
+
+    case DS_TID: {
+      drax_tid* t = (drax_tid*) d;
+      if (t->destroy != NULL) t->destroy(t->value);
+      break;
+    }
+
+    case DS_NATIVE:
+      break;
+  }
+
+  free(d);
+}
+
+/**
+ * Frees every struct that is not marked and clears the marks.
+ * returns the memory still in use.
+ */
+static size_t dgc_sweep(d_vm* vm) {
+  size_t live = 0;
+  d_struct** link = &vm->d_ls;
+
+  while (*link != NULL) {
+    d_struct* d = *link;
+
+    if (d->checked) {
+      d->checked = 0;
+      live += dgc_size_of(d);
+      link = &d->next;
+    } else {
+      *link = d->next;
+      dgc_free_struct(d);
+      vm->gc_meta->n_free_structs++;
     }
   }
-  
-  DEBUG(printf("--dccallstk end\n\n"));
-  return 1;
-}
 
-static int dgc_swap_stack(d_vm* vm) {
-  DEBUG(printf("--dcstk swap\n"));
-  if (vm->stack_count <= 0) return 1;
-
-  int i;
-  for (i = 0; i < vm->stack_count; i++) {
-    dgc_mark(vm->stack[i]);
-  }
-  DEBUG(printf("--dcstk end\n\n"));
-  return 1;
-}
-
-static int dgc_swap_native(d_fun_table* t) {
-  DEBUG(printf("--dc::native swap\n"));
-  if (t->count <= 0) return 1;
-
-  int i;
-  for (i = 0; i < t->count; i++) {
-    dgc_mark(t->pairs[i].value);
-  }
-  DEBUG(printf("--dc::native end\n\n"));
-  return 1;
-}
-
-static int dgc_swap_modules(d_mod_table* t) {
-  DEBUG(printf("--dc::modules swap\n"));
-  if (t->count <= 0) return 1;
-
-  int i;
-  for (i = 0; i < t->count; i++) {
-      dgc_mark(t->modules[i]);
-  }
-  DEBUG(printf("--dc::modules end\n\n"));
-  return 1;
-}
-
-static int dgc_swap_exported(d_vm* vm) {
-  DEBUG(printf("--dc::exported swap\n"));
-  if (vm->exported == NULL) return 1;
-
-  if (vm->exported[0]) {
-    dgc_mark(vm->exported[0]);
-  }
-  DEBUG(printf("--dc::exported end\n\n"));
-  return 1;
+  return live;
 }
 
 int dgc_swap(d_vm* vm) {
   vm->gc_meta->n_cycles++;
-  DEBUG(printf("[GC] swap\n"));
-  d_struct *d = vm->d_ls->next;
-  d_struct* u = NULL; /* Unused struct */
-  d_struct* p = vm->d_ls;
 
-  dgc_swap_locals(vm->envs->local);
+  dgc_mark_roots(vm);
+  size_t live = dgc_sweep(vm);
 
-  dgc_swap_generic_table(vm->envs->global);
+  /* the next cycle runs when the memory in use doubles */
+  vm->gc_meta->bytes = 0;
+  vm->gc_meta->next_gc = live * 2;
+  if (vm->gc_meta->next_gc < GC_INITIAL_THRESHOLD) {
+    vm->gc_meta->next_gc = GC_INITIAL_THRESHOLD;
+  }
 
-  dgc_swap_native(vm->envs->native);
+  return 1;
+}
 
-  dgc_swap_modules(vm->envs->modules);
- 
-  dgc_swap_stack(vm);
-
-  dgc_swap_ip(vm->ip);
-  
-  dgc_swap_call_stack(vm);
-
-  dgc_swap_exported(vm);
+void dgc_free_all(d_vm* vm) {
+  d_struct* d = vm->d_ls;
 
   while (d != NULL) {
-    if (d->checked) {
-      d->checked = 0;
-      p = d;
-      d = d->next;
-    } else {
-      u = d;
-      d = d->next;
-      p->next = d;
-      dgc_safe_free(vm, DS_VAL(u));
-    }
+    d_struct* next = d->next;
+    dgc_free_struct(d);
+    d = next;
   }
-  return 1;  
+
+  vm->d_ls = NULL;
+  free(vm->gc_meta->gray);
+  vm->gc_meta->gray = NULL;
+  vm->gc_meta->gray_count = 0;
+  vm->gc_meta->gray_cap = 0;
 }

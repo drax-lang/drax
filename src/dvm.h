@@ -111,6 +111,7 @@ typedef struct d_frame {
   d_generic_var_table* env_global;
   int stack_base;
   int local_base;
+  drax_value callee;              /* function running in this frame (kept alive by the GC) */
 } d_frame;
 
 typedef struct dcall_stack {
@@ -122,7 +123,22 @@ typedef struct dcall_stack {
 typedef struct dgc_meta {
   int n_cycles;
   int n_free_structs;
+  size_t bytes;      /* bytes allocated by structs since the last cycle (estimate) */
+  size_t next_gc;    /* a cycle runs when 'bytes' reaches this value */
+  drax_value* gray;  /* mark stack */
+  int gray_count;
+  int gray_cap;
 } dgc_meta;
+
+/**
+ * Strings created by the compiler (names used as operands of
+ * instructions). They live until the VM is destroyed.
+ */
+typedef struct d_str_pool {
+  char** items;
+  int count;
+  int cap;
+} d_str_pool;
 
 typedef struct d_vm {
   /**
@@ -150,10 +166,19 @@ typedef struct d_vm {
   int native_nesting; /* nested VM loops started by native functions */
   dgc_meta* gc_meta;
   d_generic_var_table* imported_files;
+  d_str_pool* str_pool;
 } d_vm;
 
 /* VM */
 d_vm* createMainVM();
+
+void __destroy__(d_vm* vm);
+
+char* dpool_add(d_vm* vm, char* s);
+
+char* dpool_strndup(d_vm* vm, const char* s, size_t n);
+
+void free_instructions(d_instructions* instr);
 
 d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc, int new_global_scope);
 

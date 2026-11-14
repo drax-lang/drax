@@ -30,16 +30,18 @@ char* b_pwd() {
 
 char* normalize_path(char* bp, char* path) {
   char* nbp = NULL;
+  char* bp_copy = NULL; /* dirname changes and points into this copy */
 
   if (NULL != bp) {
-    nbp = strndup(bp, strlen(bp) + 1);
-    nbp = dirname(nbp);
+    bp_copy = strndup(bp, strlen(bp) + 1);
+    nbp = dirname(bp_copy);
   }
 
   char* full_path;
   if (path[0] == '/') {
     full_path = malloc((strlen(path) * sizeof(char)) + 1);
     strcpy(full_path, path);
+    free(bp_copy);
     return full_path;
   }
 
@@ -55,6 +57,7 @@ char* normalize_path(char* bp, char* path) {
   for (i = 0; i < cs; i++) { full_path[i + rs + 1] = path[i]; }
   full_path[rs + cs + 1] = '\0';
   if (unp) free(r_path);
+  free(bp_copy);
   return full_path;
 }
 

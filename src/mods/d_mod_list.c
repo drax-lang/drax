@@ -76,6 +76,8 @@ drax_value __d_list_tail(d_vm* vm, int* stat) {
   l->length = l1->length - 1;
   l->cap = l->length;
   l->elems = l1->elems + 1;
+  /* the owner keeps the buffer alive, see dgc.c */
+  l->owner = (l1->owner != NULL) ? l1->owner : l1;
   DX_SUCESS_FN(stat);
   return DS_VAL(l);
 }
@@ -400,6 +402,16 @@ static drax_value __d_list_iterator(d_vm* vm, int* stat, list_op op) {
   drax_list* l1 = CAST_LIST(lst);
   nl = new_dlist(vm, op == L_MAP ? l1->length : 0);
 
+  /**
+   * the callback runs the VM, and the garbage collector can run with
+   * it: the list, the function and the result stay on the stack
+   * (GC roots) until the end.
+   */
+  push(vm, lst);
+  push(vm, fn);
+  push(vm, DS_VAL(nl));
+  int base = vm->stack_count;
+
   for (int i = 0; i < l1->length; i++) {
     push(vm, l1->elems[i]);
 
@@ -437,6 +449,11 @@ static drax_value __d_list_iterator(d_vm* vm, int* stat, list_op op) {
 
   free(halt_instr.values);
   free(halt_instr.lines);
+
+  if (vm->stack_count >= base) {
+    vm->stack_count = base - 3;
+  }
+
   *stat = 1;
   return (op == L_TAP) ? lst : DS_VAL(nl);
 

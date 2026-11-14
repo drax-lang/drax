@@ -43,6 +43,15 @@
   #define MAX_NATIVE_NESTING 5000
 #endif
 
+/**
+ * The garbage collector runs automatically when the memory allocated
+ * since the last cycle reaches a limit. After each cycle the limit is
+ * twice the memory in use (and at least GC_INITIAL_THRESHOLD).
+ */
+#ifndef GC_INITIAL_THRESHOLD
+  #define GC_INITIAL_THRESHOLD (8 * 1024 * 1024)
+#endif
+
 #define MAX_SIZE_TABLE 0.85
 
 #define MODE_T_MAX ((mode_t)-1)
