@@ -1,7 +1,0 @@
-### BUG: String.split(s, "") never returns (infinite loop). It must return
-### the characters, or fail with an error.
-
-parts = String.split("abc", "")
-assert(List.length(parts) == 3, "bug: split with empty separator")
-
-print("split_empty_separator fixed!")

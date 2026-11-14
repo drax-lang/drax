@@ -53,6 +53,12 @@ assert([1, 2] != [2, 1], "operators error: list order matters")
 assert({ a: { b: 1 } } == { a: { b: 1 } }, "operators error: nested frame equality")
 assert({ a: { b: 1 } } != { a: { b: 2 } }, "operators error: nested frame inequality")
 
+### -0 and 0 are the same number (IEEE 754)
+assert(-0 == 0, "operators error: -0 == 0")
+assert(0 * -1 == 0, "operators error: 0 * -1 == 0")
+assert(Math.ceil(-0.5) == 0, "operators error: Math.ceil(-0.5) == 0")
+assert(Number.to_string(0 * -1) == "0", "operators error: -0 must print as 0")
+
 ### logic
 assert(true and true, "operators error: true and true")
 assert(!(true and false), "operators error: true and false")

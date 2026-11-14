@@ -193,6 +193,11 @@ static bool values_equal(drax_value a, drax_value b) {
     return true;
   }
 
+  /* numbers follow IEEE 754: -0 == 0 and nan != nan */
+  if (IS_NUMBER(a) && IS_NUMBER(b)) {
+    return CAST_NUMBER(a) == CAST_NUMBER(b);
+  }
+
   if(!(IS_STRUCT(a) && IS_STRUCT(b))) {
     return false;  
   }
@@ -274,21 +279,60 @@ void zero_new_local_range(d_vm* vm, int range) {
   memset(&vm->envs->local->array[vm->envs->local->count - range], 0, sizeof(d_local_var_node) * range);
 }
 
+/**
+ * Copies to 'base' the name without the arity ("sum/2" -> "sum").
+ * returns 0 if the name has no arity.
+ */
+static int name_without_arity(const char* k, char* base, size_t size) {
+  const char* slash = strrchr(k, '/');
+  if (slash == NULL || slash == k) return 0;
+
+  size_t n = (size_t) (slash - k);
+  if (n >= size) return 0;
+
+  memcpy(base, k, n);
+  base[n] = '\0';
+  return 1;
+}
+
+/**
+ * Calls are compiled with the arity in the name ("sum/2"), so
+ * functions with the same name and different arities can coexist,
+ * like in Erlang.
+ *
+ * Order: modules, locals (they shadow the globals), global function
+ * with the same arity, global name (variables, lambdas), natives.
+ */
+static int lookup_name(d_vm* vm, char* k, int is_local, drax_value* v) {
+  char base[256];
+  int has_arity = name_without_arity(k, base, sizeof(base));
+  char* plain = has_arity ? base : k;
+
+  if (get_mod_table(vm->envs->modules, plain, v)) return 1;
+
+  if (is_local) {
+    d_local_var_table* l = vm->envs->local;
+    int range = vm->active_instr->local_range;
+
+    if (get_local_table(l, range, k, v)) return 1;
+    if (has_arity && get_local_table(l, range, base, v)) return 1;
+  }
+
+  if (get_var_table(vm->envs->global, k, v)) return 1;
+  if (has_arity && get_var_table(vm->envs->global, base, v)) return 1;
+
+  *v = get_fun_table(vm->envs->native, plain, 0);
+  return *v ? 1 : 0;
+}
+
 static int get_definition(d_vm* vm, int is_local) { 
   char* k = (char*) GET_VALUE(vm);
   drax_value v;
 
-  if (
-    (get_mod_table(vm->envs->modules, k, &v) == 0) &&
-    ((!is_local) || (get_local_table(vm->envs->local, vm->active_instr->local_range, k, &v) == 0))
-  ) {
-    if(get_var_table(vm->envs->global, k, &v) == 0) {
-      v = get_fun_table(vm->envs->native, k, 0);
-      if (!v) {
-        raise_drax_error(vm, _L_MSG_NOT_DEF, k);
-        return 0;
-      }
-    }
+  if (!lookup_name(vm, k, is_local, &v)) {
+    char base[256];
+    raise_drax_error(vm, _L_MSG_NOT_DEF, name_without_arity(k, base, sizeof(base)) ? base : k);
+    return 0;
   }
 
   push(vm, v);
@@ -366,40 +410,81 @@ static int import_file(d_vm* vm, drax_value v) {
  * generates a new function, solving variables 
  * outside the scope.
  */
+/**
+ * true when 'k' is a reference of the function to itself:
+ * "name" or "name/arity".
+ */
+static int is_self_reference(drax_function* fn, const char* k) {
+  if (fn->name == NULL) return 0;
+
+  size_t n = strlen(fn->name);
+  if (strncmp(fn->name, k, n) != 0) return 0;
+  if (k[n] == '\0') return 1;
+  if (k[n] != '/') return 0;
+
+  return atoi(k + n + 1) == fn->arity;
+}
+
 static int build_self_dep_fn(d_vm* vm, drax_value* v) {
   drax_function* f = CAST_FUNCTION(*v);
   drax_function* new_fn = new_function(vm);
+  int n_refs = f->instructions->extrn_ref_count;
   
   new_fn->name = f->name;
   new_fn->arity = f->arity;
 
   new_fn->instructions->file = f->instructions->file;
   new_fn->instructions->lines = f->instructions->lines;
-  new_fn->instructions->local_range = f->instructions->local_range + f->instructions->extrn_ref_count;
+  new_fn->instructions->local_range = f->instructions->local_range + n_refs;
   new_fn->instructions->extrn_ref_count = 0;
   new_fn->instructions->_ip = f->instructions->_ip;
 
   int i;
-  int qtt_n_inst = f->instructions->extrn_ref_count * 4;/** we can ignore loop and alloc 4 ever */
 
   /**
-   * For each "OP_GET_G_ID" operation, four more slots are
-   * generated for commands.
-   * 
-   * Primarily we expect to receive "OP_GET_G_ID" 
-   * and generate a local variable definition within
-   * the lambda.
+   * Resolve the references to names outside of the function.
+   *
+   * A name that is found is captured now (its value becomes a local
+   * of the new function). A name that does not exist yet (a function
+   * defined later in the file, mutual recursion) keeps OP_GET_G_ID and
+   * is resolved when it is used (late binding, like in Erlang).
+   */
+  drax_value* values = (drax_value*) malloc(sizeof(drax_value) * (n_refs + 1));
+  int* found = (int*) calloc(n_refs + 1, sizeof(int));
+  int n_found = 0;
+
+  for (i = 0; i < n_refs; i++) {
+    d_extrn_ref r = f->instructions->extrn_ref[i];
+    char* k = (char*) r.instr->values[r.pos + 1];
+
+    if (r.instr->values[r.pos] != OP_GET_G_ID) {
+      free(values);
+      free(found);
+      raise_drax_error(vm, "runtime error: unspected OP on factory");
+      return 0;
+    }
+
+    if (is_self_reference(new_fn, k)) {
+      values[i] = DS_VAL(new_fn);
+      found[i] = 1;
+    } else {
+      found[i] = lookup_name(vm, k, 1, &values[i]);
+    }
+
+    n_found += found[i];
+  }
+
+  /**
+   * For each resolved "OP_GET_G_ID" operation, four more slots are
+   * generated for commands, a new local definition in the prologue.
    * 
    * instructions before:
    * [ OP_GET_G_ID | drax_value ] 
-   * [ OP_GET_G_ID | drax_value ]
    * 
    * instructions after:
    * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value | ... | OP_GET_L_ID | drax_value ]
-   * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value | ... | OP_GET_L_ID | drax_value ]
    */
-  new_fn->instructions->instr_count = 
-    f->instructions->instr_count + qtt_n_inst;
+  new_fn->instructions->instr_count = f->instructions->instr_count + (n_found * 4);
   
   if (new_fn->instructions->instr_size < new_fn->instructions->instr_count) {
     new_fn->instructions->instr_size = new_fn->instructions->instr_count + 1;
@@ -422,44 +507,18 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
     );
   }
 
-  for (i = 0; i < f->instructions->extrn_ref_count; i++) {
-    drax_value* ip = f->instructions->extrn_ref[i];
+  for (i = 0; i < n_refs; i++) {
+    if (!found[i]) continue;
 
-      drax_value gv = *(ip + 1);
-      char* k = (char*) gv;
-      drax_value rv;
-
-    if (*(ip) == OP_GET_G_ID) {
-      if ((NULL != new_fn->name) && (strcmp(new_fn->name, k) == 0)) {
-        rv = DS_VAL(new_fn);
-      } else if (
-        (get_mod_table(vm->envs->modules, k, &rv) == 0) &&
-        ((get_local_table(vm->envs->local, vm->active_instr->local_range, k, &rv) == 0))
-      ) {
-        if(get_var_table(vm->envs->global, k, &rv) == 0) {
-          rv = get_fun_table(vm->envs->native, k, 0);
-          if (!rv) {
-            raise_drax_error(vm, _L_MSG_NOT_DEF, k);
-            return 0;
-          }
-        }
-      }
-    } else {
-      raise_drax_error(vm, "runtime error: unspected OP on factory");
-      return 0;
-    }
-
-    /**
-     * the instruction below is the new local definition.
-     */
+    d_extrn_ref r = f->instructions->extrn_ref[i];
     new_fn->instructions->values[i_new++] = OP_PUSH;
-    new_fn->instructions->values[i_new++] = rv;
+    new_fn->instructions->values[i_new++] = values[i];
     new_fn->instructions->values[i_new++] = OP_SET_L_ID;
-    new_fn->instructions->values[i_new++] = (drax_value) k;
+    new_fn->instructions->values[i_new++] = r.instr->values[r.pos + 1];
   }
 
   /**
-   * Copy instructions and updated
+   * Copy instructions and update the resolved
    * OP_GET_G_ID to OP_GET_L_ID.
    */
   int j;
@@ -468,20 +527,17 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
   for (i = i_new; i < new_fn->instructions->instr_count; i++, old_i++) {
     new_fn->instructions->values[i] = f->instructions->values[old_i];
 
-    for (j = 0; j < f->instructions->extrn_ref_count; j++) {
-      drax_value* ip = f->instructions->extrn_ref[j];
-      if (&f->instructions->values[old_i] == ip) {
+    for (j = 0; j < n_refs; j++) {
+      d_extrn_ref r = f->instructions->extrn_ref[j];
+      if (found[j] && r.instr == f->instructions && r.pos == old_i) {
         new_fn->instructions->values[i] = OP_GET_L_ID;
         break;
       }
     }
   }
 
-  /*
-  DEBUG_OP(printf("after: build self dep. *******\n"));
-  DEBUG_OP(inspect_opcode(new_fn->instructions->values, 8));
-  DEBUG_OP(printf("end **************************\n\n"));
-  */
+  free(values);
+  free(found);
   return 1;
 }
 

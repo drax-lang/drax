@@ -3,58 +3,12 @@
 
 #define BUF_SIZE 4096
 
-static char get_eq_char(char c) {
-  switch (c) {
-    case '\n':
-      return 'n';
-
-    case '\r':
-      return 'r';
-
-    case '\\':
-      return '\\';
-
-    case '\0':
-      return '0';
-
-    case '\t':
-      return 't';
-
-  default:
-    return 0;
-  }
-
-  return 0;
-}
-
+/**
+ * strings hold the real characters (escape sequences are converted
+ * by the parser), data that comes from outside is kept as it is.
+ */
 char* replace_special_char(char* str) {
-  int i, j;
-  int len = strlen(str);
-  int count = 0;
-  
-  for (i = 0; i < len; i++) {
-    if (str[i] == '\n') count++;
-    if (str[i] == '\r') count++;
-    if (str[i] == '\\') count++;
-    if (str[i] == '\0') count++;
-    if (str[i] == '\t') count++;
-  }
-  
-  char* n = (char*) malloc(len + count + 1);
-  
-  for (i = 0, j = 0; i < len; i++, j++) {
-    char r = get_eq_char(str[i]);
-    if (r != 0) {
-      n[j++] = '\\';
-      n[j] = r;
-    }
-    else {
-      n[j] = str[i];
-    }
-  }
-  n[j] = '\0';
-  
-  return n;
+  return strndup(str, strlen(str));
 }
 
 #if defined(_POSIX_C_SOURCE) && _POSIX_C_SOURCE >= 199309L

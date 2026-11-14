@@ -71,6 +71,9 @@ typedef struct parser_state {
   state_machine machine;
   int scope_depth;
   d_call_sites* call_sites;
+  /* last OP_GET_G_ID of a plain name, a call may add the arity to it */
+  int last_global_load;
+  d_instructions* last_global_instr;
 } parser_state;
 
 typedef enum priorities {

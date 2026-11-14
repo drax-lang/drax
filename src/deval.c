@@ -103,7 +103,7 @@ void print_drax(drax_value value, int formated) {
     DPRINT_COLOR1(
       D_COLOR_BLUE,
       D_NUMBER_STR_PRINT,
-      CAST_NUMBER(value)
+      CAST_NUMBER(value) + 0.0 /* -0 is printed as 0 */
     );
   } else if(IS_MODULE(value)) {
     printf("<module:%s>", CAST_MODULE(value)->name);

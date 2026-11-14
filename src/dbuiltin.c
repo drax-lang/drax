@@ -594,7 +594,7 @@ static drax_value __d_number_to_string(d_vm* vm, int* stat) {
   return_if_is_not_number(a, stat);
 
   char *s = (char *) calloc(32, sizeof(char));
-  double num = CAST_NUMBER(a);
+  double num = CAST_NUMBER(a) + 0.0; /* -0 is printed as 0 */
   
   int len = snprintf(s, 32, "%g", num);
   drax_string* str = new_dstring(vm, s, len);

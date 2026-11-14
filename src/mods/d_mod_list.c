@@ -62,8 +62,19 @@ drax_value __d_list_tail(d_vm* vm, int* stat) {
   return_if_is_not_list(a, stat);
   drax_list* l1 = CAST_LIST(a);
 
-  drax_list* l = new_dlist(vm, l1->length -1);
+  if (l1->length <= 1) {
+    DX_SUCESS_FN(stat);
+    return DS_VAL(new_dlist(vm, 0));
+  }
+
+  /**
+   * lists are immutable, the tail shares the elements of the
+   * original list (O(1), important for recursion over lists).
+   */
+  drax_list* l = new_dlist(vm, l1->length - 1);
+  free(l->elems);
   l->length = l1->length - 1;
+  l->cap = l->length;
   l->elems = l1->elems + 1;
   DX_SUCESS_FN(stat);
   return DS_VAL(l);

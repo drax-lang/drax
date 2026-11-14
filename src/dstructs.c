@@ -99,16 +99,25 @@ drax_string* copy_dstring(d_vm* vm, const char* chars, int length) {
   char* new_chars = malloc(sizeof(char) * length + 1);
   int new_length = 0;
   int i;
+  /**
+   * escape sequences are converted when the literal is read,
+   * so the string holds the real characters.
+   */
   for (i = 0; i < length; i++) {
-    if (chars[i] == '\\') {
-      if(i + 1 < length && chars[i+1] == '\"') {
-        new_chars[new_length++] = '\"';
-        i++;
-        continue;
-      } 
-      
-      if(i + 1 < length && chars[i+1] == '\\') {
-        new_chars[new_length++] = '\\';
+    if (chars[i] == '\\' && i + 1 < length) {
+      char esc = 0;
+      switch (chars[i + 1]) {
+        case 'n':  esc = '\n'; break;
+        case 't':  esc = '\t'; break;
+        case 'r':  esc = '\r'; break;
+        case '\\': esc = '\\'; break;
+        case '"':  esc = '"';  break;
+        case '\'': esc = '\''; break;
+        default: break;
+      }
+
+      if (esc != 0) {
+        new_chars[new_length++] = esc;
         i++;
         continue;
       }

@@ -133,6 +133,17 @@ typedef enum bimode {
 /**
  * Drax VM definitions
 */
+struct d_instructions;
+
+/**
+ * Reference to an instruction (OP_GET_G_ID) by position.
+ * Positions stay valid when the instruction block grows (realloc).
+ */
+typedef struct d_extrn_ref {
+  struct d_instructions* instr;
+  int pos;
+} d_extrn_ref;
+
 typedef struct d_instructions {
   drax_value* values;
   int instr_count;
@@ -148,7 +159,7 @@ typedef struct d_instructions {
    */
   int extrn_ref_count;
   int extrn_ref_capacity;
-  drax_value** extrn_ref;
+  d_extrn_ref* extrn_ref;
   /**
    * _ip: Used to log current statement when 
    * added/removed from call_stack

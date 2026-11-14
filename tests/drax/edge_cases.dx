@@ -9,6 +9,11 @@ assert(List.is_empty([]), "edge error: [] is empty")
 assert(!List.is_empty([nil]), "edge error: [nil] is not empty")
 assert(List.is_present([0]), "edge error: [0] is present")
 assert(List.tail([1]) == [], "edge error: tail of single")
+assert(List.tail([]) == [], "edge error: tail of empty")
+assert(List.length(List.tail([])) == 0, "edge error: length of tail of empty")
+assert(List.is_empty(List.tail([])), "edge error: tail of empty is empty")
+assert(List.tail([1, 2, 3]) == [2, 3], "edge error: tail")
+assert(List.tail(List.tail([1, 2, 3])) == [3], "edge error: tail of tail")
 assert(List.concat([], []) == [], "edge error: concat of empties")
 assert(List.concat([1], []) == [1], "edge error: concat with empty right")
 assert(List.concat([], [1]) == [1], "edge error: concat with empty left")
@@ -66,6 +71,8 @@ assert(String.contains("abc", "abcd") == false, "edge error: needle longer than 
 assert(String.split("a,b,,c", ",") == ["a", "b", "", "c"], "edge error: split keeps empty field")
 assert(String.split("abc", ",") == ["abc"], "edge error: split with no match")
 assert(String.split("a,b", ",") == ["a", "b"], "edge error: split basic")
+assert(String.split("abc", "") == ["a", "b", "c"], "edge error: split with empty separator")
+assert(String.split("", "") == [], "edge error: split empty with empty separator")
 assert(String.to_uppercase("") == "", "edge error: upper of empty")
 assert(String.to_lowercase("MiXeD 123") == "mixed 123", "edge error: lower with digits")
 assert(String.at("abc", -1) == "c", "edge error: String.at(-1)")
@@ -73,6 +80,12 @@ assert(String.at("abc", 3) == "", "edge error: String.at out of range")
 assert(String.at("", 0) == "", "edge error: String.at on empty")
 assert("tab\there" != "tab here", "edge error: escape sequence is not a space")
 assert(String.length("\"") == 1, "edge error: escaped quote counts as one")
+assert(String.length("a\nb") == 3, "edge error: \\n counts as one char")
+assert(String.length("a\tb") == 3, "edge error: \\t counts as one char")
+assert(String.length("a\\b") == 3, "edge error: \\\\ counts as one char")
+assert(String.length('it\'s') == 4, "edge error: escaped single quote")
+assert(String.contains("a\nb", "\n"), "edge error: contains newline")
+assert(String.split("a\tb", "\t") == ["a", "b"], "edge error: split on tab")
 assert(String.length("""multi
 line""") == 10, "edge error: multiline string length")
 assert(String.length('single') == 6, "edge error: single quoted string")
@@ -168,5 +181,35 @@ assert(List.at(ret_list(), 2) == 3, "edge error: function returning a list")
 assert(5 |> Number.to_string() |> String.length() == 1, "edge error: pipe through modules")
 assert("a,b" |> String.split(",") |> List.length() == 2, "edge error: pipe with extra argument")
 assert([3, 4] |> List.hypot() == 5, "edge error: pipe into list function")
+
+### functions are identified by name and arity (like in Erlang)
+fun area(side) do side * side end
+fun area(w, h) do w * h end
+
+assert(area(3) == 9, "edge error: area/1")
+assert(area(3, 4) == 12, "edge error: area/2")
+assert(3 |> area() == 9, "edge error: area/1 through pipe")
+assert(3 |> area(4) == 12, "edge error: area/2 through pipe")
+
+fun total(l) do total(l, 0) end
+fun total(l, acc) do
+    if (List.is_empty(l)) do acc else total(List.tail(l), acc + List.at(l, 0)) end
+end
+assert(total([1, 2, 3]) == 6, "edge error: function calling another arity")
+
+### a function can use a global defined after it (late binding)
+fun uses_later() do
+    defined_later * 2
+end
+defined_later = 21
+assert(uses_later() == 42, "edge error: global defined after the function")
+
+### a local variable shadows a global function with the same name
+fun shadowed(x) do x end
+fun shadow_test() do
+    shadowed = fun (a) a * 10 end
+    fun (y) shadowed(y) end
+end
+assert(shadow_test()(2) == 20, "edge error: local shadows global function")
 
 print("Edge cases done!")

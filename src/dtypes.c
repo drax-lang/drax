@@ -30,7 +30,7 @@ d_instructions* new_instructions() {
   i->local_range = 0;
   i->extrn_ref_count = 0;
   i->extrn_ref_capacity = 4;
-  i->extrn_ref = (drax_value**) malloc(sizeof(drax_value) * i->extrn_ref_capacity);
+  i->extrn_ref = (d_extrn_ref*) malloc(sizeof(d_extrn_ref) * i->extrn_ref_capacity);
   return i;
 }
 

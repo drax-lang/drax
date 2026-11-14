@@ -126,6 +126,18 @@ end
 assert(ping(N, pong) == "ping", "tail call error: mutual recursion (even)")
 assert(ping(N + 1, pong) == "pong", "tail call error: mutual recursion (odd)")
 
+### mutual recursion between named functions (even_tc is defined first)
+fun even_tc(n) do
+    if (n == 0) do true else odd_tc(n - 1) end
+end
+
+fun odd_tc(n) do
+    if (n == 0) do false else even_tc(n - 1) end
+end
+
+assert(even_tc(N), "tail call error: named mutual recursion (even)")
+assert(odd_tc(N + 1), "tail call error: named mutual recursion (odd)")
+
 ### functions with different number of locals calling each other
 fun small(n, big_fn) do
     if (n == 0) do "small" else big_fn(n - 1, small) end

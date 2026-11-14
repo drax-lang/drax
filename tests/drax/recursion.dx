@@ -36,6 +36,19 @@ end
 
 assert(count_down(500000) == "done", "recursion error: pipe tail recursion")
 
+### mutual recursion between named functions (is_odd_r is defined later)
+fun is_even_r(n) do
+    if (n == 0) do true else is_odd_r(n - 1) end
+end
+
+fun is_odd_r(n) do
+    if (n == 0) do false else is_even_r(n - 1) end
+end
+
+assert(is_even_r(10), "recursion error: is_even(10)")
+assert(is_odd_r(7), "recursion error: is_odd(7)")
+assert(!is_even_r(7), "recursion error: !is_even(7)")
+
 ### recursion where the call is NOT the last expression of the function
 fun fact(n) do
     if (n < 2) do

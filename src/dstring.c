@@ -44,33 +44,12 @@ char* strndup(const char *s, size_t n) {
 }
 #endif
 
+/**
+ * escape sequences are converted by the parser (copy_dstring),
+ * the string is printed as it is.
+ */
 char* str_format_output(const char* str) {
-  char* tstr = strndup(str, strlen(str));
-
-  if (tstr == NULL) return NULL;
-
-  int i, j;
-  for (i = 0, j = 0; tstr[i] != '\0'; i++, j++) {
-    if (tstr[i] == '\\') {
-      if (tstr[i+1] == 'n') {
-        tstr[j] = '\n';
-        i++;
-      } else if (tstr[i+1] == 'r') {
-        tstr[j] = '\r';
-        i++;
-      }
-       else if (tstr[i+1] == '\\') {
-        tstr[j] = '\\';
-        i++;
-      } else {
-        tstr[j] = tstr[i];
-      }
-    } else {
-      tstr[j] = tstr[i];
-    }
-  }
-  tstr[j] = '\0';
-  return tstr;
+  return strndup(str, strlen(str));
 }
 
 drax_value dstr_split(d_vm *vm, int* stat) {
@@ -86,6 +65,19 @@ drax_value dstr_split(d_vm *vm, int* stat) {
 
   drax_list *l = new_dlist(vm, 0);
   int len = strlen(str);
+
+  /* an empty separator splits the string in characters */
+  if (dd->length == 0) {
+    int i;
+    for (i = 0; i < len; i++) {
+      char *n = strndup(str + i, 1);
+      put_value_dlist(l, DS_VAL(new_dstring(vm, n, 1)));
+    }
+
+    DX_SUCESS_FN(stat);
+    return DS_VAL(l);
+  }
+
   char* p = str;
   char* s = str;
   char* e = s + len;

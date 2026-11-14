@@ -133,6 +133,17 @@ static int get_local(parser_state* psr, char* name) {
   return -1;
 }
 
+/* "name/2" is a call of "name" */
+static int get_local_without_arity(parser_state* psr, char* name) {
+  char* slash = strrchr(name, '/');
+  if (slash == NULL) return get_local(psr, name);
+
+  *slash = '\0';
+  int r = get_local(psr, name);
+  *slash = '/';
+  return r;
+}
+
 static void remove_locals_registers(parser_state* psr) {
   int i;
   d_local_registers* lc = psr->locals[psr->locals_length -1];
@@ -220,48 +231,19 @@ static void put_instruction(d_vm* vm, drax_value o) {
   vm->active_instr->instr_count++;
 
   if (vm->active_instr->instr_count >= vm->active_instr->instr_size) {
-    drax_value* f_before = &vm->active_instr->values[0];
-    drax_value* new_val;
+    int new_size = vm->active_instr->instr_size + MAX_INSTRUCTIONS;
+    drax_value* new_val = (drax_value*) realloc(vm->active_instr->values, sizeof(drax_value) * new_size);
+    int* new_lines = (int*) realloc(vm->active_instr->lines, sizeof(int) * new_size);
 
-    vm->active_instr->instr_size = vm->active_instr->instr_size + MAX_INSTRUCTIONS;
-    new_val = (drax_value*) realloc(vm->active_instr->values, sizeof(drax_value) * vm->active_instr->instr_size);
-    vm->active_instr->lines = (int*) realloc(vm->active_instr->lines, sizeof(int) * vm->active_instr->instr_size);
-
-    if (NULL == new_val) {
+    if (NULL == new_val || NULL == new_lines) {
       FATAL_CURR("Failed to expand instruction block");
       return;
     }
 
-    /**
-     * Update external ref references after realloc
-     * 
-     * This change will affect all nested lambdas, 
-     * as they share references.
-     */
-    drax_value* f_after = &new_val[0];
-    int offset = f_after - f_before;
-    drax_value* f_before_end = &vm->active_instr->values[vm->active_instr->instr_count -2];
-
-    if (offset != 0)  {
-      int i;
-      for (i = 0; i < vm->active_instr->extrn_ref_count; i++) {
-
-        /**
-         * checks if the value belongs to the 
-         * changed block.
-         */
-        if (
-          vm->active_instr->extrn_ref[i] > f_before &&
-          vm->active_instr->extrn_ref[i] < f_before_end
-        ) {
-          drax_value* ite = (drax_value*) vm->active_instr->extrn_ref[i] + offset;
-          vm->active_instr->extrn_ref[i] = ite;
-        }
-
-      }
-    }
-
+    /* external references are positions, they are not affected */
     vm->active_instr->values = new_val;
+    vm->active_instr->lines = new_lines;
+    vm->active_instr->instr_size = new_size;
   }
 
   vm->active_instr->lines[vm->active_instr->instr_count -1] = parser.prev.line;
@@ -271,15 +253,16 @@ static void put_instruction(d_vm* vm, drax_value o) {
 static void process_external_ref(d_vm* vm) {  
   if (vm->active_instr->extrn_ref_count >= vm->active_instr->extrn_ref_capacity) {
     vm->active_instr->extrn_ref_capacity += 4;
-    vm->active_instr->extrn_ref = (drax_value**) realloc(vm->active_instr->extrn_ref, sizeof(drax_value*) * vm->active_instr->extrn_ref_capacity);
+    vm->active_instr->extrn_ref = (d_extrn_ref*) realloc(vm->active_instr->extrn_ref, sizeof(d_extrn_ref) * vm->active_instr->extrn_ref_capacity);
   }
 
   /**
    * records references to variables outside of lambda, but which 
    * are not global, to be resolved at factory time
    */
-  drax_value* ip = &vm->active_instr->values[vm->active_instr->instr_count - 2];
-  vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
+  d_extrn_ref* r = &vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++];
+  r->instr = vm->active_instr;
+  r->pos = vm->active_instr->instr_count - 2;
 }
 
 static void put_pair(d_vm* vm, d_op_code o, drax_value v) {
@@ -317,6 +300,17 @@ static void put_call(d_vm* vm, d_op_code o, drax_value arg_count) {
   }
 
   put_pair(vm, o, arg_count);
+}
+
+/**
+ * Functions are identified by name and arity, like in Erlang:
+ * "sum/1" and "sum/2" are different functions.
+ */
+static char* name_with_arity(const char* name, drax_value arity) {
+  size_t sz = strlen(name) + 16;
+  char* n = (char*) malloc(sizeof(char) * sz);
+  snprintf(n, sz, "%s/%d", name, (int) arity);
+  return n;
 }
 
 static bool leads_to_return(d_instructions* instr, int ip) {
@@ -476,13 +470,15 @@ void process_amper(d_vm* vm, bool v) {
       FATAL("call out of scope.");
     }
 
-    char* name = (char*) malloc((strlen(parser.active_fun->name) + 1) * sizeof(char));
-    strcpy(name, parser.active_fun->name);
-    put_pair(vm, OP_GET_G_ID, (drax_value) name);
+    int name_pos = GET_INSTRUCTION(vm)->instr_count;
+    put_pair(vm, OP_GET_G_ID, (drax_value) NULL);
 
     push_state(&parser, PS_IN_ARGS);
     drax_value arg_count = process_arguments(vm) + (_ispipe ? 1 : 0);
     pop_state(&parser);
+
+    GET_INSTRUCTION(vm)->values[name_pos + 1] =
+      (drax_value) name_with_arity(parser.active_fun->name, arg_count);
     put_call(vm, _ispipe ? OP_D_CALL_P : OP_D_CALL, arg_count);
     return;
   }
@@ -548,7 +544,7 @@ void process_frame(d_vm* vm, bool v) {
         eq_and_next(DTK_STRING) ||
         eq_and_next(DTK_DSTRING)
       ) {
-        name = (char*) malloc(sizeof(char) * (parser.prev.length - 2));
+        name = (char*) malloc(sizeof(char) * (parser.prev.length - 1));
         strncpy(name, parser.prev.first + 1, parser.prev.length - 2);
         name[parser.prev.length - 2] = '\0';
       } else {
@@ -681,6 +677,8 @@ void process_variable(d_vm* vm, bool v) {
   }
 
   if (is_global || get_local(&parser, name) == -1) {
+    parser.last_global_load = GET_INSTRUCTION(vm)->instr_count;
+    parser.last_global_instr = GET_INSTRUCTION(vm);
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
 
     bool is_module = false;
@@ -918,9 +916,9 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
   if (f->instructions->extrn_ref_count > 0) {
     int new_cap = f->instructions->extrn_ref_count + vm->active_instr->extrn_ref_capacity;
     if (new_cap > vm->active_instr->extrn_ref_capacity) {
-      vm->active_instr->extrn_ref = (drax_value**) realloc(
+      vm->active_instr->extrn_ref = (d_extrn_ref*) realloc(
         vm->active_instr->extrn_ref,
-        sizeof(drax_value*) * (new_cap)
+        sizeof(d_extrn_ref) * (new_cap)
       );
 
       vm->active_instr->extrn_ref_capacity = new_cap;
@@ -932,12 +930,11 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
      * external reference.
      */
     for (i = 0; i < f->instructions->extrn_ref_count; i++) {
-      drax_value* ip = f->instructions->extrn_ref[i];
-      drax_value gv = *(ip + 1);
+      d_extrn_ref r = f->instructions->extrn_ref[i];
+      char* k = (char*) r.instr->values[r.pos + 1];
 
-      char* k = (char*) gv;
-      if (get_local(&parser, k) == -1) {
-        vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = ip;
+      if (get_local_without_arity(&parser, k) == -1) {
+        vm->active_instr->extrn_ref[vm->active_instr->extrn_ref_count++] = r;
       }
     }
   }
@@ -961,10 +958,19 @@ void process_function(d_vm* vm, bool v) {
   if (f->name != NULL) {
     /**
      * If is not anonymous
+     *
+     * stored as "name/arity" (used by calls) and as "name"
+     * (used when the function is referenced as a value).
      */
+    d_op_code set_op = is_global ? OP_SET_G_ID : OP_SET_L_ID;
+    d_op_code get_op = is_global ? OP_GET_G_ID : OP_GET_L_ID;
+
+    put_pair(vm, set_op, (drax_value) name_with_arity(f->name, f->arity));
+    put_pair(vm, get_op, (drax_value) name_with_arity(f->name, f->arity));
+
     char* n = (char*) malloc(strlen(f->name) + 1);
     strcpy(n, f->name);
-    put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) n);
+    put_pair(vm, set_op, (drax_value) n);
   }
 }
 
@@ -983,9 +989,31 @@ drax_value process_arguments(d_vm* vm) {
   return arg_count;
 }
 
+/**
+ * When the called value is a plain global name (f(x), not
+ * a.f(x) or f()(x)), the call looks for the definition with
+ * the same arity first ("f/1"), see lookup_name on dvm.c.
+ */
+static int get_plain_callee(d_vm* vm) {
+  d_instructions* instr = GET_INSTRUCTION(vm);
+  int pos = instr->instr_count - 2;
+
+  if (
+    pos >= 0 &&
+    parser.last_global_instr == instr &&
+    parser.last_global_load == pos &&
+    instr->values[pos] == OP_GET_G_ID
+  ) {
+    return pos;
+  }
+
+  return -1;
+}
+
 void process_call(d_vm* vm, bool v) {
   UNUSED(v);
   bool _ispipe = is_pipe_active();
+  int callee = get_plain_callee(vm);
 
   /**
    * the arguments are not part of the pipe
@@ -993,6 +1021,13 @@ void process_call(d_vm* vm, bool v) {
   push_state(&parser, PS_IN_ARGS);
   drax_value arg_count = process_arguments(vm) + (_ispipe ? 1 : 0);
   pop_state(&parser);
+
+  if (callee >= 0) {
+    drax_value* operand = &GET_INSTRUCTION(vm)->values[callee + 1];
+    char* old_name = (char*) *operand;
+    *operand = (drax_value) name_with_arity(old_name, arg_count);
+    free(old_name);
+  }
 
   /* may become a tail call, see optimize_tail_calls */
   put_call(vm, _ispipe ? OP_D_CALL_P : OP_D_CALL, arg_count);

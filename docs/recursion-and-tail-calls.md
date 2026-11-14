@@ -92,20 +92,35 @@ inputs.
 Mutual recursion is also a tail call:
 
 ```elixir
-fun ping(n, other) do
-  if (n == 0) do "ping" else other(n - 1, ping) end
+fun is_even(n) do
+  if (n == 0) do true else is_odd(n - 1) end
 end
 
-fun pong(n, other) do
-  if (n == 0) do "pong" else other(n - 1, pong) end
+fun is_odd(n) do
+  if (n == 0) do false else is_even(n - 1) end
 end
 
-ping(10000000, pong)   # constant memory
+is_even(10000000)   # constant memory
 ```
 
-> A function can only refer to global functions that are already defined, so
-> mutual recursion passes the other function as an argument (see
-> `tests/drax/known_bugs/forward_reference.dx`).
+`is_even` uses `is_odd` before it is defined. When a function is created,
+the global names that already exist are captured, and the names that do not
+exist yet are resolved when they are called (late binding, like the calls
+between functions of an Erlang module).
+
+Functions are identified by name and arity, like in Erlang, so a public
+function can delegate to a tail recursive version with an accumulator:
+
+```elixir
+fun total(l) do total(l, 0) end
+
+fun total(l, acc) do
+  if (List.is_empty(l)) do acc else total(List.tail(l), acc + List.at(l, 0)) end
+end
+```
+
+A call `total(l)` looks for `total/1`. A function used as a value (`f = total`)
+is the last definition with that name.
 
 ## How it works
 
@@ -253,5 +268,11 @@ AddressSanitizer:
 
 ```
 make all LIGHT=1 DWN_CCFLAGS="-g -fsanitize=address -fsanitize-recover=address"
-ASAN_OPTIONS=detect_leaks=0:halt_on_error=0 sh tests/drax/run-test.sh
+mkdir -p /tmp/asan
+ASAN_OPTIONS=detect_leaks=0:halt_on_error=0:log_path=/tmp/asan/r sh tests/drax/run-test.sh
+grep SUMMARY /tmp/asan/* | sort | uniq -c
 ```
+
+`log_path` keeps the reports out of the output of the tests that run
+`./bin/drax` as a subprocess (`errors.dx`). Rebuild with `make all`
+afterwards.
