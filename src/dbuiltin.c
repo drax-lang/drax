@@ -594,9 +594,10 @@ static drax_value __d_number_to_string(d_vm* vm, int* stat) {
   return_if_is_not_number(a, stat);
 
   char *s = (char *) calloc(32, sizeof(char));
-  double num = CAST_NUMBER(a) + 0.0; /* -0 is printed as 0 */
-  
-  int len = snprintf(s, 32, "%g", num);
+  double num = CAST_NUMBER(a);
+
+  /* the sign of a nan has no meaning, the sign of a zero is kept (-0) */
+  int len = (num != num) ? snprintf(s, 32, "nan") : snprintf(s, 32, "%g", num);
   drax_string* str = new_dstring(vm, s, len);
   str->chars[strlen(s)] = '\0';
 
@@ -620,6 +621,10 @@ static drax_value __d_number_max(d_vm* vm, int* stat) {
   double n2 = CAST_NUMBER(b);
 
   DX_SUCESS_FN(stat);
+
+  /* IEEE 754 maximum: nan propagates and +0 is bigger than -0 */
+  if (n1 != n1 || n2 != n2) return num_to_draxvalue(NAN);
+  if (n1 == 0 && n2 == 0) return num_to_draxvalue(signbit(n1) ? n2 : n1);
   return num_to_draxvalue(n1 > n2 ? n1 : n2);
 }
 
@@ -633,6 +638,10 @@ static drax_value __d_number_min(d_vm* vm, int* stat) {
   double n2 = CAST_NUMBER(b);
 
   DX_SUCESS_FN(stat);
+
+  /* IEEE 754 minimum: nan propagates and -0 is smaller than +0 */
+  if (n1 != n1 || n2 != n2) return num_to_draxvalue(NAN);
+  if (n1 == 0 && n2 == 0) return num_to_draxvalue(signbit(n1) ? n1 : n2);
   return num_to_draxvalue(n1 < n2 ? n1 : n2);
 }
 

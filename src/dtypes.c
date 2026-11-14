@@ -12,8 +12,17 @@ double draxvalue_to_num(drax_value value) {
   return num;
 }
 
+/**
+ * Values use NaN boxing: nil, booleans and structs live inside
+ * the NaN space. Every NaN is stored as the canonical quiet NaN,
+ * so a NaN produced by a computation is always a number.
+ */
+#define D_CANONICAL_NAN ((drax_value) 0x7ff8000000000000)
+
 drax_value num_to_draxvalue(double num) {
   drax_value value;
+  if (num != num) return D_CANONICAL_NAN;
+
   memcpy(&value, &num, sizeof(double));
   return value;
 }

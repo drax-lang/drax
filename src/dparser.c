@@ -440,9 +440,9 @@ void process_binary(d_vm* vm, bool v) {
     case DTK_BNG_EQ: put_pair(vm, OP_EQUAL, OP_NOT); break;
     case DTK_DEQ:    put_instruction(vm, OP_EQUAL); break;
     case DTK_BG:     put_instruction(vm, OP_GREATER); break;
-    case DTK_BE:     put_pair(vm, OP_LESS, OP_NOT); break;
+    case DTK_BE:     put_instruction(vm, OP_GREATER_EQUAL); break;
     case DTK_LS:     put_instruction(vm, OP_LESS); break;
-    case DTK_LE:     put_pair(vm, OP_GREATER, OP_NOT); break;
+    case DTK_LE:     put_instruction(vm, OP_LESS_EQUAL); break;
     case DTK_ADD:    put_instruction(vm, OP_ADD); break;
     case DTK_SUB:    put_instruction(vm, OP_SUB); break;
     case DTK_MUL:    put_instruction(vm, OP_MUL); break;

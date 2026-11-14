@@ -53,11 +53,74 @@ assert([1, 2] != [2, 1], "operators error: list order matters")
 assert({ a: { b: 1 } } == { a: { b: 1 } }, "operators error: nested frame equality")
 assert({ a: { b: 1 } } != { a: { b: 2 } }, "operators error: nested frame inequality")
 
-### -0 and 0 are the same number (IEEE 754)
-assert(-0 == 0, "operators error: -0 == 0")
-assert(0 * -1 == 0, "operators error: 0 * -1 == 0")
-assert(Math.ceil(-0.5) == 0, "operators error: Math.ceil(-0.5) == 0")
-assert(Number.to_string(0 * -1) == "0", "operators error: -0 must print as 0")
+### IEEE 754 (numbers are 64 bit floats)
+nan = 0 / 0
+inf = 1 / 0
+neg_zero = 0 * -1
+
+fun is_nan(x) do x != x end
+
+# zero has a sign, but -0 and +0 are equal
+assert(-0 == 0, "ieee error: -0 == 0")
+assert(neg_zero == 0, "ieee error: 0 * -1 == 0")
+assert(Math.ceil(-0.5) == 0, "ieee error: Math.ceil(-0.5) == 0")
+assert(Number.to_string(neg_zero) == "-0", "ieee error: the sign of zero is kept")
+assert(1 / neg_zero == -inf, "ieee error: 1 / -0 == -inf")
+assert(1 / 0 == inf, "ieee error: 1 / +0 == inf")
+
+# infinity
+assert(inf == inf, "ieee error: inf == inf")
+assert(-inf < inf, "ieee error: -inf < inf")
+assert(inf > Math.pow(10, 308), "ieee error: inf > 10^308")
+assert(inf + 1 == inf, "ieee error: inf + 1")
+assert(-inf * 2 == -inf, "ieee error: -inf * 2")
+assert(Number.to_string(inf) == "inf", "ieee error: to_string(inf)")
+assert(Number.to_string(-inf) == "-inf", "ieee error: to_string(-inf)")
+
+# nan is not equal to anything, not even to itself
+assert(is_nan(nan), "ieee error: nan != nan")
+assert(!(nan == nan), "ieee error: !(nan == nan)")
+assert(nan != 1, "ieee error: nan != 1")
+assert(is_nan(inf - inf), "ieee error: inf - inf is nan")
+assert(is_nan(0 * inf), "ieee error: 0 * inf is nan")
+assert(is_nan(Math.sqrt(-1)), "ieee error: sqrt(-1) is nan")
+assert(is_nan(nan + 1), "ieee error: nan propagates")
+assert(typeof(nan) == "number", "ieee error: nan is a number")
+assert(typeof(Math.sqrt(-1)) == "number", "ieee error: computed nan is a number")
+assert(Number.to_string(nan) == "nan", "ieee error: to_string(nan)")
+
+# every ordered comparison with nan is false
+assert(!(nan < 1), "ieee error: nan < 1")
+assert(!(nan > 1), "ieee error: nan > 1")
+assert(!(nan <= 1), "ieee error: nan <= 1")
+assert(!(nan >= 1), "ieee error: nan >= 1")
+assert(!(1 <= nan), "ieee error: 1 <= nan")
+assert(!(1 >= nan), "ieee error: 1 >= nan")
+assert(!(nan <= nan), "ieee error: nan <= nan")
+
+# containers compare element by element
+assert([nan] != [nan], "ieee error: [nan] != [nan]")
+nan_list = [nan]
+assert(nan_list != nan_list, "ieee error: a list with nan is not equal to itself")
+assert({ a: nan } != { a: nan }, "ieee error: frame with nan")
+assert([neg_zero] == [0], "ieee error: [-0] == [0]")
+
+# maximum / minimum (IEEE 754-2019): nan propagates, -0 < +0
+assert(is_nan(Number.max(nan, 1)), "ieee error: max(nan, 1)")
+assert(is_nan(Number.max(1, nan)), "ieee error: max(1, nan)")
+assert(is_nan(Number.min(nan, 1)), "ieee error: min(nan, 1)")
+assert(is_nan(Number.min(1, nan)), "ieee error: min(1, nan)")
+assert(Number.to_string(Number.max(neg_zero, 0)) == "0", "ieee error: max(-0, 0) is +0")
+assert(Number.to_string(Number.max(0, neg_zero)) == "0", "ieee error: max(0, -0) is +0")
+assert(Number.to_string(Number.min(neg_zero, 0)) == "-0", "ieee error: min(-0, 0) is -0")
+assert(Number.to_string(Number.min(0, neg_zero)) == "-0", "ieee error: min(0, -0) is -0")
+assert(Number.max(inf, 1) == inf, "ieee error: max(inf, 1)")
+assert(Number.min(-inf, 1) == -inf, "ieee error: min(-inf, 1)")
+
+# <= and >= without nan
+assert(1 <= 1 and 1 >= 1, "ieee error: <= and >= on equal numbers")
+assert(neg_zero <= 0 and neg_zero >= 0, "ieee error: -0 <= 0 and -0 >= 0")
+assert(-inf <= inf and inf >= -inf, "ieee error: <= and >= on infinities")
 
 ### logic
 assert(true and true, "operators error: true and true")

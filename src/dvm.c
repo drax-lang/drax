@@ -189,13 +189,20 @@ static bool values_equal(drax_value a, drax_value b) {
       if (_v1##_tp[i] != _v2##_tp[i]) {  return false; }\
     }
 
-  if(a == b) {
-    return true;
-  }
-
-  /* numbers follow IEEE 754: -0 == 0 and nan != nan */
+  /**
+   * numbers follow IEEE 754: -0 == 0 and nan != nan,
+   * so they are compared before the identity check.
+   */
   if (IS_NUMBER(a) && IS_NUMBER(b)) {
     return CAST_NUMBER(a) == CAST_NUMBER(b);
+  }
+
+  /**
+   * lists and frames are always compared element by element,
+   * a list with nan is not equal to itself (like the nan inside it).
+   */
+  if(a == b && !(IS_LIST(a) || IS_FRAME(a))) {
+    return true;
   }
 
   if(!(IS_STRUCT(a) && IS_STRUCT(b))) {
@@ -667,6 +674,8 @@ int __start__(d_vm* vm, int inter_mode) {
     [OP_EQUAL] = &&do_OP_EQUAL,
     [OP_GREATER] = &&do_OP_GREATER,
     [OP_LESS] = &&do_OP_LESS,
+    [OP_GREATER_EQUAL] = &&do_OP_GREATER_EQUAL,
+    [OP_LESS_EQUAL] = &&do_OP_LESS_EQUAL,
     [OP_CONCAT] = &&do_OP_CONCAT,
     [OP_ADD] = &&do_OP_ADD,
     [OP_SUB] = &&do_OP_SUB,
@@ -828,6 +837,15 @@ int __start__(d_vm* vm, int inter_mode) {
       }
       VMCase(OP_LESS) {
         dbin_bool_op(<, BOOL_VAL);
+        NEXT_OP(vm);
+      }
+      VMCase(OP_GREATER_EQUAL) {
+        /* not the same as !(a < b): every comparison with nan is false */
+        dbin_bool_op(>=, BOOL_VAL);
+        NEXT_OP(vm);
+      }
+      VMCase(OP_LESS_EQUAL) {
+        dbin_bool_op(<=, BOOL_VAL);
         NEXT_OP(vm);
       }
       VMCase(OP_CONCAT) {

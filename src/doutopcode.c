@@ -69,6 +69,14 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         printf("OP_LESS\n");
         break;
       }
+      case OP_GREATER_EQUAL: {
+        printf("OP_GREATER_EQUAL\n");
+        break;
+      }
+      case OP_LESS_EQUAL: {
+        printf("OP_LESS_EQUAL\n");
+        break;
+      }
       case OP_CONCAT: {
         printf("OP_CONCAT\n");
         break;

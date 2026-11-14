@@ -99,11 +99,14 @@ void print_drax(drax_value value, int formated) {
     printf(CAST_BOOL(value) ? "true" : "false");
   } else if (IS_NIL(value)) {
     printf("nil");
+  } else if (IS_NUMBER(value) && CAST_NUMBER(value) != CAST_NUMBER(value)) {
+    /* the sign of a nan has no meaning */
+    DPRINT_COLOR1(D_COLOR_BLUE, "%s", "nan");
   } else if (IS_NUMBER(value)) {
     DPRINT_COLOR1(
       D_COLOR_BLUE,
       D_NUMBER_STR_PRINT,
-      CAST_NUMBER(value) + 0.0 /* -0 is printed as 0 */
+      CAST_NUMBER(value)
     );
   } else if(IS_MODULE(value)) {
     printf("<module:%s>", CAST_MODULE(value)->name);
