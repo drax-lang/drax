@@ -1,0 +1,14 @@
+b = import('./sub/b.dx')
+p = import('pkg')
+l = [1, 2]
+fun go(v, f) do
+    print(List.at(l, 0))
+    f(v)
+    go(v - 1, f)
+end
+x = b.run(3)
+print(x |> Number.to_string())
+r = List.map(l, fun (e) do e + 1 end)
+note = """multi
+line fun x() do"""
+y = p.hello("a")

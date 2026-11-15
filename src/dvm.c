@@ -396,15 +396,29 @@ static int is_explicit_path(const char* s) {
          (s[1] == '.' && (s[2] == '/' || s[2] == '\\'))));
 }
 
+/* a file, the same with ".dx", or a package directory (its main.dx) */
 static int try_resolve(const char* path, char* out) {
   size_t n = strlen(path);
-  if (n + 4 >= IMPORT_PATH_MAX) return 0;
-  if (get_realpath(path, out) && !is_dir_path(out)) return 1;
+  if (n + 9 >= IMPORT_PATH_MAX) return 0;
+
+  int is_dir = 0;
+  if (get_realpath(path, out)) {
+    if (!is_dir_path(out)) return 1;
+    is_dir = 1;
+  }
+
   if (n < 3 || strcmp(path + n - 3, ".dx") != 0) {
     char with_ext[IMPORT_PATH_MAX];
     memcpy(with_ext, path, n);
     memcpy(with_ext + n, ".dx", 4);
     if (get_realpath(with_ext, out) && !is_dir_path(out)) return 1;
+  }
+
+  if (is_dir) {
+    char main_file[IMPORT_PATH_MAX];
+    memcpy(main_file, path, n);
+    memcpy(main_file + n, "/main.dx", 9);
+    if (get_realpath(main_file, out) && !is_dir_path(out)) return 1;
   }
   return 0;
 }
