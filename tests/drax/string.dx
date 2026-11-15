@@ -58,3 +58,12 @@ assert(String.contains("asdf", "") == true, "string error: empty string should b
 assert("user_id=123" |> String.contains("="), "string error: pipe contains failed")
 
 print("String done!")
+
+
+### overloads of a module function: the call picks the one with its arity
+assert(String.copy("abcdef", 2) == "c", "string error: copy/2 copies one character")
+assert(String.copy("abcdef", 1, 3) == "bcd", "string error: copy/3 start and length")
+assert(String.copy("abcdef", 4, 99) == "ef", "string error: copy/3 length past the end")
+assert(String.copy("abcdef", -2, 5) == "ef", "string error: copy/3 negative start")
+assert(String.copy("abcdef", 9, 2) == "", "string error: copy/3 start past the end")
+assert(String.copy("abcdef", 0, 0) == "", "string error: copy/3 zero length")

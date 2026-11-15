@@ -1,0 +1,4 @@
+## print must reach a file at once: the script is killed while it sleeps
+print("first line")
+sleep(30000)
+print("never")

@@ -499,6 +499,10 @@ static int import_file(d_vm* vm, drax_value v) {
 
   int stat = 0;
   if (__build__(vm, content, new_p)) {
+    /* the buffer of the module grows while it is built (realloc): the
+     * pointer taken by callstack_push may be stale, a big module would
+     * start on freed memory */
+    vm->ip = module_code->values;
     stat = __irun__(vm, 0);
   } else {
     stat = 1;
@@ -742,13 +746,21 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
 
     if (s->type == DS_NATIVE) {
       drax_os_native* nf = (drax_os_native*) s;
+      low_level_callback* native_fn = nf->function;
+
       if (nf->arity != (int) a) {
-        raise_drax_error(vm, MSG_FUNCTION_IS_NOT_DEFINED, nf->name ? nf->name : "<function>", a);
-        return 1;
+        /* Module.name is resolved by name only: another function of the
+         * module with the same name may have the arity of this call */
+        int ov = nf->module ? get_fun_on_module_arity(nf->module, nf->name, (int) a) : -1;
+        if (ov == -1) {
+          raise_drax_error(vm, MSG_FUNCTION_IS_NOT_DEFINED, nf->name ? nf->name : "<function>", a);
+          return 1;
+        }
+        native_fn = nf->module->fun[ov];
       }
 
       int scs = 0;
-      drax_value result = nf->function(vm, &scs);
+      drax_value result = native_fn(vm, &scs);
 
       if (!scs) {
         /* an empty error was already reported */
@@ -956,7 +968,9 @@ int __start__(d_vm* vm, int inter_mode) {
 
           low_level_callback* nf = md->fun[idx];
           int art = md->arity[idx];
-          push(vm, DS_VAL(new_dllcallback(vm, nf, (const char*) k, art)));
+          drax_os_native* mn = new_dllcallback(vm, nf, (const char*) k, art);
+          mn->module = md;
+          push(vm, DS_VAL(mn));
           NEXT_OP(vm);
         }
         

@@ -170,6 +170,7 @@ memcheck:
 install:
 	make all
 	sudo cp ./bin/drax /usr/local/bin/drax
+	sudo cp ./dmr/bin/dmr /usr/local/bin/dmr
 
 clean:
 	rm -rf ./bin/$(APP)

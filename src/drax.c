@@ -81,6 +81,11 @@ static int process_file(d_vm* v, char** argv) {
 int main(int argc, char** argv) {
   bimode bmode = get_bimode(argc, argv);
 
+  /* print/inspect must reach a file or a pipe line by line: a server under a
+   * supervisor would otherwise lose its last lines (full buffering is the
+   * default when stdout is not a terminal) */
+  setvbuf(stdout, NULL, _IOLBF, 0);
+
   /* create init vm */
   d_vm* gdvm = createMainVM();
   main_vm = gdvm;
