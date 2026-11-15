@@ -35,6 +35,7 @@ parser_builder* current = NULL;
 const char *str_module_list[] = {
  "Math",
  "TCPServer",
+ "Http",
  "List",
  "Frame",
  "Number",

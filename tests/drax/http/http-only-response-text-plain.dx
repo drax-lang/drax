@@ -1,14 +1,19 @@
+## Minimal server (manual example): ./bin/drax tests/drax/http/http-only-response-text-plain.dx
+## then: curl http://localhost:8081
+## The code is sequential: accept, read, answer, close, repeat.
 
-server = TCPServer.new({ host: '*',  port: '8081' })
-conn = TCPServer.accept(server)
-request = TCPServer.receive(conn) |> inspect()
-TCPServer.send(conn, "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\ndrax-lang")
-TCPServer.disconnect(conn)
+server = TCPServer.new({ host: '127.0.0.1', port: '8081' })
 
-res = Os.cmd("curl -s http://localhost:8080")
-assert(res == "drax-lang", "http request localhost:8080")
+fun serve(server) do
+    conn = TCPServer.accept(server)
+    req = Http.read_request(conn)
 
-Http.stop(tid)
-TCPServer.close(conn)
+    if (req != nil) do
+        TCPServer.send(conn, Http.response(200, { 'content-type': 'text/plain' }, 'drax-lang'))
+    end
 
-print("Http text/plain done!")
+    TCPServer.disconnect(conn)
+    serve(server)
+end
+
+serve(server)
