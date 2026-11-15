@@ -1,6 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/stat.h>
+#endif
 
 #include "ddefs.h"
 #include "dvm.h"
@@ -358,6 +363,80 @@ static int get_definition(d_vm* vm, int is_local) {
  * 
  * this function process importations.
  */
+#ifndef IMPORT_PATH_MAX
+#define IMPORT_PATH_MAX 4096
+#endif
+
+/**
+ * Import path rules (always the same):
+ *
+ *   import('./a.dx'), import('../a.dx')  relative to the importing file
+ *   import('/abs/a.dx')                  absolute
+ *   import('name'), import('dir/name')   looked up on the default
+ *                                        'lib' directory
+ *
+ * The '.dx' extension is optional. The 'lib' directory is searched on
+ * the directory of the entry script first, then on the current directory.
+ */
+static char entry_file[IMPORT_PATH_MAX] = "";
+
+static int is_dir_path(const char* p) {
+#ifdef _WIN32
+  DWORD a = GetFileAttributesA(p);
+  return a != INVALID_FILE_ATTRIBUTES && (a & FILE_ATTRIBUTE_DIRECTORY);
+#else
+  struct stat st;
+  return stat(p, &st) == 0 && S_ISDIR(st.st_mode);
+#endif
+}
+
+static int is_explicit_path(const char* s) {
+  return s[0] == '/' || s[0] == '\\' ||
+         (s[0] == '.' && (s[1] == '/' || s[1] == '\\' ||
+         (s[1] == '.' && (s[2] == '/' || s[2] == '\\'))));
+}
+
+static int try_resolve(const char* path, char* out) {
+  size_t n = strlen(path);
+  if (n + 4 >= IMPORT_PATH_MAX) return 0;
+  if (get_realpath(path, out) && !is_dir_path(out)) return 1;
+  if (n < 3 || strcmp(path + n - 3, ".dx") != 0) {
+    char with_ext[IMPORT_PATH_MAX];
+    memcpy(with_ext, path, n);
+    memcpy(with_ext + n, ".dx", 4);
+    if (get_realpath(with_ext, out) && !is_dir_path(out)) return 1;
+  }
+  return 0;
+}
+
+static int resolve_import_path(d_vm* vm, const char* spec, char* out) {
+  char* full;
+  int ok = 0;
+
+  if (is_explicit_path(spec)) {
+    full = normalize_path(vm->active_instr->file, (char*) spec);
+    ok = try_resolve(full, out);
+    free(full);
+    return ok;
+  }
+
+  /* default 'lib' directory */
+  char lib_spec[IMPORT_PATH_MAX];
+  if (strlen(spec) + 5 >= IMPORT_PATH_MAX) return 0;
+  snprintf(lib_spec, sizeof(lib_spec), "lib/%s", spec);
+
+  if (entry_file[0]) {
+    full = normalize_path(entry_file, lib_spec);
+    ok = try_resolve(full, out);
+    free(full);
+    if (ok) return 1;
+  }
+  full = normalize_path(NULL, lib_spec);
+  ok = try_resolve(full, out);
+  free(full);
+  return ok;
+}
+
 static int import_file(d_vm* vm, drax_value v) {
   char * content = 0;
 
@@ -367,23 +446,27 @@ static int import_file(d_vm* vm, drax_value v) {
   }
 
   drax_string* p = CAST_STRING(v);
-  if(get_file_content(vm->active_instr->file, p->chars, &content)) {
+
+  /* resolve the canonical path first: it is the cache key */
+  char resolved[IMPORT_PATH_MAX];
+  if (!resolve_import_path(vm, p->chars, resolved)) {
     printf("file '%s' not found.\n", p->chars);
     return 1;
   }
+  char* new_p;
 
-  char* new_p = normalize_path(vm->active_instr->file, p->chars);
-  if (get_realpath(new_p, new_p) == 0) {
-    fprintf(stderr, "fail to make full path: '%s'.\n", new_p);
-  }
-
+  /* already imported (or being imported): no disk access needed */
   drax_value ivl;
-  if (get_var_table(vm->imported_files, new_p, &ivl)) {
+  if (get_var_table(vm->imported_files, resolved, &ivl)) {
     push(vm, ivl);
-    free(new_p);
-    free(content);
     return 0;
   }
+
+  if (get_file_content(NULL, resolved, &content)) {
+    printf("file '%s' not found.\n", p->chars);
+    return 1;
+  }
+  new_p = resolved;
 
   /**
    * fix infinity loop in secondary imports
@@ -422,7 +505,10 @@ static int import_file(d_vm* vm, drax_value v) {
     callstack_pop(vm);
   }
 
-  free(new_p);
+  if (stat != 0) {
+    /* do not cache the placeholder of a failed import */
+    del_var_table(vm->imported_files, new_p);
+  }
   free_instructions(module_code);
   free_var_table(vm, module_env);
   return stat;
@@ -689,6 +775,10 @@ int __start__(d_vm* vm, int inter_mode) {
   if (-1 == vm->vid) {
     if (vm->active_instr->file && *vm->active_instr->file) {
       put_var_table(vm->imported_files, vm->active_instr->file, DRAX_NIL_VAL);
+      /* __start__ also runs for imported modules: keep only the first */
+      if (!entry_file[0]) {
+        snprintf(entry_file, sizeof(entry_file), "%s", vm->active_instr->file);
+      }
     }
   }
 

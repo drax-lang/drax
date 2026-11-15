@@ -77,6 +77,8 @@ void put_var_table(d_generic_var_table* t, char* name, drax_value value);
 
 int get_var_table(d_generic_var_table* t, char* name, drax_value* value);
 
+void del_var_table(d_generic_var_table* t, char* name);
+
 /**
  * Local variable definitions.
  */

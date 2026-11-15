@@ -37,4 +37,12 @@ assert(List.at(lib3.key3, 0) == 123, "lib3.key3[0] == 123")
 assert(List.at(lib3.key3, 1) == 456, "lib3.key3[1] == 456")
 assert(lib3.key4.k == 'v', "lib3.key4.k == 'v'")
 
+## default 'lib' directory (next to the entry script), '.dx' is optional
+m1 = import('mathx')
+m2 = import('mathx.dx')
+m3 = import('util/helper')
+assert(m1.double(4) == 8, "lib import: mathx.double(4) == 8")
+assert(m2.double(5) == 10, "lib import with extension")
+assert(m3.twice(3) == 6, "lib import of nested path")
+
 print('Import done!')

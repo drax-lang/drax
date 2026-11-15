@@ -33,6 +33,7 @@ expect_error("assert_nil", "nil must not pass")
 expect_error("assert_long_message", "custom assertion message")
 expect_error("assert_missing_message", "assert/1")
 expect_error("missing_import", "not found")
+expect_error("missing_lib_import", "not found")
 
 ### syntax errors are reported before anything runs
 expect_error("unterminated_string", "Unterminated string")

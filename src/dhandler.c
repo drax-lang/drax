@@ -98,6 +98,22 @@ void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
   node->value = value;
 }
 
+void del_var_table(d_generic_var_table* t, char* name) {
+  int i = generate_hash(name, t->size);
+  size_t k = fnv1a_hash(name, strlen(name));
+
+  drax_generic_var_node** link = &t->array[i];
+  while (*link != NULL) {
+    if ((*link)->key == k) {
+      drax_generic_var_node* dead = *link;
+      *link = dead->next;
+      free(dead);
+      return;
+    }
+    link = &(*link)->next;
+  }
+}
+
 /**
  * starting helper definitions for functions
  */
