@@ -74,19 +74,24 @@ typedef struct drax_native_module_helper {
   low_level_callback* fun;
 } drax_native_module_helper;
 
-typedef struct drax_native_module {
+struct drax_native_module {
   d_struct d_struct;
   int count;
   const char* name;
   const char** fn_names;
   int* arity;
   low_level_callback** fun;
-} drax_native_module;
+};
+
+typedef struct drax_native_module drax_native_module;
 
 typedef struct drax_os_native {
   d_struct d_struct;
   const char* name;
   int arity;
+  /* the module it was read from (Module.name), NULL for global functions:
+   * used to find the overload that has the arity of the call */
+  drax_native_module* module;
   low_level_callback* function;
 } drax_os_native;
 
@@ -168,6 +173,9 @@ drax_native_module* new_native_module(d_vm* vm, const char* name, int cap);
 void put_fun_on_module(drax_native_module* m, const drax_native_module_helper helper[], int size);
 
 int get_fun_on_module(drax_native_module* m, const char* n);
+
+/* the function with this name AND this number of arguments, -1 if none */
+int get_fun_on_module_arity(drax_native_module* m, const char* n, int arity);
 
 void print_funcs_on_module(drax_native_module* m);
 

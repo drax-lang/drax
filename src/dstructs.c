@@ -76,6 +76,7 @@ drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* f, const char* nam
   native->name = name;
   native->function = f;
   native->arity = arity;
+  native->module = NULL;
   return native;
 }
 
@@ -249,6 +250,16 @@ int get_fun_on_module(drax_native_module* m, const char* n) {
   int i;
   for (i = 0; i < m->count; i++) {
     if (strcmp(m->fn_names[i], n) == 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+int get_fun_on_module_arity(drax_native_module* m, const char* n, int arity) {
+  int i;
+  for (i = 0; i < m->count; i++) {
+    if (m->arity[i] == arity && strcmp(m->fn_names[i], n) == 0) {
       return i;
     }
   }

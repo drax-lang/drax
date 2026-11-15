@@ -54,6 +54,12 @@ static const char* const MOD_Frame[] = {
   0
 };
 
+static const char* const MOD_Http[] = {
+  "read_request/1",
+  "response/3",
+  0
+};
+
 static const char* const MOD_List[] = {
   "at/2",
   "concat/2",
@@ -152,6 +158,7 @@ static const char* const MOD_TCPServer[] = {
 const dlang_module DLANG_MODULES[] = {
   { "Core", MOD_Core },
   { "Frame", MOD_Frame },
+  { "Http", MOD_Http },
   { "List", MOD_List },
   { "Math", MOD_Math },
   { "Number", MOD_Number },

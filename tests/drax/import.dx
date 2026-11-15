@@ -49,4 +49,9 @@ assert(m3.twice(3) == 6, "lib import of nested path")
 pk = import('pkgdir')
 assert(pk.hello('a') == 'hi a', "lib import of a package directory")
 
+## a module bigger than the initial instruction buffer
+big = import('bigmod')
+assert(big.last == 81, "big module: last value")
+assert(big.total() == 2 + 41 + 81, "big module: function using its globals")
+
 print('Import done!')

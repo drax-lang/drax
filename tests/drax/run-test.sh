@@ -64,6 +64,13 @@ DRAX_MAX_CALL_DEPTH=1000 ./bin/drax ./tests/drax/tail_calls.dx
 
 ./bin/drax ./tests/drax/errors.dx
 
+# print reaches a file or a pipe line by line, even if the process is killed
+# (a server under a supervisor must not lose its log)
+PRINT_OUT=$(mktemp)
+timeout -s KILL 1 ./bin/drax ./tests/drax/print_flush.dx > "$PRINT_OUT" || true
+grep -q "first line" "$PRINT_OUT" || { echo "print is not flushed when stdout is a file"; rm -f "$PRINT_OUT"; exit 1; }
+rm -f "$PRINT_OUT"
+
 # http server: real server and real clients (skipped without curl)
 bash ./tests/drax/http/run-http-tests.sh
 
