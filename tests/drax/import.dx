@@ -45,4 +45,8 @@ assert(m1.double(4) == 8, "lib import: mathx.double(4) == 8")
 assert(m2.double(5) == 10, "lib import with extension")
 assert(m3.twice(3) == 6, "lib import of nested path")
 
+## package directory: import('pkgdir') loads lib/pkgdir/main.dx
+pk = import('pkgdir')
+assert(pk.hello('a') == 'hi a', "lib import of a package directory")
+
 print('Import done!')

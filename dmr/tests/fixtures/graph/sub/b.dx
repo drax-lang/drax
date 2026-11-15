@@ -1,0 +1,5 @@
+u = import('util')
+fun run(n) do
+    if (n == 0) do 0 else u.twice(run(n - 1)) end
+end
+export({ run: run })

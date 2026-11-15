@@ -1,0 +1,2 @@
+## a package directory: import('pkg') loads lib/pkg/main.dx
+export({ hello: fun (n) do "hi " ++ n end })

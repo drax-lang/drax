@@ -1,0 +1,2 @@
+fun twice(x) do x * 2 end
+export({ twice: twice, name: "util" })
