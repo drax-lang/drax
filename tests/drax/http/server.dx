@@ -1,0 +1,87 @@
+## Server used by run-http-tests.sh: sequential code, one request after another.
+## HTTP_TEST_PORT: the port. A request to /quit stops it.
+
+port = Os.get_env("HTTP_TEST_PORT")
+server = TCPServer.new({ host: '127.0.0.1', port: port, timeout_ms: '700', max_body_bytes: '1048576' })
+
+fun reply(conn, status, body) do
+    TCPServer.send(conn, Http.response(status, { 'content-type': 'text/plain' }, body))
+end
+
+## 4 MB of text
+fun grow(s, n) do
+    if (n == 0) do s else grow(s ++ s, n - 1) end
+end
+
+fun route(conn, req) do
+    if (req.path == '/') do
+        reply(conn, 200, 'hello')
+    else
+        if (req.path == '/len') do
+            reply(conn, 200, 'len=' ++ Number.to_string(String.length(req.body)))
+        else
+            if (req.path == '/echo') do
+                TCPServer.send(conn, Http.response(200, { 'content-type': 'application/octet-stream' }, req.body))
+            else
+                if (req.path == '/info') do
+                    reply(conn, 200, req.method ++ ' ' ++ req.query ++ ' ' ++ Frame.get_or_else(req.headers, 'x-test', 'none'))
+                else
+                    if (req.path == '/big') do
+                        reply(conn, 200, grow('xxxxxxxx', 19))
+                    else
+                        if (req.path == '/quit') do
+                            reply(conn, 200, 'bye')
+                            'quit'
+                        else
+                            reply(conn, 404, 'not found')
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+## answers the requests of one connection, in order
+fun session(conn) do
+    req = Http.read_request(conn)
+
+    if (req == nil) do
+        TCPServer.disconnect(conn)
+        'closed'
+    else
+        if (req.error != nil) do
+            reply(conn, req.status, req.error)
+            TCPServer.disconnect(conn)
+            'error'
+        else
+            answer = route(conn, req)
+
+            if (answer == 'quit') do
+                TCPServer.disconnect(conn)
+                'quit'
+            else
+                if (req.keep_alive) do
+                    session(conn)
+                else
+                    TCPServer.disconnect(conn)
+                    'closed'
+                end
+            end
+        end
+    end
+end
+
+fun serve(server) do
+    conn = TCPServer.accept(server)
+    result = session(conn)
+
+    if (result == 'quit') do
+        TCPServer.close(server)
+    else
+        serve(server)
+    end
+end
+
+serve(server)
+print('server stopped')

@@ -64,8 +64,10 @@ DRAX_MAX_CALL_DEPTH=1000 ./bin/drax ./tests/drax/tail_calls.dx
 
 ./bin/drax ./tests/drax/errors.dx
 
+# http server: real server and real clients (skipped without curl)
+bash ./tests/drax/http/run-http-tests.sh
+
 echo "----------------------------------------"
 
 echo -e "\n\033[32mAll tests were executed successfully!\033[0m"
 
-# ./bin/drax ./tests/drax/http/http-only-response-text-plain.dx

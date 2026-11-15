@@ -161,7 +161,8 @@ int get_value_dframe(drax_frame* l, char* name, drax_value* value) {
   int i;
   int k = fnv1a_hash(name, strlen(name));
   for (i = 0; i < l->length; i++) {
-    if (l->keys[i] == k) {
+    /* the hash is a quick filter: two different keys can have the same one */
+    if (l->keys[i] == k && strcmp(l->literals[i], name) == 0) {
       *value = l->values[i];
       return i;
     }

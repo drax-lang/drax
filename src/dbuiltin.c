@@ -899,127 +899,206 @@ static drax_value __d_frame_new_empty(d_vm* vm, int* stat) {
 }
 
 /**
- * TCPServer calls
+ * TCPServer and Http calls
+ *
+ * Everything is blocking and sequential, in the order it is written:
+ *
+ *   server = TCPServer.new({ port: '8080' })
+ *   conn = TCPServer.accept(server)
+ *   req = Http.read_request(conn)
+ *   TCPServer.send(conn, Http.response(200, {}, 'ok'))
+ *   TCPServer.disconnect(conn)
+ *
+ * The server and each connection are different values (see d_mod_http.h).
  */
 
+static drax_value http_type_error(d_vm* vm, int* stat, const char* msg) {
+  DX_ERROR_FN(stat);
+  return DS_VAL(new_derror(vm, (char*) msg));
+}
+
+#define IS_HTTP_SERVER(v) \
+  (IS_TID(v) && CAST_TID(v)->destroy == dhttp_destroy && dhttp_is_listener(CAST_TID(v)->value))
+
+#define IS_HTTP_CONN(v) \
+  (IS_TID(v) && CAST_TID(v)->destroy == dhttp_destroy && dhttp_is_conn(CAST_TID(v)->value))
+
+/* an option as text: a string or an integer. 0: absent, 1: ok, -1: wrong type */
+static int http_opt_text(drax_frame* f, const char* key, char* out, size_t sz) {
+  drax_value v;
+  if (get_value_dframe(f, (char*) key, &v) == -1) return 0;
+  if (IS_STRING(v)) { snprintf(out, sz, "%s", CAST_STRING(v)->chars); return 1; }
+  if (IS_NUMBER(v)) { snprintf(out, sz, "%.0f", CAST_NUMBER(v)); return 1; }
+  return -1;
+}
+
+/* a non negative integer option. 0: absent, 1: ok, -1: invalid */
+static int http_opt_size(drax_frame* f, const char* key, long* out) {
+  char buf[48];
+  int r = http_opt_text(f, key, buf, sizeof(buf));
+  if (r != 1) return r;
+  char* end;
+  long v = strtol(buf, &end, 10);
+  if (end == buf || *end != '\0' || v < 0) return -1;
+  *out = v;
+  return 1;
+}
+
+static int http_opt_bool(drax_frame* f, const char* key, int* out) {
+  drax_value v;
+  if (get_value_dframe(f, (char*) key, &v) == -1) return 0;
+  if (IS_BOOL(v)) { *out = v == DRAX_TRUE_VAL; return 1; }
+  if (IS_STRING(v)) {
+    if (strcmp(CAST_STRING(v)->chars, "true") == 0) { *out = 1; return 1; }
+    if (strcmp(CAST_STRING(v)->chars, "false") == 0) { *out = 0; return 1; }
+  }
+  return -1;
+}
+
+/**
+ * TCPServer.new({ host, port, backlog, timeout_ms, reuse_port,
+ *                 max_header_bytes, max_body_bytes })
+ */
 static drax_value __d_start_server(d_vm* vm, int* stat) {
   drax_value opt = pop(vm);
-
   return_if_is_not_frame(opt, stat);
   drax_frame* ofr = CAST_FRAME(opt);
-  
-  /**
-   * get port as string
-   */
-  char* port_string = (char*) "5000";
-  drax_value port;
-  if(get_value_dframe(ofr, (char*) "port", &port) != -1) {
-    return_if_is_not_string(port, stat);
-    port_string = CAST_STRING(port)->chars;
-  }
 
-  /**
-   * get request_timeout_ms as string
-   */
-  char* host = (char*) "*";
-  drax_value drt;
-  if(get_value_dframe(ofr, (char*) "host", &drt) != -1) {
-    return_if_is_not_string(drt, stat);
-    host = CAST_STRING(drt)->chars;
-  }
+  char host[256] = "";
+  char port[16] = "5000";
+  long backlog = 0, timeout = DHTTP_DEFAULT_TIMEOUT_MS;
+  long max_header = DHTTP_DEFAULT_MAX_HEADER, max_body = DHTTP_DEFAULT_MAX_BODY;
+  int reuse_port = 0;
+  char msg[96];
 
-  char *options[] = {
-    port_string,
-    host,
-    NULL
-  };
+  #define BAD_OPTION(k) \
+    do { \
+      snprintf(msg, sizeof(msg), "server error, invalid option '%s'!", k); \
+      DX_ERROR_FN(stat); \
+      return DS_VAL(new_derror(vm, msg)); \
+    } while (0)
+
+  if (http_opt_text(ofr, "host", host, sizeof(host)) < 0) BAD_OPTION("host");
+  if (http_opt_text(ofr, "port", port, sizeof(port)) < 0) BAD_OPTION("port");
+  if (http_opt_size(ofr, "backlog", &backlog) < 0) BAD_OPTION("backlog");
+  if (http_opt_size(ofr, "timeout_ms", &timeout) < 0) BAD_OPTION("timeout_ms");
+  if (http_opt_size(ofr, "max_header_bytes", &max_header) < 0 || max_header < 64) BAD_OPTION("max_header_bytes");
+  if (http_opt_size(ofr, "max_body_bytes", &max_body) < 0) BAD_OPTION("max_body_bytes");
+  if (http_opt_bool(ofr, "reuse_port", &reuse_port) < 0) BAD_OPTION("reuse_port");
+
+  #undef BAD_OPTION
+
+  dhttp_opts o;
+  o.host = host;
+  o.port = port;
+  o.backlog = (int) backlog;
+  o.reuse_port = reuse_port;
+  o.timeout_ms = (int) timeout;
+  o.max_header = (size_t) max_header;
+  o.max_body = (size_t) max_body;
 
   int fail;
-  drax_value res;
-  drax_value ctx = start_http_server(vm, options, &fail);
+  drax_value ctx = dhttp_listen(vm, &o, &fail);
 
-  if (!fail) {
-    drax_tid* tid = new_dtid(vm, ctx);
-    tid->destroy = free_http_server;
-    res = DS_VAL(tid);
-    DX_SUCESS_FN(stat);
-  } else {
+  if (fail) {
     DX_ERROR_FN(stat);
-    res = DS_VAL(ctx);
+    return ctx;
   }
 
-  return res;
-}
-
-static drax_value __d_stop_server(d_vm* vm, int* stat) {
-  drax_value v = pop(vm);
-  return_if_is_not_tid(v, stat);
-  drax_tid* tid = CAST_TID(v);
-  int status = stop_http_server(vm, tid->value);
-  
-  tid->value = 0;
-
-  DX_SUCESS_FN(stat);
-  return status ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
-}
-
-static drax_value __d_accept_server(d_vm* vm, int* stat) {
-  drax_value v = pop(vm);
-  return_if_is_not_tid(v, stat);
-  drax_tid* tid = CAST_TID(v);
-  drax_value _err;
-  drax_value addrs = tid->value;
-  int success = accept_http_server(vm, addrs, &_err);
-
-  if (!success) {
-    DX_ERROR_FN(stat);
-    return _err;
-  }
-
+  drax_tid* tid = new_dtid(vm, ctx);
+  tid->destroy = dhttp_destroy;
   DX_SUCESS_FN(stat);
   return DS_VAL(tid);
 }
 
-static drax_value __d_receive_server(d_vm* vm, int* stat) {
+static drax_value __d_stop_server(d_vm* vm, int* stat) {
   drax_value v = pop(vm);
-  return_if_is_not_tid(v, stat);
-  drax_tid* tid = CAST_TID(v);
-  char* res = receive_http_server(vm, tid->value);
-  if (res == NULL) {
-    DX_SUCESS_FN(stat);
-    return DRAX_NIL_VAL;
-  }
+  if (!IS_HTTP_SERVER(v)) return http_type_error(vm, stat, "Expected a server as argument");
 
-  /* the string owns the buffer */
-  drax_string* s = new_dstring(vm, res, strlen(res));
-
+  int status = dhttp_stop(CAST_TID(v)->value);
   DX_SUCESS_FN(stat);
-  return DS_VAL(s);
+  return status ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
 }
 
+/* waits for a client and returns its connection, a value of its own */
+static drax_value __d_accept_server(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  if (!IS_HTTP_SERVER(v)) return http_type_error(vm, stat, "Expected a server as argument");
+
+  drax_value conn;
+  if (!dhttp_accept(vm, CAST_TID(v)->value, &conn)) {
+    DX_ERROR_FN(stat);
+    return conn;
+  }
+
+  drax_tid* tid = new_dtid(vm, conn);
+  tid->destroy = dhttp_destroy;
+  DX_SUCESS_FN(stat);
+  return DS_VAL(tid);
+}
+
+/* the bytes that arrived (a single read), or nil when the client is gone */
+static drax_value __d_receive_server(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  if (!IS_HTTP_CONN(v)) return http_type_error(vm, stat, "Expected a connection as argument");
+
+  drax_value res = dhttp_recv(vm, CAST_TID(v)->value);
+  DX_SUCESS_FN(stat);
+  return res;
+}
+
+/* writes the whole string (any bytes). false: the client is gone or too slow */
 static drax_value __d_send_server(d_vm* vm, int* stat) {
   drax_value data = pop(vm);
   drax_value v = pop(vm);
 
-  return_if_is_not_tid(v, stat);
+  if (!IS_HTTP_CONN(v)) return http_type_error(vm, stat, "Expected a connection as argument");
   return_if_is_not_string(data, stat);
 
-  drax_tid* tid = CAST_TID(v);
-  send_http_server(vm, tid->value, CAST_STRING(data)->chars);
+  drax_string* s = CAST_STRING(data);
+  int ok = dhttp_send(CAST_TID(v)->value, s->chars, (size_t) s->length);
 
   DX_SUCESS_FN(stat);
-  return DRAX_TRUE_VAL;
+  return ok ? DRAX_TRUE_VAL : DRAX_FALSE_VAL;
 }
 
 static drax_value __d_disconnect_server(d_vm* vm, int* stat) {
   drax_value v = pop(vm);
-  return_if_is_not_tid(v, stat);
-  drax_tid* tid = CAST_TID(v);
+  if (!IS_HTTP_CONN(v)) return http_type_error(vm, stat, "Expected a connection as argument");
 
-  disconnect_client_http_server(vm, tid->value);
-
+  dhttp_disconnect(CAST_TID(v)->value);
   DX_SUCESS_FN(stat);
   return DRAX_TRUE_VAL;
+}
+
+/**
+ * Http.read_request(conn): a whole request as a frame, or nil when the
+ * client closed the connection (or the timeout ended).
+ */
+static drax_value __d_http_read_request(d_vm* vm, int* stat) {
+  drax_value v = pop(vm);
+  if (!IS_HTTP_CONN(v)) return http_type_error(vm, stat, "Expected a connection as argument");
+
+  drax_value res = dhttp_read_request(vm, CAST_TID(v)->value);
+  DX_SUCESS_FN(stat);
+  return res;
+}
+
+/* Http.response(status, headers, body): the text to send */
+static drax_value __d_http_response(d_vm* vm, int* stat) {
+  drax_value body = pop(vm);
+  drax_value headers = pop(vm);
+  drax_value status = pop(vm);
+
+  int fail;
+  drax_value res = dhttp_response(vm, status, headers, body, &fail);
+  if (fail) {
+    DX_ERROR_FN(stat);
+    return res;
+  }
+
+  DX_SUCESS_FN(stat);
+  return res;
 }
 
 /**
@@ -1164,6 +1243,18 @@ void create_native_modules(d_vm* vm) {
   
   put_fun_on_module(http, http_helper, sizeof(http_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(http));
+
+  /**
+   * Http Module: requests and responses on top of a connection
+   */
+  drax_native_module* httpm = new_native_module(vm, "Http", 2);
+  const drax_native_module_helper httpm_helper[] = {
+    {1, "read_request", __d_http_read_request},
+    {3, "response", __d_http_response},
+  };
+
+  put_fun_on_module(httpm, httpm_helper, sizeof(httpm_helper) / sizeof(drax_native_module_helper));
+  put_mod_table(vm->envs->modules, DS_VAL(httpm));
 
   drax_native_module* math = new_native_module(vm, "Math", 24);
     const drax_native_module_helper math_helper[] = {

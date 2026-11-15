@@ -22,7 +22,8 @@ FILES= ./src/dvm.c \
 	   ./src/doutopcode.c \
 	   ./src/mods/d_mod_os.c \
 	   ./src/mods/d_mod_http.c \
-	   ./src/mods/d_mod_list.c
+	   ./src/mods/d_mod_list.c \
+	   ./src/mods/d_http_parser.c
 
 DEBUGF= -ggdb \
 		-g
@@ -140,8 +141,10 @@ config:
 c_test:
 	$(CC) -o tests/c_test_lex.o tests/c_tests/tests_lexer.c src/dlex.c
 	$(CC) -o tests/c_test_parser.o tests/c_tests/tests_parser.c $(FILES) -lm
+	$(CC) -o tests/c_test_http.o tests/c_tests/tests_http_parser.c src/mods/d_http_parser.c
 	./tests/c_test_lex.o
 	./tests/c_test_parser.o
+	./tests/c_test_http.o
 
 test:
 ifeq ($(TARGET_OS),WIN32)
@@ -172,4 +175,5 @@ clean:
 	rm -rf ./bin/$(APP)
 	rm -rf ./tests/c_test_lex.o
 	rm -rf ./tests/c_test_parser.o
+	rm -rf ./tests/c_test_http.o
 	rm -rf ./src/build
