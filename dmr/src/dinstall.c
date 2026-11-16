@@ -466,6 +466,9 @@ int cmd_install(int update) {
   dmr_manifest root;
   if (manifest_load(DMR_MANIFEST, &root, err, sizeof(err))) {
     fprintf(stderr, "error: %s: %s\n", DMR_MANIFEST, err);
+    if (access(DMR_MANIFEST, F_OK) != 0) {
+      fprintf(stderr, "run 'dmr init' to create it.\n");
+    }
     return 1;
   }
 

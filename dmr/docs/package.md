@@ -4,6 +4,56 @@
 dependencies into `./lib` (the default library directory of Drax) and writes
 `package.lock`. Use `dmr -C <dir> ...` to run it for another directory.
 
+## Creating a package.toml
+
+`dmr init` writes a default `package.toml` in the current directory. The package
+name is the name of the directory (characters other than letters, digits, `_`
+and `-` become `_`). It never overwrites an existing file.
+
+```sh
+mkdir my_service && cd my_service
+dmr init
+```
+
+```toml
+[package]
+name = "my_service"
+version = "0.1.0"
+
+[dependencies]
+# json = { git = "https://github.com/user/drax-json", tag = "v1.0.0" }
+# utils = { path = "../utils" }
+```
+
+`dmr install` takes no arguments: it installs what the `[dependencies]` section
+lists. To add a package, add a line to that section and run `dmr install`.
+
+## Adding a dependency
+
+`dmr add` writes the line in `[dependencies]` for you (it keeps the rest of the
+file as it is):
+
+```sh
+dmr add drax-lang/griht              # GitHub: https://github.com/drax-lang/griht
+dmr add drax-lang/griht@v1.0.0       # the tag v1.0.0
+dmr add https://example.com/x/y.git --branch main
+dmr add git@github.com:user/repo.git --rev 3f2a1c9
+dmr add ../utils                     # a local path
+dmr add drax-lang/griht --name g     # another name in lib/
+```
+
+`dmr install <spec>` takes the same arguments: it adds the dependency and then
+installs.
+
+| Option | |
+|--------|---|
+| `--tag t`, `--branch b`, `--rev r` | which version to use (at most one; `@ref` after `user/repo` is a tag) |
+| `--name n` | the name under `lib/` (default: the repository or directory name, without `.git`) |
+
+A dependency that is already in the file is an error, and so is a name that
+is not valid (see the rules below). The package is not downloaded by `add`:
+run `dmr install`.
+
 ## package.toml
 
 ```toml
