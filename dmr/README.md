@@ -5,6 +5,8 @@ write Drax code.
 
 ```sh
 make                 # builds ./bin/dmr
+dmr init             # creates a default package.toml in the current directory
+dmr add user/repo    # adds a dependency to package.toml (GitHub, git url or path)
 dmr install          # downloads the dependencies of package.toml into ./lib, writes package.lock
 dmr update           # same, ignoring package.lock
 dmr graph [paths]    # writes the code graph for LLMs into ./.drax-cpg
@@ -20,7 +22,7 @@ dmr graph [paths]    # writes the code graph for LLMs into ./.drax-cpg
 | Path | Role |
 |------|------|
 | `src/main.c` | commands |
-| `src/dmanifest.*`, `src/dlock.*`, `src/dinstall.*` | package manager (manifest, lock, resolver, git) |
+| `src/dmanifest.*`, `src/dlock.*`, `src/dinstall.*`, `src/dadd.*` | package manager (manifest, lock, resolver, git, `add`) |
 | `src/dfs.*` | file system and process helpers |
 | `src/dgraph.*` | **AI part**: scanner of `.dx` and the graph emitter |
 | `src/dlang.*`, `src/dlang_data.c` | **AI part**: the language as data |

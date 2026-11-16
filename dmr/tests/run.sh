@@ -166,6 +166,59 @@ printf '[[package]]\nname = "../keep"\nsource = "path+x"\n' > "$T/l1/package.loc
 "$DMR" -C "$T/l1" install >/dev/null 2>&1
 check "tampered lock: outside dir intact" test -f "$T/keep/f"
 
+# ---- init
+mkdir -p "$T/my app"
+check "init creates package.toml"     "$DMR" -C "$T/my app" init
+check "init writes a valid name"      contains "$T/my app/package.toml" 'name = "my_app"'
+check_not "init does not overwrite"   "$DMR" -C "$T/my app" init
+check "init manifest is installable"  "$DMR" -C "$T/my app" install
+mkdir -p "$T/empty"
+"$DMR" -C "$T/empty" install > "$T/empty.out" 2>&1
+check "missing manifest suggests init" contains "$T/empty.out" "dmr init"
+
+# ---- add
+mkdir -p "$T/ad" && "$DMR" -C "$T/ad" init >/dev/null
+check "add a git url with a tag"      "$DMR" -C "$T/ad" add "file://$R/json" --tag v1.0.0
+check "add wrote the dependency"      contains "$T/ad/package.toml" "json = { git = \"file://$R/json\", tag = \"v1.0.0\" }"
+check_not "add twice is an error"     "$DMR" -C "$T/ad" add "file://$R/json"
+check "add a path"                    "$DMR" -C "$T/ad" add "../core_utils"
+check "add path name from directory"  contains "$T/ad/package.toml" 'core_utils = { path = "../core_utils" }'
+check "add --name and --branch"       "$DMR" -C "$T/ad" add "file://$R/http" --name web --branch main
+check "add --name written"            contains "$T/ad/package.toml" "web = { git = \"file://$R/http\", branch = \"main\" }"
+check_not "add: tag and branch"       "$DMR" -C "$T/ad" add "file://$R/a" --tag x --branch y
+check_not "add: junk spec"            "$DMR" -C "$T/ad" add "nonsense"
+check_not "add: option as spec"       "$DMR" -C "$T/ad" add "--upload-pack=x"
+check "install after add works"       "$DMR" -C "$T/ad" install
+check "installed json"                test -f "$T/ad/lib/json/main.dx"
+check "installed web"                 test -f "$T/ad/lib/web/main.dx"
+# the section is kept in place: a key after another section is not touched
+mkdir -p "$T/ad2" && printf '[dependencies]\n\n[package]\nname = "x"\n' > "$T/ad2/package.toml"
+"$DMR" -C "$T/ad2" add "file://$R/json" --tag v1.0.0 >/dev/null 2>&1
+check "add keeps the dependencies section" "$DMR" -C "$T/ad2" install
+# install <spec> adds and installs
+mkdir -p "$T/ad3" && "$DMR" -C "$T/ad3" init >/dev/null
+check "install <spec>"                "$DMR" -C "$T/ad3" install "file://$R/json" --tag v1.0.0
+check "install <spec> installs"       test -f "$T/ad3/lib/json/main.dx"
+# no manifest
+mkdir -p "$T/ad4"
+check_not "add without manifest"      "$DMR" -C "$T/ad4" add "file://$R/json"
+# a manifest without the section gets one
+mkdir -p "$T/ad5" && printf '[package]\nname = "x"\nversion = "1"\n' > "$T/ad5/package.toml"
+check "add creates the section"       "$DMR" -C "$T/ad5" add "file://$R/json"
+check "add section is valid"          "$DMR" -C "$T/ad5" install
+
+# a failed install <spec> leaves package.toml as it was (offline: a file:// url)
+mkdir -p "$T/ad6" && "$DMR" -C "$T/ad6" init >/dev/null && cp "$T/ad6/package.toml" "$T/ad6.before"
+check_not "install <spec> that fails"  "$DMR" -C "$T/ad6" install "file://$T/does-not-exist"
+check "failed install restores the manifest" cmp -s "$T/ad6/package.toml" "$T/ad6.before"
+# a header with a trailing comment is still the [dependencies] section
+mkdir -p "$T/ad7" && printf '[package]\nname = "x"\n\n[dependencies] # runtime\n' > "$T/ad7/package.toml"
+"$DMR" -C "$T/ad7" add "file://$R/json" --tag v1.0.0 >/dev/null 2>&1
+check "header with a comment: one section" test "$(grep -c '^\[dependencies\]' "$T/ad7/package.toml")" -eq 1
+check "header with a comment: installs"    "$DMR" -C "$T/ad7" install
+# the same source under another name is refused
+check_not "same source, other name"   "$DMR" -C "$T/ad7" add "file://$R/json" --name j2 --tag v1.0.0
+
 # ---- graph: golden file
 cp -r "$FIX/graph" "$T/g" && mkdir -p "$T/g"
 "$DMR" -C "$T/g" graph >/dev/null 2>&1

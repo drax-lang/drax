@@ -8,7 +8,7 @@ CC ?= gcc
 BIN = ./bin/dmr
 DRAX_SRC ?= ../src
 
-SRCS = src/main.c src/dfs.c src/dmanifest.c src/dlock.c src/dinstall.c \
+SRCS = src/main.c src/dfs.c src/dmanifest.c src/dlock.c src/dinstall.c src/dadd.c \
        src/dgraph.c src/dlang.c src/dlang_data.c
 
 CFLAGS = -std=c99 -Wall -Wextra -Wshadow -Wundef -Wsign-compare -Wwrite-strings \
