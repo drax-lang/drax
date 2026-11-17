@@ -5,63 +5,82 @@
 #include "dstring.h"
 #include "drax.h"
 
-#define D_NUMBER_STR_PRINT "%.17g"
-
 extern int is_teractive_mode;
 
 #define DPRINT_COLOR1(_color, str, arg1) \
   if (is_teractive_mode) {printf(_color str D_COLOR_RESET, arg1);} else {printf(str, arg1);}
 
-static void print_list(drax_list* l) {
+static void print_value(drax_value value, int raw, int depth);
+
+static void print_list(drax_list* l, int depth) {
   putchar('[');
   int i;
   for (i = 0; i < l->length; i++) {
-    print_drax(l->elems[i], 1);
+    print_value(l->elems[i], 0, depth + 1);
 
     if ((i+1) < l->length) printf(", ");
   }
   putchar(']');
 }
 
-static void print_frame(drax_frame* f) {
+static void print_frame(drax_frame* f, int depth) {
   putchar('{');
   int i;
   for (i = 0; i < f->length; i++) {
     printf("'%s': ", f->literals[i]);
-    print_drax(f->values[i], 1);
+    print_value(f->values[i], 0, depth + 1);
 
     if ((i+1) < f->length) printf(", ");
   }
   putchar('}');
 }
 
-static void print_string(const char* str, int formated) {
-  if (!formated) {
-    char* tmpstr = str_format_output(str);
-    if (tmpstr == NULL) {
-      fprintf(stderr, D_COLOR_RED "runtime error: cannot format string" D_COLOR_RESET);
-      return;
+/* a string quoted and escaped for display: \", \\, \n, \t, \r and \xNN for the other control characters */
+static void print_quoted(const char* str) {
+  putchar('"');
+  for (; *str; str++) {
+    switch (*str) {
+      case '"':  fputs("\\\"", stdout); break;
+      case '\\': fputs("\\\\", stdout); break;
+      case '\n': fputs("\\n", stdout); break;
+      case '\t': fputs("\\t", stdout); break;
+      case '\r': fputs("\\r", stdout); break;
+      default:
+        /* other control characters (ESC, backspace...) would act on the terminal */
+        if ((unsigned char) *str < 0x20 || *str == 0x7f) printf("\\x%02x", (unsigned char) *str);
+        else putchar(*str);
     }
-    
-    if (is_teractive_mode) {
-      printf(D_COLOR_GREEN "\"%s\"" D_COLOR_RESET, tmpstr);
-    } else {
-      printf("\"%s\"", tmpstr);
-    }
-    free(tmpstr);
-  } else {
-    printf("%s", str);
   }
+  putchar('"');
 }
 
-static void print_d_struct(drax_value value, int formated) {
+/**
+ * raw: the text as it is (what print does with a string).
+ * Otherwise the string is quoted, so "1" and 1 (or "a, b" and two
+ * elements) can not be mistaken in the output of a list, a frame, inspect
+ * and the shell.
+ */
+static void print_string(const char* str, int raw) {
+  if (raw) {
+    printf("%s", str);
+    return;
+  }
+
+  if (is_teractive_mode) fputs(D_COLOR_GREEN, stdout);
+  print_quoted(str);
+  if (is_teractive_mode) fputs(D_COLOR_RESET, stdout);
+}
+
+static void print_d_struct(drax_value value, int raw, int depth) {
   switch (DRAX_STYPEOF(value)) {
     case DS_LIST:
-      print_list(CAST_LIST(value));
+      if (depth >= MAX_VALUE_DEPTH) { printf("..."); break; }
+      print_list(CAST_LIST(value), depth);
       break;
 
     case DS_FRAME:
-      print_frame(CAST_FRAME(value));
+      if (depth >= MAX_VALUE_DEPTH) { printf("..."); break; }
+      print_frame(CAST_FRAME(value), depth);
       break;
 
     case DS_FUNCTION:
@@ -77,7 +96,7 @@ static void print_d_struct(drax_value value, int formated) {
       break;
 
     case DS_STRING:
-      print_string(CAST_STRING(value)->chars, formated);
+      print_string(CAST_STRING(value)->chars, raw);
       break;
 
     case DS_ERROR:
@@ -94,25 +113,24 @@ void drax_print_error(const char* format, va_list args) {
   vfprintf(stderr, format, args);
 }
 
-void print_drax(drax_value value, int formated) {
+static void print_value(drax_value value, int raw, int depth) {
   if (IS_BOOL(value)) {
     printf(CAST_BOOL(value) ? "true" : "false");
   } else if (IS_NIL(value)) {
     printf("nil");
-  } else if (IS_NUMBER(value) && CAST_NUMBER(value) != CAST_NUMBER(value)) {
-    /* the sign of a nan has no meaning */
-    DPRINT_COLOR1(D_COLOR_BLUE, "%s", "nan");
   } else if (IS_NUMBER(value)) {
-    DPRINT_COLOR1(
-      D_COLOR_BLUE,
-      D_NUMBER_STR_PRINT,
-      CAST_NUMBER(value)
-    );
+    char num[32];
+    dnum_to_str(CAST_NUMBER(value), num, sizeof(num));
+    DPRINT_COLOR1(D_COLOR_BLUE, "%s", num);
   } else if(IS_MODULE(value)) {
     printf("<module:%s>", CAST_MODULE(value)->name);
   } else if (IS_STRUCT(value)) {
-    print_d_struct(value, formated);
+    print_d_struct(value, raw, depth);
   }
+}
+
+void print_drax(drax_value value, int raw) {
+  print_value(value, raw, 0);
 }
 
 void dbreak_line() { putchar('\n'); }

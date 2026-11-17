@@ -1,5 +1,6 @@
 #include "dstring.h"
 #include "ddefs.h"
+#include <math.h>
 
 drax_value dstr_to_number(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
@@ -43,6 +44,21 @@ char* strndup(const char *s, size_t n) {
   return p;
 }
 #endif
+
+int dnum_to_str(double n, char* out, size_t size) {
+  if (n != n) return snprintf(out, size, "nan");
+  if (isinf(n)) return snprintf(out, size, n < 0 ? "-inf" : "inf");
+
+  /* the sign of a zero is kept (-0) */
+  if (n == floor(n) && fabs(n) < 1e21) return snprintf(out, size, "%.0f", n);
+
+  int p;
+  for (p = 15; p <= 17; p++) {
+    snprintf(out, size, "%.*g", p, n);
+    if (strtod(out, NULL) == n) break;
+  }
+  return (int) strlen(out);
+}
 
 /**
  * escape sequences are converted by the parser (copy_dstring),

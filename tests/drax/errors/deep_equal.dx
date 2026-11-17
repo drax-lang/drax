@@ -1,0 +1,4 @@
+### a list nested deeper than MAX_VALUE_DEPTH can not be compared: an error, not a crash
+fun nest(n, acc) do if (n == 0) do acc else nest(n - 1, [acc]) end end
+a = nest(5000, [])
+a == a

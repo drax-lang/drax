@@ -34,6 +34,17 @@
 #endif
 
 /**
+ * Lists and frames can be nested as deep as the program wants (a list built
+ * by recursion, data that comes from outside). Comparing (==, !=) and
+ * printing walk them with the C stack, so they stop at this depth: the
+ * comparison is an error and the printing writes "..." for what is deeper.
+ * Override at build time with: make DWN_CCFLAGS=-DMAX_VALUE_DEPTH=<n>
+ */
+#ifndef MAX_VALUE_DEPTH
+  #define MAX_VALUE_DEPTH 1000
+#endif
+
+/**
  * Native functions that call Drax functions (List.map, List.filter,
  * List.tap) run a nested VM loop on the C stack. This is the maximum
  * number of those loops nested inside each other (recursion that goes

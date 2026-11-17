@@ -24,7 +24,8 @@
 
 void drax_print_error(const char* format, va_list args);
 
-void print_drax(drax_value value, int formated);
+/* raw: a string is written as it is, without quotes (only at the top level) */
+void print_drax(drax_value value, int raw);
 
 void dbreak_line();
 

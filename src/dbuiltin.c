@@ -65,7 +65,9 @@ static drax_value __d_read(d_vm* vm, int* stat) {
 }
 
 static drax_value __d_print(d_vm* vm, int* stat) {
-  print_drax(pop(vm), 0);
+  drax_value v = pop(vm);
+  /* a string is written as it is; inspect, the shell, lists and frames show it quoted */
+  print_drax(v, IS_STRING(v) ? 1 : 0);
   dbreak_line();
   DX_SUCESS_FN(stat);
   return DRAX_NIL_VAL;
@@ -597,12 +599,8 @@ static drax_value __d_number_to_string(d_vm* vm, int* stat) {
   return_if_is_not_number(a, stat);
 
   char *s = (char *) calloc(32, sizeof(char));
-  double num = CAST_NUMBER(a);
-
-  /* the sign of a nan has no meaning, the sign of a zero is kept (-0) */
-  int len = (num != num) ? snprintf(s, 32, "nan") : snprintf(s, 32, "%g", num);
+  int len = dnum_to_str(CAST_NUMBER(a), s, 32);
   drax_string* str = new_dstring(vm, s, len);
-  str->chars[strlen(s)] = '\0';
 
   DX_SUCESS_FN(stat);
   return DS_VAL(str);

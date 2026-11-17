@@ -1,0 +1,12 @@
+fun nest(n, acc) do if (n == 0) do acc else nest(n - 1, [acc]) end end
+fun nest_frame(n, acc) do if (n == 0) do acc else nest_frame(n - 1, { k: acc }) end end
+
+# below the limit everything works
+print(nest(900, []) == nest(900, []))
+print(nest(900, []) != nest(900, [1]))
+print(nest_frame(900, 1) == nest_frame(900, 1))
+
+# far deeper than the limit: the printing stops with "..." (no crash)
+inspect(nest(100000, []))
+inspect(nest_frame(100000, 1))
+print("printed")

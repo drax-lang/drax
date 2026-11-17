@@ -187,7 +187,8 @@ void raise_drax_error(d_vm* vm, const char* format, ...) {
   __reset__(vm);
 }
 
-static bool values_equal(drax_value a, drax_value b) {
+/* too_deep is set when lists/frames are nested deeper than MAX_VALUE_DEPTH */
+static bool values_equal(drax_value a, drax_value b, int depth, bool* too_deep) {
   #define DV_EQS_AND_RETURN(_tp, _t1, _t2)\
     _tp* _v1##_tp = (_tp*) _t1->elems;\
     _tp* _v2##_tp = (_tp*) _t2->elems;\
@@ -230,8 +231,10 @@ static bool values_equal(drax_value a, drax_value b) {
 
       if(l1->length != l2->length) { return false; }
 
+      if (depth >= MAX_VALUE_DEPTH) { *too_deep = true; return false; }
+
       for(i = 0; i < l1->length; i++) {
-        if(!values_equal(l1->elems[i], l2->elems[i])) {
+        if(!values_equal(l1->elems[i], l2->elems[i], depth + 1, too_deep)) {
           return false;
         }
       }
@@ -244,9 +247,11 @@ static bool values_equal(drax_value a, drax_value b) {
 
       if(f1->length != f2->length) { return false; }
 
+      if (depth >= MAX_VALUE_DEPTH) { *too_deep = true; return false; }
+
       for(i = 0; i < f1->length; i++) {
         if(f1->keys[i] != f2->keys[i] || 
-          !values_equal(f1->values[i], f2->values[i])) {
+          !values_equal(f1->values[i], f2->values[i], depth + 1, too_deep)) {
           return false;
         }
       }
@@ -980,7 +985,13 @@ int __start__(d_vm* vm, int inter_mode) {
       VMCase(OP_EQUAL) {
         drax_value beq = pop(vm);
         drax_value aeq = pop(vm);
-        push(vm, BOOL_VAL(values_equal(aeq, beq)));
+        bool too_deep = false;
+        bool eq = values_equal(aeq, beq, 0, &too_deep);
+        if (too_deep) {
+          raise_drax_error(vm, "error: values nested deeper than %d levels can not be compared\n", MAX_VALUE_DEPTH);
+          return 1;
+        }
+        push(vm, BOOL_VAL(eq));
         NEXT_OP(vm);
       }
       VMCase(OP_GREATER) {
@@ -1224,7 +1235,7 @@ int __start__(d_vm* vm, int inter_mode) {
         if (inter_mode) {
           if (peek(vm, 0) == 0) return 0;
 
-          print_drax(pop(vm), inter_mode);
+          print_drax(pop(vm), 0);
           dbreak_line();
         }
         return 0;

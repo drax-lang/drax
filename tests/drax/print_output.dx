@@ -1,0 +1,26 @@
+### print writes a string as it is. inspect, the shell, lists and frames show strings
+### quoted and escaped, so "1" and 1 (or "a, b" and two elements) can not be mistaken.
+### The scripts of tests/drax/support are run and their output is compared.
+
+fun run(name) do
+    Os.cmd("./bin/drax ./tests/drax/support/" ++ name ++ ".dx 2>&1")
+end
+
+expected = "hello\na\tb\n42\n[\"a\", 1]\n{'k': \"v\"}\n\"q\"\n\"a\\\"b\\n\\t\\\\\"\n[\"a, b\", 1, \"1\"]\n{'k': \"v\", 'n': [{'x': \"y\"}]}\nnil\ntrue\n\"a\\x1bb\\x7f\"\n"
+assert(run("print_strings") == expected, "print error: output of print_strings: " ++ run("print_strings"))
+
+### the limits of the parser: 255 parameters and a deep nesting are accepted
+assert(run("max_params") == "254\n", "parser error: 255 parameters")
+assert(run("deep_nesting") == "1\n", "parser error: nesting of 150 levels")
+
+### lists and frames nested deeper than MAX_VALUE_DEPTH: below it ==, != and inspect
+### work, above it the printing stops at "..." (the comparison is an error, see errors.dx)
+### (the output is long: it is filtered by grep, Os.cmd has a limited buffer)
+deep = "./bin/drax ./tests/drax/support/deep_values.dx"
+assert(Os.cmd(deep ++ " > /dev/null 2>&1; echo $?") == "0\n", "deep values error: must exit with status 0")
+assert(Os.cmd(deep ++ " 2>&1 | grep -c '^true$'") == "3\n", "deep values error: comparisons below the limit")
+assert(Os.cmd(deep ++ " 2>&1 | grep -c '[.][.][.]]]]'") == "1\n", "deep values error: a list is cut with ...")
+assert(Os.cmd(deep ++ " 2>&1 | grep -c '[.][.][.]}}}'") == "1\n", "deep values error: a frame is cut with ...")
+assert(Os.cmd(deep ++ " 2>&1 | grep -c '^printed$'") == "1\n", "deep values error: the program went on")
+
+print("Print output done!")

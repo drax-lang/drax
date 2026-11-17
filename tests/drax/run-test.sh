@@ -13,6 +13,8 @@ echo -e "\n\033[43m----------------------\033[0m"
 
 ./bin/drax ./tests/drax/print.dx
 
+./bin/drax ./tests/drax/print_output.dx
+
 ./bin/drax ./tests/drax/number.dx
 
 ./bin/drax ./tests/drax/functions.dx
