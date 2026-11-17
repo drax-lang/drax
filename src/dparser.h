@@ -22,6 +22,11 @@
 
 #define MAX_STATE_STACK 32
 
+/* limit of nested expressions (parentheses, lists, frames, blocks, lambdas) */
+#ifndef MAX_PARSE_DEPTH
+  #define MAX_PARSE_DEPTH 200
+#endif
+
 #define callback_table(n) void n(d_vm* vm, bool b);
 
 #define make_op_line(i, l, m, r) [i] = {l, m, r}
@@ -68,6 +73,7 @@ typedef struct parser_state {
   int is_refr;
   bool has_error;
   bool panic_mode;
+  int depth; /* nesting of expressions, see MAX_PARSE_DEPTH */
   state_machine machine;
   int scope_depth;
   d_call_sites* call_sites;

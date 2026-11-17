@@ -746,7 +746,7 @@ void process_line_break(d_vm* vm, bool v) {
 
 /* end of processors functions */
 
-static void parse_priorities(d_vm* vm, priorities p) {
+static void parse_priorities_inner(d_vm* vm, priorities p) {
   get_next_token();
   
   parser_callback p_call = GET_PRIORITY(parser.prev.type)->prefix;
@@ -773,6 +773,24 @@ static void parse_priorities(d_vm* vm, priorities p) {
   if (v && eq_and_next(DTK_EQ)) {
     FATAL("Invalid assignment target.");
   }
+}
+
+/**
+ * The parser is recursive: a source file with thousands of nested
+ * parentheses, lists or blocks would overflow the C stack. The depth is
+ * limited and the error is reported like any other syntax error.
+ */
+static void parse_priorities(d_vm* vm, priorities p) {
+  if (parser.depth >= MAX_PARSE_DEPTH) {
+    /* consume a token, so the callers always make progress */
+    get_next_token();
+    FATAL("Too many nested expressions.");
+    return;
+  }
+
+  parser.depth++;
+  parse_priorities_inner(vm, p);
+  parser.depth--;
 }
 
 static void expression(d_vm* vm) {
@@ -859,13 +877,17 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
   if (!is_internal) {
     process_token(DTK_PAR_OPEN, "Expect '(' after function name.");
 
-    char** stack_args = (char**) malloc(sizeof(char*) * max_arity);
+    char** stack_args = (char**) calloc((size_t) max_arity, sizeof(char*));
 
     if (get_current_token() != DTK_PAR_CLOSE) {
       do {
         f->arity++;
         if (f->arity > max_arity) {
+          /* stack_args holds max_arity entries: report, consume the
+           * parameter and never store it (the program is not run) */
           FATAL_CURR("Can't have more than 255 parameters.");
+          parse_variable(vm, "Expect parameter name.");
+          continue;
         }
 
         drax_value constant = parse_variable(vm, "Expect parameter name.");
@@ -882,6 +904,8 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
         stack_args[f->arity -1] = ts;
       } while (eq_and_next(DTK_COMMA));
     }
+
+    if (f->arity > max_arity) f->arity = max_arity;
 
     for (i = f->arity; i > 0 ; i--) {
       size_t sz = strlen(stack_args[i - 1]);
@@ -1169,6 +1193,7 @@ int __ibuild__(d_vm* vm, const char* input, char* path) {
 
   parser.has_error = false;
   parser.panic_mode = false;
+  parser.depth = 0;
   parser.active_fun = NULL;
 
   get_next_token();
@@ -1207,6 +1232,7 @@ int __build__(d_vm* vm, const char* input, char* path) {
 
   parser.has_error = false;
   parser.panic_mode = false;
+  parser.depth = 0;
   parser.active_fun = NULL;
 
   get_next_token();
