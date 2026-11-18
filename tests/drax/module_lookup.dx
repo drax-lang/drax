@@ -1,0 +1,44 @@
+### Names are looked up for every variable and function. A name that starts
+### like a module (but is not one) must not be taken for it, and the modules
+### must still be found.
+
+List_ = 1
+Listing = 2
+Lis = 3
+L = 4
+Mathematics = 5
+Errors = 6
+Error2 = 7
+Core_ = 8
+O = 9
+list = 10
+math = 11
+error = 12
+_List = 13
+Frame2 = 14
+
+assert(List_ == 1 and Listing == 2 and Lis == 3 and L == 4, "module lookup error: names that start like List")
+assert(Mathematics == 5 and Errors == 6 and Error2 == 7, "module lookup error: names that start like Math and Error")
+assert(Core_ == 8 and O == 9 and Frame2 == 14, "module lookup error: names that start like Core, Os and Frame")
+assert(list == 10 and math == 11 and error == 12 and _List == 13, "module lookup error: lower case names with the name of a module")
+
+### the modules and the functions with the name of a module still work
+assert(List.length([1, 2, 3]) == 3, "module lookup error: List")
+assert(Math.floor(2.5) == 2, "module lookup error: Math")
+assert(Number.to_string(5) == '5', "module lookup error: Number")
+assert(String.length('abc') == 3, "module lookup error: String")
+assert(Frame.is_empty(Frame.new()), "module lookup error: Frame")
+assert(Error.is(Error('x')), "module lookup error: Error module and Error function")
+assert(Os.get_env('DRAX_NO_SUCH_VARIABLE') == nil or true, "module lookup error: Os")
+
+### inside functions (local names, lambdas)
+fun lookup_inside(List_, Mathematics) do
+    Listing = List_ + Mathematics
+    return [Listing, List.length([Listing]), Math.floor(1.5)]
+end
+assert(lookup_inside(1, 2) == [3, 1, 1], "module lookup error: names inside a function")
+
+l = fun(Error2) Error2 + Math.floor(2.5) end
+assert(l(1) == 3, "module lookup error: name of a lambda parameter")
+
+print('Module lookup done!')

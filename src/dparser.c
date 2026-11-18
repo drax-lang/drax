@@ -332,7 +332,9 @@ static char* name_with_arity(d_vm* vm, const char* name, drax_value arity) {
   size_t sz = strlen(name) + 16;
   char* n = (char*) malloc(sizeof(char) * sz);
   snprintf(n, sz, "%s/%d", name, (int) arity);
-  return dpool_add(vm, n);
+  char* r = dpool_strndup(vm, n, strlen(n));
+  free(n);
+  return r;
 }
 
 static bool leads_to_return(d_instructions* instr, int ip) {

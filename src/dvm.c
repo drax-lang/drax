@@ -37,6 +37,16 @@
     } \
   } while (0)
 
+/**
+ * Functions of the error paths stay out of the interpreter loop: the loop
+ * has only the code of the happy path (registers, instruction cache).
+ */
+#if defined(__GNUC__) || defined(__clang__)
+  #define D_COLD __attribute__((noinline, cold))
+#else
+  #define D_COLD
+#endif
+
 #define STATUS_DCALL_ERROR            0
 #define STATUS_DCALL_SUCCESS          1
 #define STATUS_DCALL_SUCCESS_NO_CLEAR 2
@@ -66,6 +76,23 @@ void push(d_vm* vm, drax_value v) {
   if (vm->stack_count >= vm->stack_size) grow_stack(vm);
   vm->stack[vm->stack_count++] = v;
 }
+
+/**
+ * push is called for almost every instruction: inside this file it is
+ * expanded in place, with the growth of the stack out of the way.
+ */
+#if defined(__GNUC__) || defined(__clang__)
+  #define D_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+  #define D_UNLIKELY(x) (x)
+#endif
+
+static inline void push_inline(d_vm* vm, drax_value v) {
+  if (D_UNLIKELY(vm->stack_count >= vm->stack_size)) grow_stack(vm);
+  vm->stack[vm->stack_count++] = v;
+}
+
+#define push(vm, v) push_inline(vm, v)
 
 drax_value pop(d_vm* vm) {
   if (vm->stack_count == 0) return 0;
@@ -103,7 +130,6 @@ void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* modul
   frame->env_global = vm->envs->global;
   frame->stack_base = vm->stack_count;
   frame->local_base = vm->envs->local->count;
-  frame->prot = 0;
   frame->callee = DRAX_NIL_VAL;
 
   vm->active_instr = target;
@@ -226,7 +252,7 @@ void raise_drax_error(d_vm* vm, const char* format, ...) {
  * An Error used as an operand (1 + Error(...), a call of an Error) ends
  * the execution with its own message, not with a generic one.
  */
-static void raise_operand_error(d_vm* vm, drax_value a, drax_value b, const char* generic) {
+D_COLD static void raise_operand_error(d_vm* vm, drax_value a, drax_value b, const char* generic) {
   drax_value e = IS_ERROR(a) ? a : (IS_ERROR(b) ? b : 0);
 
   if (e != 0) {
@@ -303,28 +329,46 @@ static void snapshot_restore(d_vm* vm, d_snapshot* s) {
  * function or an import) is recovered by that loop.
  */
 static int recover_protected(d_vm* vm) {
-  d_frame* frames = vm->call_stack->frames;
-  int i;
+  d_frame* fr;
+  d_prot* p;
 
   if (vm->protect_count == 0) return 0;
 
-  for (i = vm->call_stack->count - 1; i >= 0; i--) {
-    if (frames[i].prot) break;
-  }
+  /* the last entry is the innermost protected frame */
+  p = &vm->prot_stack[vm->protect_count - 1];
+  if (p->loop != vm->loop_depth) return 0;
 
-  if (i < 0 || frames[i].prot != vm->loop_depth) return 0;
-
-  /* i is the innermost protected frame: the frames above it are not protected */
+  fr = &vm->call_stack->frames[p->frame];
   vm->protect_count--;
-  vm->stack_count = frames[i].stack_base;
-  vm->envs->local->count = frames[i].local_base;
-  vm->active_instr = frames[i].instr;
-  vm->ip = frames[i].ip;
-  vm->envs->global = frames[i].env_global;
-  vm->call_stack->count = i;
+  vm->stack_count = fr->stack_base;
+  vm->envs->local->count = fr->local_base;
+  vm->active_instr = fr->instr;
+  vm->ip = fr->ip;
+  vm->envs->global = fr->env_global;
+  vm->call_stack->count = p->frame;
 
   push(vm, take_pending_error(vm));
   return 1;
+}
+
+/* the frame on the top of the call stack was started by a protected call */
+static void protect_top_frame(d_vm* vm) {
+  if (vm->protect_count >= vm->prot_cap) {
+    int cap = vm->prot_cap == 0 ? 16 : vm->prot_cap * 2;
+    d_prot* np = (d_prot*) realloc(vm->prot_stack, sizeof(d_prot) * cap);
+
+    if (np == NULL) {
+      fprintf(stderr, "fatal: out of memory to grow the protected calls.\n");
+      exit(1);
+    }
+
+    vm->prot_stack = np;
+    vm->prot_cap = cap;
+  }
+
+  vm->prot_stack[vm->protect_count].frame = vm->call_stack->count - 1;
+  vm->prot_stack[vm->protect_count].loop = vm->loop_depth;
+  vm->protect_count++;
 }
 
 /* too_deep is set when lists/frames are nested deeper than MAX_VALUE_DEPTH */
@@ -468,6 +512,39 @@ static int name_without_arity(const char* k, char* base, size_t size) {
   return 1;
 }
 
+/* the hashes of a name (see d_name_hdr), in one pass over the characters */
+static void name_scan(const char* k, d_name_hdr* h) {
+  uint32_t fk = D_FNV_OFFSET, bk = 0, fb = 0, bb = 0;
+  int slash = -1, i;
+
+  for (i = 0; k[i] != '\0'; i++) {
+    if (k[i] == '/') { slash = i; fb = fk; bb = bk; }
+    fk = d_fnv_step(fk, k[i]);
+    bk = d_bucket_step(bk, k[i]);
+  }
+
+  h->magic = D_NAME_MAGIC;
+  h->slash = slash;
+  h->fk = fk;
+  h->bk = bk;
+  h->fb = fb;
+  h->bb = bb;
+}
+
+/**
+ * The hashes of a name used by an instruction: they were computed when
+ * the name was created (dpool_strndup). 'tmp' is only used for a string that
+ * is not from the pool.
+ */
+static inline const d_name_hdr* name_info(const char* k, d_name_hdr* tmp) {
+  const d_name_hdr* h = ((const d_name_hdr*) k) - 1;
+  if (D_UNLIKELY(h->magic != D_NAME_MAGIC)) {
+    name_scan(k, tmp);
+    return tmp;
+  }
+  return h;
+}
+
 /**
  * Calls are compiled with the arity in the name ("sum/2"), so
  * functions with the same name and different arities can coexist,
@@ -477,32 +554,53 @@ static int name_without_arity(const char* k, char* base, size_t size) {
  * with the same arity, global name (variables, lambdas), natives.
  */
 static int lookup_name(d_vm* vm, char* k, int is_local, drax_value* v) {
-  char base[256];
-  int has_arity = name_without_arity(k, base, sizeof(base));
-  char* plain = has_arity ? base : k;
+  d_name_hdr tmp;
+  const d_name_hdr* h = name_info(k, &tmp);
+  const int slash = h->slash;
 
-  if (get_mod_table(vm->envs->modules, plain, v)) {
-    /**
-     * a call with the name of a module is the native function with
-     * the same name when there is one: Error(x) and Error.is(x)
-     */
+  /* "name/arity" is a call of "name" (a name that is too long is not) */
+  const int has_arity = slash > 0 && slash < 256;
+  char base[256];
+
+  /* the modules start with a few characters, the others skip this */
+  if (d_mod_may_have(vm->envs->modules, k[0])) {
+    char* plain = k;
     if (has_arity) {
-      drax_value nf = get_fun_table(vm->envs->native, plain, 0);
-      if (nf) *v = nf;
+      memcpy(base, k, (size_t) slash);
+      base[slash] = '\0';
+      plain = base;
     }
-    return 1;
+
+    if (get_mod_table(vm->envs->modules, plain, v)) {
+      /**
+       * a call with the name of a module is the native function with
+       * the same name when there is one: Error(x) and Error.is(x)
+       */
+      if (has_arity) {
+        drax_value nf = get_fun_table(vm->envs->native, plain, 0);
+        if (nf) *v = nf;
+      }
+      return 1;
+    }
   }
 
   if (is_local) {
     d_local_var_table* l = vm->envs->local;
     int range = vm->active_instr->local_range;
 
-    if (get_local_table(l, range, k, v)) return 1;
-    if (has_arity && get_local_table(l, range, base, v)) return 1;
+    if (get_local_table_h(l, range, h->fk, v)) return 1;
+    if (has_arity && get_local_table_h(l, range, h->fb, v)) return 1;
   }
 
-  if (get_var_table(vm->envs->global, k, v)) return 1;
-  if (has_arity && get_var_table(vm->envs->global, base, v)) return 1;
+  if (get_var_table_h(vm->envs->global, h->bk, h->fk, v)) return 1;
+  if (has_arity && get_var_table_h(vm->envs->global, h->bb, h->fb, v)) return 1;
+
+  char* plain = k;
+  if (has_arity) {
+    memcpy(base, k, (size_t) slash);
+    base[slash] = '\0';
+    plain = base;
+  }
 
   *v = get_fun_table(vm->envs->native, plain, 0);
   return *v ? 1 : 0;
@@ -955,6 +1053,39 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
   return 1;
 }
 
+/**
+ * Protected call, f?(...): the function and its arguments are on the
+ * stack. Returns 1 when the failure ends the program.
+ */
+D_COLD static int protected_call(d_vm* vm, drax_value a) {
+  dgc_maybe_collect(vm);
+
+  drax_value v = peek(vm, a);
+  remove_elem_on_stack(vm, a);
+
+  d_snapshot snap;
+  snapshot_take(vm, &snap);
+  /* a failed call leaves neither the function nor its arguments */
+  snap.stack_count -= (int) a;
+
+  vm->soft_depth++;
+  int failed = execute_d_function(vm, a, v);
+  vm->soft_depth--;
+
+  if (failed) {
+    /* without a pending error it was already reported: it ends the program */
+    if (!vm->pending_error) return 1;
+
+    snapshot_restore(vm, &snap);
+    push(vm, take_pending_error(vm));
+  } else if (IS_FUNCTION(v)) {
+    /* a Drax function runs on its own frame, which is the protected one */
+    protect_top_frame(vm);
+  }
+
+  return 0;
+}
+
 /* the interpreter loop, __start__ restarts it after a recovered failure */
 static int __exec__(d_vm* vm, int inter_mode) {
 
@@ -1083,7 +1214,9 @@ static int __exec__(d_vm* vm, int inter_mode) {
       VMCase(OP_SET_G_ID) {
         drax_value v = pop(vm);
         char* k = (char*) GET_VALUE(vm);
-        put_var_table(vm->envs->global, k, v);
+        d_name_hdr tmp;
+        const d_name_hdr* h = name_info(k, &tmp);
+        put_var_table_h(vm->envs->global, h->bk, h->fk, v);
         NEXT_OP(vm);
       }
       VMCase(OP_GET_G_ID) {
@@ -1092,7 +1225,9 @@ static int __exec__(d_vm* vm, int inter_mode) {
       }
       VMCase(OP_SET_L_ID) {
         char* k = (char*) GET_VALUE(vm);
-        put_local_table(vm->envs->local, k, pop(vm));
+        d_name_hdr tmp;
+        const d_name_hdr* h = name_info(k, &tmp);
+        put_local_table_h(vm->envs->local, h->fk, pop(vm));
         NEXT_OP(vm);
       }
       VMCase(OP_GET_L_ID) {
@@ -1271,33 +1406,8 @@ static int __exec__(d_vm* vm, int inter_mode) {
          */
         a = GET_VALUE(vm);
 
-        S_COMMON_CALL: {
-          dgc_maybe_collect(vm);
-
-          drax_value v = peek(vm, a);
-          remove_elem_on_stack(vm, a);
-
-          d_snapshot snap;
-          snapshot_take(vm, &snap);
-          /* a failed call leaves neither the function nor its arguments */
-          snap.stack_count -= (int) a;
-
-          vm->soft_depth++;
-          int failed = execute_d_function(vm, a, v);
-          vm->soft_depth--;
-
-          if (failed) {
-            /* without a pending error it was already reported: it ends the program */
-            if (!vm->pending_error) return 1;
-
-            snapshot_restore(vm, &snap);
-            push(vm, take_pending_error(vm));
-          } else if (IS_FUNCTION(v)) {
-            /* a Drax function runs on its own frame, which is the protected one */
-            CURR_FRAME(vm)->prot = vm->loop_depth;
-            vm->protect_count++;
-          }
-        }
+        S_COMMON_CALL:
+        if (protected_call(vm, a)) return 1;
         NEXT_OP(vm);
       }
       VMCase(OP_D_CALL_P) {
@@ -1434,7 +1544,9 @@ static int __exec__(d_vm* vm, int inter_mode) {
         drax_value result = (vm->stack_count > fr->stack_base) ?
           vm->stack[vm->stack_count - 1] : DRAX_NIL_VAL;
 
-        if (fr->prot) vm->protect_count--;
+        if (vm->protect_count > 0 && vm->prot_stack[vm->protect_count - 1].frame == vm->call_stack->count - 1) {
+          vm->protect_count--;
+        }
 
         vm->stack_count = fr->stack_base;
         vm->envs->local->count = fr->local_base;
@@ -1536,7 +1648,8 @@ dt_envs* new_environment(int ignore_natives, int ignore_local, int ignore_global
  * are shared by a function and its closures, so they are owned by
  * the VM and released by __destroy__.
  */
-char* dpool_add(d_vm* vm, char* s) {
+/* the pool owns 'base' (what free() takes) until the VM is destroyed */
+static void dpool_push(d_vm* vm, char* base) {
   d_str_pool* p = vm->str_pool;
 
   if (p->count >= p->cap) {
@@ -1544,15 +1657,27 @@ char* dpool_add(d_vm* vm, char* s) {
     p->items = (char**) realloc(p->items, sizeof(char*) * p->cap);
   }
 
-  p->items[p->count++] = s;
+  p->items[p->count++] = base;
+}
+
+char* dpool_add(d_vm* vm, char* s) {
+  dpool_push(vm, s);
   return s;
 }
 
+/**
+ * A copy of 's' for the pool, with the hashes of the name in front of it.
+ * Every name that an instruction uses comes from here.
+ */
 char* dpool_strndup(d_vm* vm, const char* s, size_t n) {
-  char* r = (char*) malloc(n + 1);
+  d_name_hdr* h = (d_name_hdr*) malloc(sizeof(d_name_hdr) + n + 1);
+  char* r = (char*) (h + 1);
+
   memcpy(r, s, n);
   r[n] = '\0';
-  return dpool_add(vm, r);
+  name_scan(r, h);
+  dpool_push(vm, (char*) h);
+  return r;
 }
 
 /**
@@ -1587,6 +1712,7 @@ void __destroy__(d_vm* vm) {
   free(vm->str_pool);
 
   free(vm->pending_msg);
+  free(vm->prot_stack);
   free(vm->call_stack->frames);
   free(vm->call_stack);
   free(vm->stack);
@@ -1673,6 +1799,8 @@ d_vm* createMainVM() {
    * DRAX_MAX_CALL_DEPTH overrides the limit of non tail calls.
    */
   vm->native_nesting = 0;
+  vm->prot_stack = NULL;
+  vm->prot_cap = 0;
   vm->protect_count = 0;
   vm->soft_depth = 0;
   vm->loop_depth = 0;
