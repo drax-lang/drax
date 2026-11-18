@@ -46,6 +46,8 @@ set DRAX_MAX_CALL_DEPTH=
 
 .\bin\drax .\tests\drax\module_lookup.dx
 
+.\bin\drax .\tests\drax\local_slots.dx
+
 .\bin\drax .\tests\drax\gc.dx
 
 .\bin\drax .\tests\drax\gc_memory.dx

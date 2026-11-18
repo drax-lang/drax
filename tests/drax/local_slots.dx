@@ -1,0 +1,221 @@
+### Local variables live in fixed slots of the frame of the function.
+### These cases check that the semantics did not change.
+
+### reassigning a variable
+fun reassign(a) do
+    x = a
+    x = x + 1
+    x = x * 2
+    return x
+end
+assert(reassign(3) == 8, "local slots error: reassign")
+
+### the same name on both branches of an if
+fun branches(c) do
+    if (c) do
+        v = 'then'
+    else
+        v = 'else'
+    end
+    return v
+end
+assert(branches(true) == 'then', "local slots error: assigned on the then branch")
+assert(branches(false) == 'else', "local slots error: assigned on the else branch")
+
+### many locals, parameters in every position
+fun many(a, b, c, d) do
+    e = a + b
+    f = c + d
+    g = e * f
+    h = g - a
+    return [a, b, c, d, e, f, g, h]
+end
+assert(many(1, 2, 3, 4) == [1, 2, 3, 4, 3, 7, 21, 20], "local slots error: many locals")
+
+### a local that shadows a global
+g_value = 'global'
+fun shadow() do
+    before = g_value
+    g_value = 'local'
+    return [before, g_value]
+end
+assert(shadow() == ['global', 'local'], "local slots error: local shadows a global")
+assert(g_value == 'global', "local slots error: the global is not changed")
+
+### a local that is not assigned on this path is the global one
+fun maybe(c) do
+    if (c) do
+        late = 'local'
+    end
+    return late
+end
+late = 'global'
+assert(maybe(true) == 'local', "local slots error: assigned local")
+assert(maybe(false) == 'global', "local slots error: not assigned, the global is used")
+
+### recursion: every call has its own slots
+fun fact(n) do
+    if (n < 2) do
+        return 1
+    end
+    r = fact(n - 1)
+    return n * r
+end
+assert(fact(10) == 3628800, "local slots error: recursion")
+
+fun fib(n) do
+    if (n < 2) do
+        return n
+    end
+    a = fib(n - 1)
+    b = fib(n - 2)
+    return a + b
+end
+assert(fib(15) == 610, "local slots error: fib")
+
+### tail calls reuse the frame: the slots start clean
+fun tail(n, acc) do
+    t = acc + n
+    if (n == 0) do
+        return t
+    end
+    return tail(n - 1, t)
+end
+assert(tail(1000, 0) == 500500, "local slots error: tail call")
+
+### closures capture the values when they are created
+fun make_adder(n) do
+    return fun(x) x + n end
+end
+add5 = make_adder(5)
+add10 = make_adder(10)
+assert(add5(1) == 6 and add10(1) == 11, "local slots error: closures")
+
+fun capture_changes() do
+    x = 1
+    f = fun() x end
+    x = 2
+    return [f(), x]
+end
+assert(capture_changes() == [1, 2], "local slots error: closure keeps the value it captured")
+
+### nested closures
+fun outer(a) do
+    b = a * 2
+    return fun(c) do
+        d = c + b
+        return fun(e) a + b + d + e end
+    end
+end
+assert(outer(1)(10)(100) == 1 + 2 + 12 + 100, "local slots error: nested closures")
+
+### a closure that captures a function and a parameter
+fun twice(f) do
+    return fun(x) f(f(x)) end
+end
+fun inc(x) do x + 1 end
+assert(twice(inc)(0) == 2, "local slots error: capture of a function")
+assert(twice(fun(x) x * 3 end)(2) == 18, "local slots error: capture of a lambda")
+
+### a closure that uses a global defined later (late binding)
+fun uses_later() do
+    return later_fn(4)
+end
+fun later_fn(x) do x * 2 end
+assert(uses_later() == 8, "local slots error: late binding")
+
+### the callbacks of natives
+fun scale(list, k) do
+    return List.map(list, fun(x) x * k end)
+end
+assert(scale([1, 2, 3], 10) == [10, 20, 30], "local slots error: callback that captures")
+
+fun filter_big(list, limit) do
+    return List.filter(list, fun(x) x > limit end)
+end
+assert(filter_big([1, 5, 9], 4) == [5, 9], "local slots error: filter that captures")
+
+### a local named like a function
+fun same_name(inc) do
+    return inc + 1
+end
+assert(same_name(41) == 42, "local slots error: parameter named like a function")
+
+fun local_function() do
+    f = fun(x) x + 100 end
+    return f(1)
+end
+assert(local_function() == 101, "local slots error: a function stored in a local")
+
+### local with the same name as a module
+fun like_module() do
+    List_ = [1, 2]
+    return List.length(List_)
+end
+assert(like_module() == 2, "local slots error: local and module")
+
+### protected calls and locals
+fun protected_locals(a) do
+    b = a + 1
+    r = boom?(b)
+    c = b + 1
+    return [b, Error.is(r), c]
+end
+fun boom(x) do x + 'a' end
+assert(protected_locals(1) == [2, true, 3], "local slots error: locals after a protected failure")
+
+### the arguments of a call keep their order, with any number of them
+fun args1(a) do [a] end
+fun args2(a, b) do [a, b] end
+fun args3(a, b, c) do [a, b, c] end
+fun args4(a, b, c, d) do [a, b, c, d] end
+fun args5(a, b, c, d, e) do [a, b, c, d, e] end
+assert(args1(1) == [1], "local slots error: one argument")
+assert(args2(1, 2) == [1, 2], "local slots error: two arguments")
+assert(args3(1, 2, 3) == [1, 2, 3], "local slots error: three arguments")
+assert(args4(1, 2, 3, 4) == [1, 2, 3, 4], "local slots error: four arguments")
+assert(args5(1, 2, 3, 4, 5) == [1, 2, 3, 4, 5], "local slots error: five arguments")
+assert(args3(args2(1, 2), 3, args1(4)) == [[1, 2], 3, [4]], "local slots error: nested calls")
+assert((1 |> args3(2, 3)) == [1, 2, 3], "local slots error: the argument of a pipe goes first")
+assert((1 |> args2(2)) == [1, 2], "local slots error: pipe with one more argument")
+
+### closures: captured values, late bound names and similar names
+fun make_adder(n) do
+    nn = n * 10
+    return fun(x) x + n + nn end
+end
+assert(make_adder(1)(2) == 13, "local slots error: capture of two locals")
+
+fun late_and_captured(k) do
+    kk = k + 1
+    return fun(x) x + k + later_fn(kk) end
+end
+fun later_fn(v) do v * 2 end
+assert(late_and_captured(1)(10) == 15, "local slots error: captured and late bound names")
+
+fun closures_in_loop(i, acc) do
+    if (i == 0) do
+        return acc
+    else
+        f = fun(x) x + i end
+        return closures_in_loop(i - 1, acc + f(1))
+    end
+end
+assert(closures_in_loop(1000, 0) == 501500, "local slots error: closures created in a loop")
+
+### a name used more than once, and a lambda inside of a lambda
+fun repeated(n) do
+    return fun(x) x + n + n + n end
+end
+assert(repeated(2)(1) == 7, "local slots error: a captured name used three times")
+
+fun nested(a) do
+    b = a * 2
+    return fun(x) do
+        g = fun(y) y + a + b + a end
+        return g(x) + b
+    end
+end
+assert(nested(1)(10) == 10 + 1 + 2 + 1 + 2, "local slots error: lambda inside of a lambda")
+
+print('Local slots done!')

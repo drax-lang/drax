@@ -135,6 +135,32 @@ static int get_local(parser_state* psr, char* name) {
   return -1;
 }
 
+/**
+ * The slot of a local variable is its position in the register of the
+ * function: the same name is always the same slot, an assignment to an
+ * existing variable writes its slot. The VM reads and writes a local by
+ * slot, the names are only kept for the cases that need them.
+ */
+static int define_local(d_vm* vm, char* name) {
+  d_instructions* instr = vm->active_instr;
+  int slot = get_local(&parser, name);
+
+  if (slot >= 0) return slot;
+
+  put_local(&parser, name);
+  slot = parser.locals[parser.locals_length - 1]->length - 1;
+
+  if (slot >= instr->local_names_cap) {
+    instr->local_names_cap = instr->local_names_cap == 0 ? 8 : instr->local_names_cap * 2;
+    instr->local_names = (char**) realloc(instr->local_names, sizeof(char*) * instr->local_names_cap);
+    vm->gc_meta->bytes += sizeof(char*) * (size_t) (instr->local_names_cap / 2 > 0 ? instr->local_names_cap / 2 : instr->local_names_cap);
+  }
+
+  instr->local_names[slot] = name;
+  instr->local_range = slot + 1;
+  return slot;
+}
+
 /* "name/2" is a call of "name" */
 static int get_local_without_arity(parser_state* psr, char* name) {
   char* slash = strrchr(name, '/');
@@ -692,12 +718,8 @@ void process_variable(d_vm* vm, bool v) {
     push_state(&parser, PS_ASSIGNMENT);
     expression(vm);
     pop_state(&parser);
-    put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, (drax_value) name);
-    
-    if (!is_global) {
-      put_local(&parser, name);
-      vm->active_instr->local_range++;
-    }
+    int slot = is_global ? -1 : define_local(vm, name);
+    put_pair(vm, is_global ? OP_SET_G_ID : OP_SET_L_ID, is_global ? (drax_value) name : (drax_value) slot);
 
     /**
      * an assignment is an expression and evaluates to the assigned
@@ -705,12 +727,18 @@ void process_variable(d_vm* vm, bool v) {
      * expression is expected, including as the last expression of a
      * function or of an if branch.
      */
-    char* get_name = dpool_strndup(vm, name, ctk.length);
-    put_pair(vm, is_global ? OP_GET_G_ID : OP_GET_L_ID, (drax_value) get_name);
+    if (is_global) {
+      char* get_name = dpool_strndup(vm, name, ctk.length);
+      put_pair(vm, OP_GET_G_ID, (drax_value) get_name);
+    } else {
+      put_pair(vm, OP_GET_L_ID, (drax_value) slot);
+    }
     return;
   }
 
-  if (is_global || get_local(&parser, name) == -1) {
+  int local_slot = is_global ? -1 : get_local(&parser, name);
+
+  if (local_slot == -1) {
     parser.last_global_load = GET_INSTRUCTION(vm)->instr_count;
     parser.last_global_instr = GET_INSTRUCTION(vm);
     put_pair(vm, OP_GET_G_ID, (drax_value) name);
@@ -730,7 +758,7 @@ void process_variable(d_vm* vm, bool v) {
     return;
   }
 
-  put_pair(vm, OP_GET_L_ID, (drax_value) name);
+  put_pair(vm, OP_GET_L_ID, (drax_value) local_slot);
 }
 
 void process_import(d_vm* vm, bool v) {
@@ -932,8 +960,7 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
     for (i = f->arity; i > 0 ; i--) {
       size_t sz = strlen(stack_args[i - 1]);
       char* s = dpool_strndup(vm, stack_args[i - 1], sz);
-      put_pair(vm, OP_SET_L_ID, (drax_value) s);
-      put_local(&parser, s);
+      put_pair(vm, OP_SET_L_ID, (drax_value) define_local(vm, s));
     }
     vm->active_instr->local_range = f->arity;
 
@@ -1013,7 +1040,6 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
 
 void process_function(d_vm* vm, bool v) {
   UNUSED(v);
-  int is_global = IS_GLOBAL_SCOPE();
   drax_function* f = create_function(vm, false, false);
 
   if (f->name != NULL) {
@@ -1023,13 +1049,11 @@ void process_function(d_vm* vm, bool v) {
      * stored as "name/arity" (used by calls) and as "name"
      * (used when the function is referenced as a value).
      */
-    d_op_code set_op = is_global ? OP_SET_G_ID : OP_SET_L_ID;
-    d_op_code get_op = is_global ? OP_GET_G_ID : OP_GET_L_ID;
+    /* named functions are only accepted in the global scope */
+    put_pair(vm, OP_SET_G_ID, (drax_value) name_with_arity(vm, f->name, f->arity));
+    put_pair(vm, OP_GET_G_ID, (drax_value) name_with_arity(vm, f->name, f->arity));
 
-    put_pair(vm, set_op, (drax_value) name_with_arity(vm, f->name, f->arity));
-    put_pair(vm, get_op, (drax_value) name_with_arity(vm, f->name, f->arity));
-
-    put_pair(vm, set_op, (drax_value) f->name);
+    put_pair(vm, OP_SET_G_ID, (drax_value) f->name);
   }
 }
 

@@ -143,17 +143,18 @@ every syntax at once (`if`/`else`, `return`, `and`/`or`, pipes, nested
 blocks) and never marks a call that has work after it.
 
 Bytecode of the two functions above (output of `make opcode`, simplified:
-constants and argument counts are shown inline):
+constants and argument counts are shown inline; locals are addressed by
+slot number, here `n` is slot 0 and `acc` is slot 1):
 
 ```
 sum_to                          sum_body
   ...                             ...
-  OP_GET_G_ID, "sum_to"           OP_GET_L_ID, "n"
-  OP_GET_L_ID, "n"                OP_GET_G_ID, "sum_body"
-  OP_PUSH, 1                      OP_GET_L_ID, "n"
+  OP_GET_G_ID, "sum_to"           OP_GET_L_ID, 0
+  OP_GET_L_ID, 0                  OP_GET_G_ID, "sum_body"
+  OP_PUSH, 1                      OP_GET_L_ID, 0
   OP_SUB                          OP_PUSH, 1
-  OP_GET_L_ID, "acc"              OP_SUB
-  OP_GET_L_ID, "n"                OP_D_CALL, 1      <- normal call
+  OP_GET_L_ID, 1                  OP_SUB
+  OP_GET_L_ID, 0                  OP_D_CALL, 1      <- normal call
   OP_ADD                          OP_ADD            <- work after the call
   OP_D_CALL_T, 2   <- tail call   OP_RETURN
   OP_RETURN

@@ -385,6 +385,8 @@ static drax_value __d_list_iterator(d_vm* vm, int* stat, list_op op) {
   halt_instr.instr_count = 1;
   halt_instr.instr_size = 1;
   halt_instr.local_range = 0;
+  halt_instr.local_names = NULL;
+  halt_instr.local_names_cap = 0;
   halt_instr.file = NULL;
 
   if (!IS_LIST(lst)) {

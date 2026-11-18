@@ -118,14 +118,6 @@ void del_var_table(d_generic_var_table* t, char* name);
 
 d_local_var_table* new_local_table();
 
-void put_local_table(d_local_var_table* t, char* name, drax_value value);
-
-void put_local_table_h(d_local_var_table* t, size_t fnv, drax_value value);
-
-int get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value);
-
-int get_local_table_h(d_local_var_table* t, int local_range, size_t fnv, drax_value* value);
-
 int ensure_local_table_capacity(d_local_var_table* t, int extra);
 
 

@@ -25,28 +25,28 @@
  #define DEBUG_OP(x)
 #endif
 
-#define dg16_byte(f) \
-    (f->ip += 2, (uint16_t)((f->ip[-2] << 8) | f->ip[-1]))
-
+/**
+ * The interpreter loop (__exec__) keeps the instruction pointer in the
+ * local variable 'ip', not in vm->ip: it is written to vm->ip (SYNC_IP) before
+ * anything outside of the loop can read it (calls, errors, the garbage
+ * collector) and read again (RELOAD_IP) when that can change it.
+ */
 #ifdef _COMP_GOTO
-  #define VMDispatch(vm) goto *dispatch_table[*(vm->ip++)];
+  #define VMDispatch(vm) goto *dispatch_table[*(ip++)];
 
   #define VMcond(f) 
 
   #define VMCase(t) do_##t:
 
   #define NEXT_OP(vm) \
-      goto *dispatch_table[*(vm->ip++)]
+      goto *dispatch_table[*(ip++)]
 
   #define VMDefault() do_default:
 #else
   #define VMDispatch(vm) while(true)
 
   #define VMcond(f) \
-      switch (*(f->ip++))
-
-  #define dg16_byte(f) \
-      (f->ip += 2, (uint16_t)((f->ip[-2] << 8) | f->ip[-1]))
+      switch (*(ip++))
 
   #define VMCase(t) case t:
 

@@ -177,14 +177,12 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         break;
       }
       case OP_SET_L_ID: {
-        char* s = (char*)(*ip);
-        printf("OP_SET_L_ID, \"%s\"\n", s);
+        printf("OP_SET_L_ID, slot %ld\n", (long)(drax_value)(*ip));
         ip++;
         break;
       }
       case OP_GET_L_ID: {
-        char* s = (char*)(*ip);
-        printf("OP_GET_L_ID, \"%s\"\n", s);
+        printf("OP_GET_L_ID, slot %ld\n", (long)(drax_value)(*ip));
         ip++;
         break;
       }

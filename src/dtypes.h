@@ -6,6 +6,7 @@
 #define __DTYPES
 
 #include <stddef.h>
+#include <string.h>
 #include "ddefs.h"
 #include <stdbool.h>
 
@@ -158,6 +159,16 @@ typedef struct d_instructions {
   int local_range; /* used by local definitions */
 
   /**
+   * Local variables live in fixed slots of the frame of the function,
+   * chosen by the compiler: OP_GET_L_ID and OP_SET_L_ID take the number of
+   * the slot. local_names[i] is the name of the slot i (a name from the
+   * pool), used when a slot is read before it is set, and to capture the
+   * variables of a function (closures).
+   */
+  char** local_names;
+  int local_names_cap;
+
+  /**
    * uextrn_ref: sed by lambda to check if there are external 
    * references (local variables outside the lambda 
    * or global variables).
@@ -175,9 +186,29 @@ typedef struct d_instructions {
 
 /* Vars allocation */
 
-double draxvalue_to_num(drax_value value);
+/**
+ * Values use NaN boxing: nil, booleans and structs live inside
+ * the NaN space. Every NaN is stored as the canonical quiet NaN,
+ * so a NaN produced by a computation is always a number.
+ *
+ * These are used by every arithmetic instruction: they are expanded in
+ * place.
+ */
+#define D_CANONICAL_NAN ((drax_value) 0x7ff8000000000000)
 
-drax_value num_to_draxvalue(double num);
+static inline double draxvalue_to_num(drax_value value) {
+  double num;
+  memcpy(&num, &value, sizeof(drax_value));
+  return num;
+}
+
+static inline drax_value num_to_draxvalue(double num) {
+  drax_value value;
+  if (num != num) return D_CANONICAL_NAN;
+
+  memcpy(&value, &num, sizeof(double));
+  return value;
+}
 
 /* Helpers */
 

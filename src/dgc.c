@@ -201,7 +201,8 @@ static size_t dgc_size_of(d_struct* d) {
       return sizeof(drax_frame) + (sizeof(drax_value) + sizeof(char*) + sizeof(int) + 16) * ((drax_frame*) d)->cap;
     case DS_FUNCTION: {
       d_instructions* i = ((drax_function*) d)->instructions;
-      return sizeof(drax_function) + sizeof(d_instructions) + i->instr_size * (sizeof(drax_value) + sizeof(int));
+      return sizeof(drax_function) + sizeof(d_instructions) + i->instr_size * (sizeof(drax_value) + sizeof(int))
+           + sizeof(char*) * (size_t) i->local_names_cap;
     }
     case DS_NATIVE:
       return sizeof(drax_os_native);
@@ -220,6 +221,7 @@ void free_instructions(d_instructions* instr) {
   free(instr->values);
   free(instr->lines);
   free(instr->extrn_ref);
+  free(instr->local_names);
   free(instr);
 }
 

@@ -68,6 +68,8 @@ DRAX_MAX_CALL_DEPTH=1000 ./bin/drax ./tests/drax/tail_calls.dx
 
 ./bin/drax ./tests/drax/module_lookup.dx
 
+./bin/drax ./tests/drax/local_slots.dx
+
 ./bin/drax ./tests/drax/errors.dx
 
 # print reaches a file or a pipe line by line, even if the process is killed

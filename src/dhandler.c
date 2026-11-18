@@ -228,60 +228,6 @@ int ensure_local_table_capacity(d_local_var_table* t, int extra) {
   return 1;
 }
 
-/**
- * The table size (count) is not incremented normally.
- * it is based on the slots of each function
- */
-void put_local_table(d_local_var_table* t, char* name, drax_value value) {
-  uint32_t f, b;
-  name_hashes(name, &f, &b);
-  put_local_table_h(t, f, value);
-}
-
-void put_local_table_h(d_local_var_table* t, size_t key, drax_value value) {
-  if (t->count <= 0) return;
-
-  int next_index = t->count - 1;
-  /**
-   * check which is the next unused index.
-   * 
-   * x           => used
-   * 0           => not used
-   * 
-   * t->array    =>  |x|x|x|x|x|x|0|0|0|x|
-   * next_index  =>  (10 -1)
-   * 
-   * while loop will stop at the first 0
-   * next_index  =>  (8)
-   */
-  while (next_index > 0 && t->array[next_index].key != 0) {
-    next_index--;
-  }
-
-  t->array[next_index].key = key;
-  t->array[next_index].value = value;
-}
-
-int get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value) {
-  return get_local_table_h(t, local_range, fnv1a_hash(name, (int) strlen(name)), value);
-}
-
-int get_local_table_h(d_local_var_table* t, int local_range, size_t key, drax_value* value) {
-  if (t->count <= 0) return 0;
-
-  int init = t->count - local_range;
-  init = init < 0 ? 0 : init;
-
-  int i;
-  for (i = init; i < t->count; i++) {
-    if ((t->array[i].key != 0) && (t->array[i].key == key)) {
-      *value = t->array[i].value;
-      return 1;
-    }
-  }
-  
-  return 0;
-}
 
 /**
  * Modules implementation

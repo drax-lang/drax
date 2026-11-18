@@ -21,6 +21,21 @@
 
 #include "doutopcode.h"
 
+/* see the macros of the loop on dvm.h */
+/**
+ * 'lbase' is the first local slot of the frame of the function that runs:
+ * it is calculated again when the frame changes (calls, return) or when
+ * the table of locals can grow (a call).
+ */
+#define SYNC_IP()   (vm->ip = ip)
+#define RELOAD_IP() \
+  do { \
+    ip = vm->ip; \
+    lbase = vm->call_stack->count > 0 ? &vm->envs->local->array[CURR_FRAME(vm)->local_base] : NULL; \
+  } while (0)
+#define OPERAND()   (*(ip++))
+#define OPERAND16() (ip += 2, (uint16_t) ((ip[-2] << 8) | ip[-1]))
+
 /**
  * Direct OP on stack
  */
@@ -32,6 +47,7 @@
       vm->stack_count--; \
       vm->stack[vm->stack_count - 1] = AS_VALUE(AS_NUMBER(v1) op AS_NUMBER(v2)); \
     } else { \
+      SYNC_IP(); \
       raise_operand_error(vm, v1, v2, MSG_BAD_AGR_ARITH_OP); \
       return 1; \
     } \
@@ -100,6 +116,14 @@ drax_value pop(d_vm* vm) {
   return vm->stack[vm->stack_count];
 }
 
+static inline drax_value pop_inline(d_vm* vm) {
+  if (vm->stack_count == 0) return 0;
+  vm->stack_count--;
+  return vm->stack[vm->stack_count];
+}
+
+#define pop(vm) pop_inline(vm)
+
 static drax_value pop_times(d_vm* vm, int t) {
   vm->stack_count -= t;
   return vm->stack[vm->stack_count];
@@ -110,19 +134,22 @@ static drax_value peek(d_vm* vm, int distance) {
   return vm->stack[vm->stack_count -1 - distance];
 }
 
-void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* module_env) {
-  if (vm->call_stack->count >= vm->call_stack->size) {
-    int new_size = vm->call_stack->size * 2;
-    d_frame* nf = (d_frame*) realloc(vm->call_stack->frames, sizeof(d_frame) * new_size);
+D_COLD static void grow_call_stack(d_vm* vm) {
+  int new_size = vm->call_stack->size * 2;
+  d_frame* nf = (d_frame*) realloc(vm->call_stack->frames, sizeof(d_frame) * new_size);
 
-    if (nf == NULL) {
-      fprintf(stderr, "fatal: out of memory to grow the call stack.\n");
-      exit(1);
-    }
-
-    vm->call_stack->frames = nf;
-    vm->call_stack->size = new_size;
+  if (nf == NULL) {
+    fprintf(stderr, "fatal: out of memory to grow the call stack.\n");
+    exit(1);
   }
+
+  vm->call_stack->frames = nf;
+  vm->call_stack->size = new_size;
+}
+
+/* a call pushes a frame: this is expanded in place by the calls of the VM loop */
+static inline void callstack_push_inline(d_vm* vm, d_instructions* target, d_generic_var_table* module_env) {
+  if (D_UNLIKELY(vm->call_stack->count >= vm->call_stack->size)) grow_call_stack(vm);
 
   d_frame* frame = &vm->call_stack->frames[vm->call_stack->count++];
   frame->instr = vm->active_instr;
@@ -138,6 +165,10 @@ void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* modul
   if (module_env != NULL) {
     vm->envs->global = module_env;
   }
+}
+
+void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* module_env) {
+  callstack_push_inline(vm, target, module_env);
 }
 
 int callstack_pop(d_vm* vm) {
@@ -497,6 +528,29 @@ void zero_new_local_range(d_vm* vm, int range) {
 }
 
 /**
+ * The slots of the frame of a call. A slot with key 0 is not set, so only
+ * the keys are cleared (the table grows by the function above).
+ *
+ * Invariant: the value of a slot that is not set is stale (it may point to a
+ * freed object). Every scan of the locals (GC roots, captures, snapshots)
+ * must check 'key != 0' before reading 'value'.
+ */
+static inline void zero_locals_inline(d_vm* vm, int range) {
+  d_local_var_table* l = vm->envs->local;
+  d_local_var_node* n;
+  int i;
+
+  if (D_UNLIKELY(l->count + range > l->limit)) {
+    zero_new_local_range(vm, range);
+    return;
+  }
+
+  n = &l->array[l->count];
+  l->count += range;
+  for (i = 0; i < range; i++) n[i].key = 0;
+}
+
+/**
  * Copies to 'base' the name without the arity ("sum/2" -> "sum").
  * returns 0 if the name has no arity.
  */
@@ -546,6 +600,34 @@ static inline const d_name_hdr* name_info(const char* k, d_name_hdr* tmp) {
 }
 
 /**
+ * A local variable of the function that is running, by the hash of its
+ * name. The VM reads the locals by slot, this is used to capture them when a
+ * function is created inside of another one (see build_self_dep_fn).
+ */
+static int enclosing_local(d_vm* vm, uint32_t fnv, const char* name, drax_value* v) {
+  d_instructions* instr = vm->active_instr;
+  d_local_var_node* nodes;
+  int i;
+
+  if (vm->call_stack->count == 0 || instr->local_range == 0) return 0;
+
+  nodes = &vm->envs->local->array[CURR_FRAME(vm)->local_base];
+
+  for (i = 0; i < instr->local_range; i++) {
+    d_name_hdr tmp;
+    /* the hash selects the candidates, the name decides (hashes can collide) */
+    if (nodes[i].key != 0 && instr->local_names[i] != NULL &&
+        name_info(instr->local_names[i], &tmp)->fk == fnv &&
+        strcmp(instr->local_names[i], name) == 0) {
+      *v = nodes[i].value;
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
+/**
  * Calls are compiled with the arity in the name ("sum/2"), so
  * functions with the same name and different arities can coexist,
  * like in Erlang.
@@ -585,11 +667,12 @@ static int lookup_name(d_vm* vm, char* k, int is_local, drax_value* v) {
   }
 
   if (is_local) {
-    d_local_var_table* l = vm->envs->local;
-    int range = vm->active_instr->local_range;
-
-    if (get_local_table_h(l, range, h->fk, v)) return 1;
-    if (has_arity && get_local_table_h(l, range, h->fb, v)) return 1;
+    if (enclosing_local(vm, h->fk, k, v)) return 1;
+    if (has_arity) {
+      memcpy(base, k, (size_t) slash);
+      base[slash] = '\0';
+      if (enclosing_local(vm, h->fb, base, v)) return 1;
+    }
   }
 
   if (get_var_table_h(vm->envs->global, h->bk, h->fk, v)) return 1;
@@ -606,11 +689,38 @@ static int lookup_name(d_vm* vm, char* k, int is_local, drax_value* v) {
   return *v ? 1 : 0;
 }
 
-static int get_definition(d_vm* vm, int is_local) { 
+static int get_definition(d_vm* vm) {
   char* k = (char*) GET_VALUE(vm);
   drax_value v;
 
-  if (!lookup_name(vm, k, is_local, &v)) {
+  if (!lookup_name(vm, k, 0, &v)) {
+    char base[256];
+    raise_drax_error(vm, _L_MSG_NOT_DEF, name_without_arity(k, base, sizeof(base)) ? base : k);
+    return 0;
+  }
+
+  push(vm, v);
+  return 1;
+}
+
+/**
+ * A local slot used while no function is running: the parser and the VM
+ * disagree about the scope, so it is an error and not a write on NULL.
+ */
+D_COLD static int local_outside_frame(d_vm* vm) {
+  raise_drax_error(vm, "runtime error: local variable used outside of a function\n");
+  return 0;
+}
+
+/**
+ * A local variable that was not assigned (it is assigned on another branch)
+ * is looked up as a global name, like any name that is not local.
+ */
+D_COLD static int get_unset_local(d_vm* vm, int slot) {
+  char* k = vm->active_instr->local_names[slot];
+  drax_value v;
+
+  if (!lookup_name(vm, k, 0, &v)) {
     char base[256];
     raise_drax_error(vm, _L_MSG_NOT_DEF, name_without_arity(k, base, sizeof(base)) ? base : k);
     return 0;
@@ -829,8 +939,13 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
   new_fn->name = f->name;
   new_fn->arity = f->arity;
 
+  /**
+   * The slots of the new function: the ones of the original function, and
+   * one more for each external reference (the captured value).
+   */
+  const int base_range = f->instructions->local_range;
+
   new_fn->instructions->file = f->instructions->file;
-  new_fn->instructions->local_range = f->instructions->local_range + n_refs;
   new_fn->instructions->extrn_ref_count = 0;
   new_fn->instructions->_ip = f->instructions->_ip;
 
@@ -846,7 +961,9 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
    */
   drax_value* values = (drax_value*) malloc(sizeof(drax_value) * (n_refs + 1));
   int* found = (int*) calloc(n_refs + 1, sizeof(int));
-  int n_found = 0;
+  int* slot_of = (int*) calloc(n_refs + 1, sizeof(int));
+  int* is_first = (int*) calloc(n_refs + 1, sizeof(int)); /* owns its slot (the first of a name) */
+  int n_slots = 0;
 
   for (i = 0; i < n_refs; i++) {
     d_extrn_ref r = f->instructions->extrn_ref[i];
@@ -855,6 +972,8 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
     if (r.instr->values[r.pos] != OP_GET_G_ID) {
       free(values);
       free(found);
+      free(slot_of);
+      free(is_first);
       raise_drax_error(vm, "runtime error: unspected OP on factory");
       return 0;
     }
@@ -866,7 +985,34 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
       found[i] = lookup_name(vm, k, 1, &values[i]);
     }
 
-    n_found += found[i];
+    /**
+     * Only the captured references take a slot, and a name that is used
+     * more than once shares the slot of its first use.
+     */
+    if (found[i]) {
+      int j;
+      for (j = 0; j < i; j++) {
+        if (found[j] && is_first[j] && strcmp((char*) f->instructions->extrn_ref[j].instr->values[f->instructions->extrn_ref[j].pos + 1], k) == 0) break;
+      }
+
+      if (j < i) {
+        slot_of[i] = slot_of[j];
+      } else {
+        is_first[i] = 1;
+        slot_of[i] = base_range + n_slots++;
+      }
+    }
+  }
+
+  const int new_range = base_range + n_slots;
+  new_fn->instructions->local_range = new_range;
+  if (new_range > 0) {
+    new_fn->instructions->local_names = (char**) calloc((size_t) new_range, sizeof(char*));
+    new_fn->instructions->local_names_cap = new_range;
+    vm->gc_meta->bytes += sizeof(char*) * (size_t) new_range;
+    if (base_range > 0) {
+      memcpy(new_fn->instructions->local_names, f->instructions->local_names, sizeof(char*) * (size_t) base_range);
+    }
   }
 
   /**
@@ -877,9 +1023,9 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
    * [ OP_GET_G_ID | drax_value ] 
    * 
    * instructions after:
-   * [ OP_PUSH | drax_value | OP_SET_L_ID | drax_value | ... | OP_GET_L_ID | drax_value ]
+   * [ OP_PUSH | drax_value | OP_SET_L_ID | slot | ... | OP_GET_L_ID | slot ]
    */
-  new_fn->instructions->instr_count = f->instructions->instr_count + (n_found * 4);
+  new_fn->instructions->instr_count = f->instructions->instr_count + (n_slots * 4);
   
   if (new_fn->instructions->instr_size < new_fn->instructions->instr_count) {
     new_fn->instructions->instr_size = new_fn->instructions->instr_count + 1;
@@ -914,18 +1060,19 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
 
   /* the captured values are defined on the line where the function starts */
   int first_line = f->instructions->instr_count > 0 ? f->instructions->lines[0] : 0;
-  for (i = i_new; i < i_new + (n_found * 4); i++) {
+  for (i = i_new; i < i_new + (n_slots * 4); i++) {
     new_fn->instructions->lines[i] = first_line;
   }
 
   for (i = 0; i < n_refs; i++) {
-    if (!found[i]) continue;
+    if (!found[i] || !is_first[i]) continue;
 
     d_extrn_ref r = f->instructions->extrn_ref[i];
     new_fn->instructions->values[i_new++] = OP_PUSH;
     new_fn->instructions->values[i_new++] = values[i];
     new_fn->instructions->values[i_new++] = OP_SET_L_ID;
-    new_fn->instructions->values[i_new++] = r.instr->values[r.pos + 1];
+    new_fn->instructions->values[i_new++] = (drax_value) slot_of[i];
+    new_fn->instructions->local_names[slot_of[i]] = (char*) r.instr->values[r.pos + 1];
   }
 
   /**
@@ -942,7 +1089,12 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
     for (j = 0; j < n_refs; j++) {
       d_extrn_ref r = f->instructions->extrn_ref[j];
       if (found[j] && r.instr == f->instructions && r.pos == old_i) {
+        /* the name operand becomes the slot of the captured value */
         new_fn->instructions->values[i] = OP_GET_L_ID;
+        new_fn->instructions->values[i + 1] = (drax_value) slot_of[j];
+        new_fn->instructions->lines[i + 1] = f->instructions->lines[old_i + 1];
+        i++;
+        old_i++;
         break;
       }
     }
@@ -950,6 +1102,8 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
 
   free(values);
   free(found);
+  free(slot_of);
+  free(is_first);
   return 1;
 }
 
@@ -976,7 +1130,27 @@ static void remove_elem_on_stack(d_vm* vm, size_t distance) {
 
   drax_value* tgt = &vm->stack[vm->stack_count - 1 - distance];
   drax_value* src = &vm->stack[vm->stack_count - distance];
-  memmove(tgt, src, sizeof(drax_value) * distance);
+
+  /**
+   * most calls have a few arguments: no call to memmove for them. The
+   * areas overlap (everything moves one place down), the order is ascending.
+   */
+  switch (distance) {
+    case 1:
+      tgt[0] = src[0];
+      break;
+    case 2:
+      tgt[0] = src[0];
+      tgt[1] = src[1];
+      break;
+    case 3:
+      tgt[0] = src[0];
+      tgt[1] = src[1];
+      tgt[2] = src[2];
+      break;
+    default:
+      memmove(tgt, src, sizeof(drax_value) * distance);
+  }
   vm->stack_count--;
 }
 
@@ -997,7 +1171,7 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
         return 1;
       }
 
-      callstack_push(vm, f->instructions, NULL);
+      callstack_push_inline(vm, f->instructions, NULL);
 
       /**
        * the arguments are on the top of the stack and are
@@ -1007,7 +1181,7 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
       CURR_FRAME(vm)->callee = v;
       
       if (f->instructions->local_range > 0) {
-        zero_new_local_range(vm, f->instructions->local_range);
+        zero_locals_inline(vm, f->instructions->local_range);
       }
       return 0;
     }
@@ -1092,6 +1266,7 @@ static int __exec__(d_vm* vm, int inter_mode) {
   #define dbin_bool_op(op, v) \
       do { \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
+          SYNC_IP(); \
           raise_operand_error(vm, peek(vm, 0), peek(vm, 1), MSG_BAD_AGR_ARITH_OP); \
           return 1; \
         } \
@@ -1103,6 +1278,10 @@ static int __exec__(d_vm* vm, int inter_mode) {
   UNUSED(inter_mode);
 
   drax_value a;
+  drax_value* ip;
+  d_local_var_node* lbase;
+
+  RELOAD_IP();
 
   #ifdef _COMP_GOTO
   static void* dispatch_table[] = {
@@ -1196,11 +1375,11 @@ static int __exec__(d_vm* vm, int inter_mode) {
       }
       VMCase(OP_DSTR) {
         /* TODO: process db string */
-        push(vm, GET_VALUE(vm));
+        push(vm, OPERAND());
         NEXT_OP(vm);
       }
       VMCase(OP_CONST) {
-        push(vm, GET_VALUE(vm));
+        push(vm, OPERAND());
         NEXT_OP(vm);
       }
       VMCase(OP_POP) {
@@ -1208,30 +1387,56 @@ static int __exec__(d_vm* vm, int inter_mode) {
         NEXT_OP(vm);
       }
       VMCase(OP_PUSH) {
-        push(vm, GET_VALUE(vm));
+        push(vm, OPERAND());
         NEXT_OP(vm);
       }
       VMCase(OP_SET_G_ID) {
         drax_value v = pop(vm);
-        char* k = (char*) GET_VALUE(vm);
+        char* k = (char*) OPERAND();
         d_name_hdr tmp;
         const d_name_hdr* h = name_info(k, &tmp);
         put_var_table_h(vm->envs->global, h->bk, h->fk, v);
         NEXT_OP(vm);
       }
       VMCase(OP_GET_G_ID) {
-        if(get_definition(vm, 0) == 0) { return 1; }
+        SYNC_IP();
+        if(get_definition(vm) == 0) { return 1; }
+        RELOAD_IP();
         NEXT_OP(vm);
       }
       VMCase(OP_SET_L_ID) {
-        char* k = (char*) GET_VALUE(vm);
-        d_name_hdr tmp;
-        const d_name_hdr* h = name_info(k, &tmp);
-        put_local_table_h(vm->envs->local, h->fk, pop(vm));
+        /* the operand is the slot of the variable on the frame of the function */
+        int slot = (int) OPERAND();
+        d_local_var_node* node;
+        if (D_UNLIKELY(lbase == NULL)) {
+          SYNC_IP();
+          local_outside_frame(vm);
+          return 1;
+        }
+        node = &lbase[slot];
+        node->key = 1; /* a slot with key 0 is not set */
+        node->value = pop(vm);
         NEXT_OP(vm);
       }
       VMCase(OP_GET_L_ID) {
-        if(get_definition(vm, 1) == 0) { return 1; }
+        int slot = (int) OPERAND();
+        d_local_var_node* node;
+
+        if (D_UNLIKELY(lbase == NULL)) {
+          SYNC_IP();
+          local_outside_frame(vm);
+          return 1;
+        }
+
+        node = &lbase[slot];
+        if (D_UNLIKELY(node->key == 0)) {
+          /* not set (assigned on another branch): the name may be a global one */
+          SYNC_IP();
+          if (get_unset_local(vm, slot) == 0) { return 1; }
+          NEXT_OP(vm);
+        }
+
+        push(vm, node->value);
         NEXT_OP(vm);
       }
       VMCase(OP_SET_I_ID) {
@@ -1240,6 +1445,8 @@ static int __exec__(d_vm* vm, int inter_mode) {
          * of structures such as frames and lists, as this will 
          * influence old references, resulting in side effects.
          */
+
+        SYNC_IP();
 
         raise_drax_error(vm, "error: invalid assigment\nuse helper functions to change values of structures\n");
         return 1;
@@ -1263,6 +1470,7 @@ static int __exec__(d_vm* vm, int inter_mode) {
           int idx = get_fun_on_module(md, (const char*) k);
 
           if (idx == -1) {
+            SYNC_IP();
             raise_drax_error(vm, "error: key '%s' is not defined\n", k);
             return 1;
           }
@@ -1275,15 +1483,24 @@ static int __exec__(d_vm* vm, int inter_mode) {
           NEXT_OP(vm);
         }
         
+        SYNC_IP();
+        
         raise_drax_error(vm, "error: key '%s' is not defined\n", k);
         return 1;
       }
       VMCase(OP_EQUAL) {
         drax_value beq = pop(vm);
         drax_value aeq = pop(vm);
+
+        if (IS_NUMBER(aeq) && IS_NUMBER(beq)) {
+          push(vm, BOOL_VAL(CAST_NUMBER(aeq) == CAST_NUMBER(beq)));
+          NEXT_OP(vm);
+        }
+
         bool too_deep = false;
         bool eq = values_equal(aeq, beq, 0, &too_deep);
         if (too_deep) {
+          SYNC_IP();
           raise_drax_error(vm, "error: values nested deeper than %d levels can not be compared\n", MAX_VALUE_DEPTH);
           return 1;
         }
@@ -1333,6 +1550,7 @@ static int __exec__(d_vm* vm, int inter_mode) {
           pop_times(vm, 2);
           push(vm, DS_VAL(result));
         } else{
+          SYNC_IP();
           raise_operand_error(vm, peek(vm, 0), peek(vm, 1), "Concat with unspected type");
           return 1;
         }
@@ -1363,6 +1581,7 @@ static int __exec__(d_vm* vm, int inter_mode) {
       }
       VMCase(OP_NEG) {
         if (!IS_NUMBER(peek(vm, 0))) {
+          SYNC_IP();
           raise_operand_error(vm, peek(vm, 0), 0, MSG_BAD_AGR_ARITH_OP);
           return 1;
         }
@@ -1371,13 +1590,13 @@ static int __exec__(d_vm* vm, int inter_mode) {
         NEXT_OP(vm);
       }
       VMCase(OP_JMP) {
-        uint16_t offset = dg16_byte(vm);
-        vm->ip += offset;
+        uint16_t offset = OPERAND16();
+        ip += offset;
         NEXT_OP(vm);
       }
       VMCase(OP_JMF) {
-        uint16_t offset = dg16_byte(vm);
-        if (IS_FALSE(peek(vm, 0))) vm->ip += offset;
+        uint16_t offset = OPERAND16();
+        if (IS_FALSE(peek(vm, 0))) ip += offset;
         NEXT_OP(vm);
       }
       VMCase(OP_LOOP) {
@@ -1388,12 +1607,12 @@ static int __exec__(d_vm* vm, int inter_mode) {
          * a |?> f(): when 'a' is an Error the call (the function and its
          * arguments) is skipped and the Error is the result.
          */
-        uint16_t offset = dg16_byte(vm);
-        if (IS_ERROR(peek(vm, 0))) vm->ip += offset;
+        uint16_t offset = OPERAND16();
+        if (IS_ERROR(peek(vm, 0))) ip += offset;
         NEXT_OP(vm);
       }
       VMCase(OP_D_CALL_P_S) {
-        a = GET_VALUE(vm);
+        a = OPERAND();
         process_pipe_args(vm, a);
         goto S_COMMON_CALL;
       }
@@ -1404,10 +1623,12 @@ static int __exec__(d_vm* vm, int inter_mode) {
          * the call evaluates to an Error. Never a tail call, the frame must
          * stay to catch the failure.
          */
-        a = GET_VALUE(vm);
+        a = OPERAND();
 
         S_COMMON_CALL:
+        SYNC_IP();
         if (protected_call(vm, a)) return 1;
+        RELOAD_IP();
         NEXT_OP(vm);
       }
       VMCase(OP_D_CALL_P) {
@@ -1415,7 +1636,7 @@ static int __exec__(d_vm* vm, int inter_mode) {
          * Direct call
          * when the function is on stack
          */
-        a = GET_VALUE(vm);
+        a = OPERAND();
         process_pipe_args(vm, a);
         goto L_COMMON_CALL;
       }
@@ -1424,9 +1645,10 @@ static int __exec__(d_vm* vm, int inter_mode) {
          * Direct call
          * when the function is on stack
          */
-        a = GET_VALUE(vm);
+        a = OPERAND();
         
         L_COMMON_CALL: {
+          SYNC_IP();
           /* safe point: the function and the arguments are on the stack */
           dgc_maybe_collect(vm);
 
@@ -1436,11 +1658,12 @@ static int __exec__(d_vm* vm, int inter_mode) {
           if (execute_d_function(vm, a, v) == 1) {
             return 1;
           }
+          RELOAD_IP();
         }
         NEXT_OP(vm);
       }
       VMCase(OP_D_CALL_P_T) {
-        a = GET_VALUE(vm);
+        a = OPERAND();
         process_pipe_args(vm, a);
         goto P_T_COMMON_CALL;
       }
@@ -1455,8 +1678,9 @@ static int __exec__(d_vm* vm, int inter_mode) {
          *
          * A loop written with tail recursion runs in constant memory.
          */
-        a = GET_VALUE(vm);
+        a = OPERAND();
         P_T_COMMON_CALL: {
+          SYNC_IP();
           dgc_maybe_collect(vm);
 
           drax_value v = peek(vm, a);
@@ -1489,11 +1713,15 @@ static int __exec__(d_vm* vm, int inter_mode) {
           vm->envs->local->count = fr->local_base;
           fr->callee = v;
           vm->active_instr = f->instructions;
-          vm->ip = f->instructions->values;
+          ip = f->instructions->values;
+          vm->ip = ip; /* vm->ip never points into the code of another function */
 
           if (f->instructions->local_range > 0) {
-            zero_new_local_range(vm, f->instructions->local_range);
+            zero_locals_inline(vm, f->instructions->local_range);
           }
+
+          /* the table of locals may have grown */
+          lbase = &vm->envs->local->array[fr->local_base];
         }
         NEXT_OP(vm);
       }
@@ -1508,20 +1736,23 @@ static int __exec__(d_vm* vm, int inter_mode) {
          * but perhaps these instructions need to be cloned somehow
          */
 
-        drax_value v = GET_VALUE(vm);
-        drax_value extern_ref = GET_VALUE(vm);
+        drax_value v = OPERAND();
+        drax_value extern_ref = OPERAND();
         if (extern_ref == DRAX_TRUE_VAL) {
           /**
            * This routine will replace the external
            * references on lambda.
            */
+          SYNC_IP();
           if(build_self_dep_fn(vm, &v) == 0) { return 1; }
         }
         push(vm, v);
         NEXT_OP(vm);
       }
       VMCase(OP_IMPORT) {
+        SYNC_IP();
         if (import_file(vm, pop(vm))) return 1;
+        RELOAD_IP();
         NEXT_OP(vm);
       }
       VMCase(OP_EXPORT) {
@@ -1551,6 +1782,7 @@ static int __exec__(d_vm* vm, int inter_mode) {
         vm->stack_count = fr->stack_base;
         vm->envs->local->count = fr->local_base;
         callstack_pop(vm);
+        RELOAD_IP();
         push(vm, result);
 
         if (!vm->active_instr) return 0;
