@@ -32,7 +32,7 @@ static const drax_tokens drax_t[] = {
 
 /* Helpers */
 static bool is_alpha(const char c) {
-  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || c == '?';
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
 static bool is_number(const char c) {
@@ -233,8 +233,14 @@ d_token next_token() {
           next_char();
           return dmake_symbol(DTK_PIPE);
         }
+        if(CURR_TOKEN() == '?' && check_next() == '>') {
+          next_char();
+          next_char();
+          return dmake_symbol(DTK_PIPE_SAFE);
+        }
         return make_error("Invalid token.");
       }
+      case '?': return dmake_symbol(DTK_QMARK);
       case '.': {
         return dmake_symbol(DTK_DOT);
       }

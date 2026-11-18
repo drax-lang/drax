@@ -137,6 +137,21 @@ int inspect_opcode(drax_value* _ip, size_t level) {
         ip++;
         break;
       }
+      case OP_D_CALL_S: {
+        printf("OP_D_CALL_S, <fn::value>\n");
+        ip++;
+        break;
+      }
+      case OP_D_CALL_P_S: {
+        printf("OP_D_CALL_P_S, <fn::value>\n");
+        ip++;
+        break;
+      }
+      case OP_JMP_ERR: {
+        printf("OP_JMP_ERR, <offset>\n");
+        ip += 2;
+        break;
+      }
       case OP_FUN: {
         drax_function* f = CAST_FUNCTION(*(ip++));
         int bb = (*(ip++)) == DRAX_TRUE_VAL;

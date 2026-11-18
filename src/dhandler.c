@@ -6,27 +6,29 @@
 #include "dtypes.h"
 #include "ddefs.h"
 
-static unsigned long generate_hash(const char* str, size_t size) {
-  unsigned int hashval = 0;
-  int i;
-  for (i = 0; str[i] != '\0'; i++) {
-      hashval = str[i] + 31 * hashval;
-  }
-  return hashval % size;
-}
-
 /**
- * Return 64-bit FNV-1a hash
+ * Return FNV-1a hash (32 bits)
  * Generate hash key
  */
 size_t fnv1a_hash(const char* key, int len) {
-  uint32_t hash = 2166136261u;
+  uint32_t hash = D_FNV_OFFSET;
   int i;
   for (i = 0; i < len; i++) {
-    hash ^= (d_byte_def) key[i];
-    hash *= 16777619;
+    hash = d_fnv_step(hash, key[i]);
   }
   return hash;
+}
+
+/* both hashes of a name in one pass (no strlen) */
+static void name_hashes(const char* s, uint32_t* fnv, uint32_t* bucket) {
+  uint32_t f = D_FNV_OFFSET, b = 0;
+  int i;
+  for (i = 0; s[i] != '\0'; i++) {
+    f = d_fnv_step(f, s[i]);
+    b = d_bucket_step(b, s[i]);
+  }
+  *fnv = f;
+  *bucket = b;
 }
 
 /**
@@ -72,20 +74,29 @@ get_elem_on_var_table(d_generic_var_table* t, int i, size_t k) {
   return NULL;
 }
 
-int get_var_table(d_generic_var_table* t, char* name, drax_value* value) {
-  int i = generate_hash(name, t->size);
-  size_t k = fnv1a_hash(name, strlen(name));
-
-  drax_generic_var_node* node = get_elem_on_var_table(t, i, k);
+int get_var_table_h(d_generic_var_table* t, uint32_t bucket, size_t fnv, drax_value* value) {
+  drax_generic_var_node* node = get_elem_on_var_table(t, (int) (bucket % (uint32_t) t->size), fnv);
   if (node == NULL) return 0;
 
   *value = node->value;
   return 1;
 }
 
+int get_var_table(d_generic_var_table* t, char* name, drax_value* value) {
+  uint32_t f, b;
+  name_hashes(name, &f, &b);
+  return get_var_table_h(t, b, f, value);
+}
+
 void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
-  int i = generate_hash(name, t->size);
-  size_t k = fnv1a_hash(name, strlen(name));
+  uint32_t f, b;
+  name_hashes(name, &f, &b);
+  put_var_table_h(t, b, f, value);
+}
+
+void put_var_table_h(d_generic_var_table* t, uint32_t bucket, size_t fnv, drax_value value) {
+  int i = (int) (bucket % (uint32_t) t->size);
+  size_t k = fnv;
 
   drax_generic_var_node* node = get_elem_on_var_table(t, i, k);
   
@@ -99,8 +110,10 @@ void put_var_table(d_generic_var_table* t, char* name, drax_value value) {
 }
 
 void del_var_table(d_generic_var_table* t, char* name) {
-  int i = generate_hash(name, t->size);
-  size_t k = fnv1a_hash(name, strlen(name));
+  uint32_t f, b;
+  name_hashes(name, &f, &b);
+  int i = (int) (b % (uint32_t) t->size);
+  size_t k = f;
 
   drax_generic_var_node** link = &t->array[i];
   while (*link != NULL) {
@@ -220,9 +233,14 @@ int ensure_local_table_capacity(d_local_var_table* t, int extra) {
  * it is based on the slots of each function
  */
 void put_local_table(d_local_var_table* t, char* name, drax_value value) {
+  uint32_t f, b;
+  name_hashes(name, &f, &b);
+  put_local_table_h(t, f, value);
+}
+
+void put_local_table_h(d_local_var_table* t, size_t key, drax_value value) {
   if (t->count <= 0) return;
 
-  size_t key = fnv1a_hash(name, strlen(name));
   int next_index = t->count - 1;
   /**
    * check which is the next unused index.
@@ -245,9 +263,12 @@ void put_local_table(d_local_var_table* t, char* name, drax_value value) {
 }
 
 int get_local_table(d_local_var_table* t, int local_range, char* name, drax_value* value) {
+  return get_local_table_h(t, local_range, fnv1a_hash(name, (int) strlen(name)), value);
+}
+
+int get_local_table_h(d_local_var_table* t, int local_range, size_t key, drax_value* value) {
   if (t->count <= 0) return 0;
 
-  size_t key = fnv1a_hash(name, strlen(name));
   int init = t->count - local_range;
   init = init < 0 ? 0 : init;
 
@@ -273,6 +294,7 @@ d_mod_table* new_mod_table() {
   d_mod_table* t = (d_mod_table*) malloc(sizeof(d_mod_table));
   t->limit = MOD_TABLE_INIT_SIZE;
   t->count = 0;
+  t->first_chars = 0;
   t->modules = (drax_value*) malloc(sizeof(drax_value) * MOD_TABLE_INIT_SIZE);
 
   return t;
@@ -285,13 +307,19 @@ void put_mod_table(d_mod_table* t, drax_value value) {
   }
 
   t->modules[t->count++] = value;
+  t->first_chars |= ((uint64_t) 1) << (CAST_MODULE(value)->name[0] & 63);
 }
 
 int get_mod_table(d_mod_table* t, char* name, drax_value* value) {
   int i;
+
+  if (!((t->first_chars >> (name[0] & 63)) & 1)) return 0;
+
   for (i = 0; i < t->count; i++) {
     drax_native_module* m = CAST_MODULE(t->modules[i]);
-    if (strcmp(m->name, name) == 0) {
+    /* the first character rejects almost every name (variables and
+     * functions) without calling strcmp: this runs for each name lookup */
+    if (m->name[0] == name[0] && strcmp(m->name, name) == 0) {
       *value = DS_VAL(t->modules[i]);
       return 1;
     }

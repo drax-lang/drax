@@ -114,6 +114,17 @@ typedef struct d_frame {
   drax_value callee;              /* function running in this frame (kept alive by the GC) */
 } d_frame;
 
+/**
+ * A frame started by a protected call (f?(...)). A failure inside the frame
+ * ends it and the call evaluates to an Error value, see recover_protected.
+ * The entries are kept apart from the frames, so a normal call pays nothing
+ * for them (the frame stays small).
+ */
+typedef struct d_prot {
+  int frame; /* index of the frame on the call stack */
+  int loop;  /* depth of the VM loop that started the call */
+} d_prot;
+
 typedef struct dcall_stack {
   d_frame* frames;
   int count;
@@ -129,6 +140,23 @@ typedef struct dgc_meta {
   int gray_count;
   int gray_cap;
 } dgc_meta;
+
+/**
+ * The names used by the instructions (variables, functions with their
+ * arity) are hashed once, when the compiler creates them. The hashes are
+ * kept in a header right before the characters, so a name is looked up
+ * without reading it again (see dpool_strndup and lookup_name).
+ */
+#define D_NAME_MAGIC 0xD4A7A11Eu
+
+typedef struct d_name_hdr {
+  uint32_t magic;
+  int slash;     /* position of the last '/' (the arity), -1 when there is none */
+  uint32_t fk;   /* FNV hash of the whole name */
+  uint32_t bk;   /* bucket hash of the whole name */
+  uint32_t fb;   /* FNV hash of the name before the last '/' */
+  uint32_t bb;   /* bucket hash of the name before the last '/' */
+} d_name_hdr;
 
 /**
  * Strings created by the compiler (names used as operands of
@@ -167,6 +195,15 @@ typedef struct d_vm {
   dgc_meta* gc_meta;
   d_generic_var_table* imported_files;
   d_str_pool* str_pool;
+
+  /* Error handling, see docs/error-handling.md */
+  d_prot* prot_stack;  /* protected frames, innermost last */
+  int protect_count;   /* entries of prot_stack */
+  int prot_cap;
+  int soft_depth;      /* protected calls of natives being executed */
+  int loop_depth;      /* nested __start__ loops (natives, imports) */
+  int pending_error;   /* an error was raised and is waiting for its handler */
+  char* pending_msg;   /* message of the pending error (heap) */
 } d_vm;
 
 /* VM */

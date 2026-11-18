@@ -35,6 +35,11 @@ int main() {
   all_passed &= run_lexan_test("0b101", DTK_NUMBER, DNT_BIN);
   all_passed &= run_lexan_test("0o77", DTK_NUMBER, DNT_OCT);
 
+  all_passed &= run_lexan_test("|>", DTK_PIPE, 0);
+  all_passed &= run_lexan_test("|?>", DTK_PIPE_SAFE, 0);
+  all_passed &= run_lexan_test("|?", DTK_ERROR, 0);
+  all_passed &= run_lexan_test("?", DTK_QMARK, 0);
+
   all_passed &= run_lexan_test("0x", DTK_ERROR, 0);
   all_passed &= run_lexan_test("0b102", DTK_ERROR, 0);
   all_passed &= run_lexan_test("0o88", DTK_ERROR, 0);
@@ -120,7 +125,7 @@ int main() {
   all_passed &= run_lexan_test("nilable", DTK_ID, 0);
   all_passed &= run_lexan_test("true_value", DTK_ID, 0);
   all_passed &= run_lexan_test("android", DTK_ID, 0);
-  all_passed &= run_lexan_test("is_even?", DTK_ID, 0);
+  all_passed &= run_lexan_test("is_even", DTK_ID, 0);
   all_passed &= run_lexan_test("IF", DTK_ID, 0);
 
   printf("\n--- strings ---\n");

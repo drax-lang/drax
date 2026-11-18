@@ -22,7 +22,7 @@ echo "};"
 echo
 
 echo "const char* const DLANG_BUILTINS[] = {"
-sed -n 's/^ *reg(vm, "\([a-z_]*\)", *\([0-9]*\),.*/\1\/\2/p' "$SRC/dbuiltin.c" | LC_ALL=C sort -u | awk '{ printf "  \"%s\",\n", $0 }'
+sed -n 's/^ *reg(vm, "\([A-Za-z_]*\)", *\([0-9]*\),.*/\1\/\2/p' "$SRC/dbuiltin.c" | LC_ALL=C sort -u | awk '{ printf "  \"%s\",\n", $0 }'
 echo "  0"
 echo "};"
 echo

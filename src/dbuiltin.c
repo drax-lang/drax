@@ -101,6 +101,7 @@ static drax_value __d_typeof(d_vm* vm, int* stat) {
       case DS_FRAME: MSR(vm, "frame");
       case DS_MODULE: MSR(vm, "module");
       case DS_TID: MSR(vm, "tid");
+      case DS_ERROR: MSR(vm, "error");
       default: break;
     }
   }
@@ -555,7 +556,57 @@ static drax_value __d_system(d_vm* vm, int* stat) {
   return AS_VALUE((double) r);
 }
 
+/**
+ * Error: a failure that is a value, see docs/error-handling.md
+ */
+
+/* Error(payload): the payload is any value */
+static drax_value __d_error_new(d_vm* vm, int* stat) {
+  drax_value payload = pop(vm);
+  DX_SUCESS_FN(stat);
+  return DS_VAL(new_derror_value(vm, payload));
+}
+
+static drax_value __d_error_is(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  DX_SUCESS_FN(stat);
+  return BOOL_VAL(IS_ERROR(a));
+}
+
+/* the value inside of the error, nil for anything that is not an error */
+static drax_value __d_error_payload(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  DX_SUCESS_FN(stat);
+
+  if (!IS_ERROR(a)) return DRAX_NIL_VAL;
+
+  drax_error* e = CAST_ERROR(a);
+  if (e->chars != NULL) return DS_VAL(copy_dstring(vm, e->chars, e->length));
+  return e->payload;
+}
+
+/* the text of the error, nil for anything that is not an error */
+static drax_value __d_error_message(d_vm* vm, int* stat) {
+  drax_value a = pop(vm);
+  DX_SUCESS_FN(stat);
+
+  if (!IS_ERROR(a)) return DRAX_NIL_VAL;
+
+  char buf[64];
+  const char* msg = derror_text(CAST_ERROR(a), buf, sizeof(buf));
+  return DS_VAL(copy_dstring(vm, msg, (int) strlen(msg)));
+}
+
+/* Error.or_else(value, default): the value, or the default when it is an error */
+static drax_value __d_error_or_else(d_vm* vm, int* stat) {
+  drax_value d = pop(vm);
+  drax_value a = pop(vm);
+  DX_SUCESS_FN(stat);
+  return IS_ERROR(a) ? d : a;
+}
+
 void load_callback_fn(d_vm* vm, vm_builtin_setter* reg) {
+  reg(vm, "Error", 1, __d_error_new);
   reg(vm, "assert", 2, __d_assert);
   reg(vm, "typeof", 1, __d_typeof);
   reg(vm, "sleep", 1, __d_sleep);
@@ -1119,6 +1170,20 @@ void create_native_modules(d_vm* vm) {
 
   put_fun_on_module(mos, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(mos));
+
+  /**
+   * Error module
+  */
+  drax_native_module* merr = new_native_module(vm, "Error", 4);
+  const drax_native_module_helper err_helper[] = {
+    {1, "is", __d_error_is },
+    {1, "payload", __d_error_payload },
+    {1, "message", __d_error_message },
+    {2, "or_else", __d_error_or_else },
+  };
+
+  put_fun_on_module(merr, err_helper, sizeof(err_helper) / sizeof(drax_native_module_helper));
+  put_mod_table(vm->envs->modules, DS_VAL(merr));
 
   /**
    * Core module

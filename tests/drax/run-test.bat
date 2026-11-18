@@ -42,6 +42,10 @@ set DRAX_MAX_CALL_DEPTH=
 
 .\bin\drax .\tests\drax\edge_cases.dx
 
+.\bin\drax .\tests\drax\error_handling.dx
+
+.\bin\drax .\tests\drax\module_lookup.dx
+
 .\bin\drax .\tests\drax\gc.dx
 
 .\bin\drax .\tests\drax\gc_memory.dx

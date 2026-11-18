@@ -112,6 +112,10 @@ static void dgc_mark_children(d_vm* vm, drax_value v) {
       dgc_mark_instructions(vm, CAST_FUNCTION(v)->instructions);
       break;
 
+    case DS_ERROR:
+      dgc_mark(vm, CAST_ERROR(v)->payload);
+      break;
+
     default:
       break;
   }

@@ -117,10 +117,18 @@ typedef struct drax_frame {
   drax_value* values;
 } drax_frame;
 
+/**
+ * Error value (see docs/error-handling.md).
+ *
+ * 'payload' is any value (Error(value)). 'chars' is only used by the
+ * messages built by the VM and by the native functions, a value created
+ * by Error(...) has no text (chars == NULL, length == 0).
+ */
 typedef struct drax_error {
   d_struct d_struct;
   int length;
   char* chars;
+  drax_value payload;
 } drax_error;
 
 typedef struct drax_string {
@@ -149,6 +157,9 @@ void put_value_dlist(drax_list* l, drax_value v);
 void copy_dframe_entries(drax_frame* dst, int di, drax_frame* src, int si, int count);
 
 drax_error* new_derror(d_vm* vm, char* msg);
+
+/* Error(payload): the error that can be handled as a value */
+drax_error* new_derror_value(d_vm* vm, drax_value payload);
 
 drax_list* new_dlist(d_vm* vm, int cap);
 

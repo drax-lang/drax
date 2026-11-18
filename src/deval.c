@@ -99,14 +99,57 @@ static void print_d_struct(drax_value value, int raw, int depth) {
       print_string(CAST_STRING(value)->chars, raw);
       break;
 
-    case DS_ERROR:
-      printf("error");
+    case DS_ERROR: {
+      drax_error* e = CAST_ERROR(value);
+      printf("Error(");
+      if (e->chars != NULL) {
+        print_quoted(e->chars);
+      } else if (depth >= MAX_VALUE_DEPTH) {
+        printf("...");
+      } else {
+        print_value(e->payload, 0, depth + 1);
+      }
+      putchar(')');
       break;
+    }
 
     case DS_TID:
       printf("<tid::%ld>", CAST_TID(value)->value);
       break;
   }
+}
+
+/**
+ * The text of an error: the payload when it is a string, a number or a
+ * frame with a string field "msg", a short description otherwise.
+ *
+ * A string is returned as it is (no copy, no limit); the other cases are
+ * written to 'buf' (at most 'size' bytes).
+ */
+const char* derror_text(drax_error* e, char* buf, size_t size) {
+  drax_value p = e->payload;
+  drax_value m;
+
+  if (e->chars != NULL) return e->chars;
+  if (IS_STRING(p)) return CAST_STRING(p)->chars;
+
+  if (IS_NUMBER(p)) {
+    dnum_to_str(CAST_NUMBER(p), buf, size);
+  } else if (IS_NIL(p)) {
+    snprintf(buf, size, "nil");
+  } else if (IS_BOOL(p)) {
+    snprintf(buf, size, "%s", CAST_BOOL(p) ? "true" : "false");
+  } else if (IS_FRAME(p) && get_value_dframe(CAST_FRAME(p), (char*) "msg", &m) != -1 && IS_STRING(m)) {
+    return CAST_STRING(m)->chars;
+  } else if (IS_LIST(p)) {
+    snprintf(buf, size, "<list>");
+  } else if (IS_FRAME(p)) {
+    snprintf(buf, size, "<frame>");
+  } else {
+    snprintf(buf, size, "error");
+  }
+
+  return buf;
 }
 
 void drax_print_error(const char* format, va_list args) {

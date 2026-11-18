@@ -41,6 +41,7 @@ const char *str_module_list[] = {
  "Number",
  "Core",
  "Os",
+ "Error",
  NULL,
 };
 
@@ -207,6 +208,8 @@ static operation_line op_lines[] = {
   make_op_line(DTK_LE,        NULL,                process_binary, iDIFF),
   make_op_line(DTK_GG,        NULL,                NULL,           iNONE),
   make_op_line(DTK_PIPE,      NULL,                process_pipe,   iTERM),
+  make_op_line(DTK_PIPE_SAFE, NULL,                process_pipe_safe, iTERM),
+  make_op_line(DTK_QMARK,     NULL,                process_protected, iCALL),
   make_op_line(DTK_AMP,       process_amper,       NULL,           iNONE),
   make_op_line(DTK_STRING,    process_string,      NULL,           iNONE),
   make_op_line(DTK_DSTRING,   process_dstring,     NULL,           iNONE),
@@ -329,7 +332,9 @@ static char* name_with_arity(d_vm* vm, const char* name, drax_value arity) {
   size_t sz = strlen(name) + 16;
   char* n = (char*) malloc(sizeof(char) * sz);
   snprintf(n, sz, "%s/%d", name, (int) arity);
-  return dpool_add(vm, n);
+  char* r = dpool_strndup(vm, n, strlen(n));
+  free(n);
+  return r;
 }
 
 static bool leads_to_return(d_instructions* instr, int ip) {
@@ -478,6 +483,19 @@ void process_pipe(d_vm* vm, bool v) {
   operation_line* rule = GET_PRIORITY(opt);
   parse_priorities(vm, (priorities)(rule->priorities + 1));
   pop_state(&parser);
+}
+
+/**
+ * a |?> f(): a pipe that stops at the first Error. When the value on the
+ * left is an Error the function and its arguments are skipped (they are
+ * not even evaluated) and the Error is the result of the pipe.
+ */
+void process_pipe_safe(d_vm* vm, bool v) {
+  UNUSED(v);
+  int skip = put_jmp(vm, OP_JMP_ERR);
+
+  process_pipe(vm, v);
+  patch_jump(vm, skip);
 }
 
 void process_amper(d_vm* vm, bool v) {
@@ -849,6 +867,10 @@ drax_function* create_function(d_vm* vm, bool is_internal, bool is_single_line) 
     d_token ctk = parser.prev;
     f->name = dpool_strndup(vm, ctk.first, ctk.length);
 
+    if (parser.current.type == DTK_QMARK) {
+      FATAL_CURR("'?' is not allowed in names, it marks a protected call: f?(...).");
+    }
+
     if (is_in_state(PS_ASSIGNMENT)) {
       FATAL_CURR("syntax error: cannot assign a named function to a variable.");
       printf(
@@ -1047,8 +1069,13 @@ static int get_plain_callee(d_vm* vm) {
   return -1;
 }
 
-void process_call(d_vm* vm, bool v) {
-  UNUSED(v);
+/**
+ * f(...) and f?(...)
+ *
+ * A protected call is never a tail call: it is not recorded as a call
+ * site, so optimize_tail_calls does not see it.
+ */
+static void emit_call(d_vm* vm, bool protect) {
   bool _ispipe = is_pipe_active();
   int callee = get_plain_callee(vm);
 
@@ -1066,8 +1093,24 @@ void process_call(d_vm* vm, bool v) {
     *operand = (drax_value) name_with_arity(vm, old_name, arg_count);
   }
 
+  if (protect) {
+    put_pair(vm, _ispipe ? OP_D_CALL_P_S : OP_D_CALL_S, arg_count);
+    return;
+  }
+
   /* may become a tail call, see optimize_tail_calls */
   put_call(vm, _ispipe ? OP_D_CALL_P : OP_D_CALL, arg_count);
+}
+
+void process_call(d_vm* vm, bool v) {
+  UNUSED(v);
+  emit_call(vm, false);
+}
+
+void process_protected(d_vm* vm, bool v) {
+  UNUSED(v);
+  process_token(DTK_PAR_OPEN, "Expect '(' after '?'.");
+  emit_call(vm, true);
 }
 
 void process_dot(d_vm* vm, bool v) {

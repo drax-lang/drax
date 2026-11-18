@@ -24,6 +24,9 @@
 
 void drax_print_error(const char* format, va_list args);
 
+/* the text of an error (see Error.message), 'buf' is used when it is not a string */
+const char* derror_text(drax_error* e, char* buf, size_t size);
+
 /* raw: a string is written as it is, without quotes (only at the top level) */
 void print_drax(drax_value value, int raw);
 

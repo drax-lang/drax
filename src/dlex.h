@@ -24,7 +24,10 @@ typedef enum dlex_types {
   DTK_LL, DTK_GG,
 
   /* pipe */
-  DTK_PIPE,
+  DTK_PIPE, DTK_PIPE_SAFE,
+
+  /* protected call: f?(...) */
+  DTK_QMARK,
   
   /* Keywords */
   DTK_AND, DTK_DO, DTK_ELSE, DTK_END, 
