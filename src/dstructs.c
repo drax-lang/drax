@@ -68,6 +68,15 @@ drax_error* new_derror(d_vm* vm, char* msg) {
 
   v->chars = m;
   v->length = sz;
+  v->payload = DRAX_NIL_VAL;
+  return v;
+}
+
+drax_error* new_derror_value(d_vm* vm, drax_value payload) {
+  drax_error* v = ALLOCATE_DSTRUCT(vm, drax_error, DS_ERROR);
+  v->chars = NULL;
+  v->length = 0;
+  v->payload = payload;
   return v;
 }
 

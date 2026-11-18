@@ -1,0 +1,3 @@
+fun b(a) do a + 'x' end
+print(b?(1))
+b(2)

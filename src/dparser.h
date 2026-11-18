@@ -143,6 +143,8 @@ callback_table(process_function);
 callback_table(literal_translation);
 callback_table(process_amper);
 callback_table(process_pipe);
+callback_table(process_pipe_safe);
+callback_table(process_protected);
 callback_table(process_call);
 callback_table(process_if);
 callback_table(process_do);

@@ -47,7 +47,7 @@ static void push_tok(toks* t, tk_kind k, const char* s, size_t len, int line) {
   t->n++;
 }
 
-static int id_start(char c) { return isalpha((unsigned char) c) || c == '_' || c == '?'; }
+static int id_start(char c) { return isalpha((unsigned char) c) || c == '_'; }
 static int id_part(char c) { return id_start(c) || isdigit((unsigned char) c); }
 
 static void scan(const char* s, toks* t) {
@@ -100,6 +100,13 @@ static void scan(const char* s, toks* t) {
       const char* b = p;
       while (id_part(*p)) p++;
       push_tok(t, T_ID, b, (size_t) (p - b), line);
+      continue;
+    }
+
+    /* |?> is the safe pipe, a single symbol */
+    if (p[0] == '|' && p[1] == '?' && p[2] == '>') {
+      push_tok(t, T_SYM, p, 3, line);
+      p += 3;
       continue;
     }
 
@@ -186,6 +193,21 @@ static int is_sym(const toks* t, int i, const char* s) {
   return i >= 0 && i < t->n && t->v[i].kind == T_SYM && strcmp(t->v[i].text, s) == 0;
 }
 
+/* the pipes: |> and |?> */
+static int is_pipe(const toks* t, int i) {
+  return is_sym(t, i, "|>") || is_sym(t, i, "|?>");
+}
+
+/**
+ * the '(' of a call whose name is the token i: f(...) or the protected
+ * call f?(...). -1 when the token is not called.
+ */
+static int call_open(const toks* t, int i) {
+  if (is_sym(t, i + 1, "(")) return i + 1;
+  if (is_sym(t, i + 1, "?") && is_sym(t, i + 2, "(")) return i + 2;
+  return -1;
+}
+
 static int is_id(const toks* t, int i) {
   return i >= 0 && i < t->n && t->v[i].kind == T_ID;
 }
@@ -230,7 +252,7 @@ static int analyze(int file, const toks* t) {
         for (k = depth - 1; k >= 0; k--) {
           if (stack[k].kind == B_FUN && fns[stack[k].fn - 1].name) { fn = stack[k].fn; break; }
         }
-        if (fn) add_call(file, fn, fns[fn - 1].name, count_args(t, i + 1) + (is_sym(t, i - 1, "|>") ? 1 : 0), tk->line);
+        if (fn) add_call(file, fn, fns[fn - 1].name, count_args(t, i + 1) + (is_pipe(t, i - 1) ? 1 : 0), tk->line);
       }
       continue;
     }
@@ -337,7 +359,8 @@ static int analyze(int file, const toks* t) {
     if (dlang_is_keyword(w)) continue;
 
     /* name(...) or obj.name(...) */
-    if (is_sym(t, i + 1, "(")) {
+    int open = call_open(t, i);
+    if (open >= 0) {
       int start = i;
       char callee[512];
       if (is_sym(t, i - 1, ".")) {
@@ -348,7 +371,7 @@ static int analyze(int file, const toks* t) {
       } else {
         snprintf(callee, sizeof(callee), "%s", w);
       }
-      add_call(file, cur, callee, count_args(t, i + 1) + (is_sym(t, start - 1, "|>") ? 1 : 0), tk->line);
+      add_call(file, cur, callee, count_args(t, open) + (is_pipe(t, start - 1) ? 1 : 0), tk->line);
       continue;
     }
 

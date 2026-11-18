@@ -111,6 +111,12 @@ typedef struct d_frame {
   d_generic_var_table* env_global;
   int stack_base;
   int local_base;
+  /**
+   * 0 for a normal call. A protected call (f?(...)) keeps here the depth of
+   * the VM loop that started it, a failure inside the frame ends the frame
+   * and the call evaluates to an Error value (see recover_protected).
+   */
+  int prot;
   drax_value callee;              /* function running in this frame (kept alive by the GC) */
 } d_frame;
 
@@ -167,6 +173,13 @@ typedef struct d_vm {
   dgc_meta* gc_meta;
   d_generic_var_table* imported_files;
   d_str_pool* str_pool;
+
+  /* Error handling, see docs/error-handling.md */
+  int protect_count;   /* protected frames (f?(...)) on the call stack */
+  int soft_depth;      /* protected calls of natives being executed */
+  int loop_depth;      /* nested __start__ loops (natives, imports) */
+  int pending_error;   /* an error was raised and is waiting for its handler */
+  char* pending_msg;   /* message of the pending error (heap) */
 } d_vm;
 
 /* VM */

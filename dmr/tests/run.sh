@@ -227,6 +227,19 @@ check "graph matches the golden file" diff -u "$FIX/graph.expected.cpg" "$T/g/.d
 cp "$T/g/.drax-cpg/cpg.dgraph" "$T/g1"
 "$DMR" -C "$T/g" graph >/dev/null 2>&1
 check "graph is deterministic"        cmp -s "$T/g/.drax-cpg/cpg.dgraph" "$T/g1"
+# protected calls (f?(...)) and the safe pipe (|?>) are calls of f with the right arity
+mkdir -p "$T/pc"
+cat > "$T/pc/main.dx" <<'EOP'
+fun add(a, b) do a + b end
+fun use() do
+    r = add?(1, 2)
+    1 |?> add(2)
+    1 |?> add?(2)
+end
+use()
+EOP
+"$DMR" -C "$T/pc" graph >/dev/null 2>&1
+check "graph: f?() and |?> are calls"  test "$(grep -c '^c f2 f1 ' "$T/pc/.drax-cpg/cpg.dgraph")" -eq 3
 # a symlink cycle must not hang the graph
 mkdir -p "$T/cyc/sub" && printf 'x = 1\n' > "$T/cyc/sub/a.dx" && ln -s .. "$T/cyc/sub/loop"
 timeout 20 "$DMR" -C "$T/cyc" graph >/dev/null 2>&1

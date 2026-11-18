@@ -1,0 +1,218 @@
+### Error values, protected calls f?(...) and the safe pipe |?>
+### See docs/error-handling.md
+
+### Error(value): any value can be the payload
+e = Error('boom')
+assert(Error.is(e), "error handling error: Error(...) is an error")
+assert(!Error.is(1), "error handling error: a number is not an error")
+assert(!Error.is('boom'), "error handling error: a string is not an error")
+assert(!Error.is(nil), "error handling error: nil is not an error")
+assert(typeof(e) == "error", "error handling error: typeof an error")
+assert(Error.payload(e) == 'boom', "error handling error: payload of a string")
+assert(Error.message(e) == 'boom', "error handling error: message of a string")
+
+p = Error({code: 404, msg: 'not found'})
+assert(Error.payload(p).code == 404, "error handling error: payload of a frame")
+assert(Error.message(p) == 'not found', "error handling error: message uses the msg field")
+assert(Error.message(Error(42)) == '42', "error handling error: message of a number")
+assert(Error.message(Error(nil)) == 'nil', "error handling error: message of nil")
+assert(Error.payload(Error([1, 2])) == [1, 2], "error handling error: payload of a list")
+assert(Error.payload(Error(Error('inner'))) == Error('inner'), "error handling error: nested error")
+assert(Error.payload(7) == nil, "error handling error: payload of a value that is not an error")
+assert(Error.message(7) == nil, "error handling error: message of a value that is not an error")
+
+### an error is a value: it can be stored, compared and returned
+assert(Error('a') == Error('a'), "error handling error: equal errors")
+assert(Error('a') != Error('b'), "error handling error: different errors")
+assert(Error('a') != 'a', "error handling error: an error is not its payload")
+assert([Error('a')] == [Error('a')], "error handling error: error inside a list")
+
+### Error.or_else
+assert(Error.or_else(Error('x'), 0) == 0, "error handling error: or_else of an error")
+assert(Error.or_else(5, 0) == 5, "error handling error: or_else of a value")
+assert(Error.or_else(nil, 0) == nil, "error handling error: nil is a value, not an error")
+assert((Error('x') |> Error.or_else(9)) == 9, "error handling error: or_else on a pipe")
+
+### functions that fail by returning an error
+fun read_age(s) do
+    if (String.contains(s, 'x')) do
+        return Error('not a number: ' ++ s)
+    end
+    String.to_number(s)
+end
+
+fun check_range(n) do
+    if (n < 0) do return Error('negative age') end
+    n
+end
+
+fun double(n) do n * 2 end
+
+### |?> stops at the first error
+fun process(s) do
+    s
+    |?> read_age()
+    |?> check_range()
+    |?> double()
+end
+
+assert(process('30') == 60, "error handling error: safe pipe with values")
+assert(process('3x') == Error('not a number: 3x'), "error handling error: safe pipe stops at the first error")
+assert(process('-5') == Error('negative age'), "error handling error: safe pipe stops at the second step")
+
+### with values |?> is the same as |>
+assert((1 |?> double() |?> double()) == 4, "error handling error: |?> with values is |>")
+assert(([1, 2] |?> List.length()) == 2, "error handling error: |?> on a native function")
+
+### the call is skipped, even the arguments are not evaluated
+fun add(a, b) do a + b end
+r = Error('skipped') |?> add(1 + 'not a number')
+assert(r == Error('skipped'), "error handling error: the arguments of a skipped call are not evaluated")
+
+### |> still gives the error to the function
+assert((Error('x') |> Error.is()), "error handling error: |> passes the error")
+assert((read_age('1x') |> Error.or_else(0)) == 0, "error handling error: or_else after an error")
+
+### |?> in tail position (the step is a tail call)
+fun tail_pipe(n) do
+    if (n == 0) do
+        Error('end')
+    else
+        n - 1 |?> tail_pipe()
+    end
+end
+assert(tail_pipe(5000) == Error('end'), "error handling error: safe pipe in tail position")
+
+### f?(...): the failure of the call is an error value
+fun ratio(a, b) do a / b end
+fun boom(a) do a + 'x' end
+fun deep(a) do boom(a) end
+
+assert(ratio?(10, 2) == 5, "error handling error: protected call without failure")
+assert(Error.is(boom?(1)), "error handling error: runtime error becomes an error")
+assert(Error.message(boom?(1)) == 'Bad argument in arithmetic expression.', "error handling error: message of a runtime error")
+assert(Error.is(deep?(1)), "error handling error: failure in a nested call")
+assert(read_age?('1x') == Error('not a number: 1x'), "error handling error: protected call of a function that returns an error")
+assert(double?(4) == 8, "error handling error: protected call returns the value as it is")
+
+### natives
+assert(Error.is(List.at?(5, 0)), "error handling error: protected call of a native function")
+assert(Error.message(List.at?(5, 0)) == 'Expected list as argument', "error handling error: message of a native error")
+assert(List.at?([7], 0) == 7, "error handling error: protected native without failure")
+assert(Error.is(String.contains?(1, 2)), "error handling error: protected native, wrong type")
+
+### natives that call functions (nested VM loop)
+assert(Error.is(List.map?([1, 2], fun(x) x + 'a' end)), "error handling error: failure inside a callback")
+assert(List.map?([1, 2], fun(x) x + 1 end) == [2, 3], "error handling error: callback without failure")
+assert(Error.is(List.filter?([1], fun(x) deep(x) end)), "error handling error: failure deep inside a callback")
+
+### a call that is not a function, wrong arity
+f = nil
+assert(Error.is(f?(1)), "error handling error: calling nil")
+n = 10
+assert(Error.is(n?(1)), "error handling error: calling a number")
+assert(Error.is(double?(1, 2)), "error handling error: wrong arity")
+assert(Error.is(e?()), "error handling error: calling an error")
+
+### a protected call inside a protected call
+fun inner(a) do boom?(a) end
+assert(Error.is(inner(1)), "error handling error: the inner call caught the failure")
+fun outer(a) do inner?(a) end
+assert(Error.is(outer(1)), "error handling error: protected inside protected")
+
+### failure after the protected call: the function keeps running
+fun keep_going() do
+    a = boom?(1)
+    b = boom?(2)
+    return [Error.is(a), Error.is(b), 3 + 4]
+end
+assert(keep_going() == [true, true, 7], "error handling error: the function goes on after the failure")
+
+### the state is clean after a failure: stack, locals, arguments
+fun locals_test(x) do
+    y = x * 2
+    r = deep?(y)
+    z = y + 1
+    return [x, y, z, Error.is(r)]
+end
+assert(locals_test(3) == [3, 6, 7, true], "error handling error: locals after a failure")
+
+### 1 + (failure) keeps the stack right
+assert(1 + 2 + (ratio?(4, 2)) == 5, "error handling error: protected call inside an expression")
+assert([1, deep?(1), 3] == [1, Error('Bad argument in arithmetic expression.'), 3], "error handling error: protected call inside a list")
+
+### failure at a deep recursion: all the frames are dropped
+fun down(n) do
+    if (n == 0) do
+        boom(1)
+    else
+        1 + down(n - 1)
+    end
+end
+assert(Error.is(down?(500)), "error handling error: failure at a deep recursion")
+assert(down?(500) == Error('Bad argument in arithmetic expression.'), "error handling error: deep failure message")
+
+### many protected calls (success and failure) keep the VM consistent
+fun loop_protected(n, errors) do
+    if (n == 0) do
+        errors
+    else
+        r = boom?(n)
+        ok = double?(n)
+        loop_protected(n - 1, errors + (Error.is(r) and ok == n * 2 and 1 or 0))
+    end
+end
+assert(loop_protected(2000, 0) == 2000, "error handling error: protected calls in a loop")
+
+### a protected function can use tail calls (the frame is reused)
+fun count_down(n) do
+    if (n == 0) do
+        'done'
+    else
+        count_down(n - 1)
+    end
+end
+assert(count_down?(100000) == 'done', "error handling error: tail calls inside a protected call")
+
+fun count_then_fail(n) do
+    if (n == 0) do
+        boom(1)
+    else
+        count_then_fail(n - 1)
+    end
+end
+assert(Error.is(count_then_fail?(100000)), "error handling error: failure after tail calls")
+
+### protected call in the pipe
+assert((5 |> double?()) == 10, "error handling error: protected call on a pipe")
+assert(Error.is(5 |> boom?()), "error handling error: failure on a protected pipe")
+assert((5 |?> double?() |?> double?()) == 20, "error handling error: safe pipe with protected calls")
+assert(Error.is('1x' |?> read_age() |?> boom?()), "error handling error: safe pipe, first error")
+assert(Error.is(1 |?> boom?() |?> double()), "error handling error: safe pipe stops at a protected failure")
+assert(Error.message(1 |?> boom?() |?> double()) == 'Bad argument in arithmetic expression.', "error handling error: safe pipe keeps the message")
+
+### an error that is not handled is not hidden: it can still be handled later
+saved = deep?(1)
+assert(Error.is(saved), "error handling error: the error can be stored")
+assert(Error.or_else(saved, 'none') == 'none', "error handling error: or_else of a stored error")
+
+### the garbage collector keeps the payload of an error alive
+fun make_error(n) do Error({id: n, items: [n, n + 1, n + 2]}) end
+errors = List.map([1, 2, 3, 4, 5], make_error)
+Core.gc_swap()
+assert(Error.payload(List.at(errors, 4)).id == 5, "error handling error: payload after the garbage collector")
+assert(Error.payload(List.at(errors, 0)).items == [1, 2, 3], "error handling error: list in the payload after the garbage collector")
+
+print('Error handling done!')
+
+### long messages are not truncated
+fun repeat_text(s, n, acc) do
+    if (n == 0) do acc else repeat_text(s, n - 1, acc ++ s) end
+end
+long = repeat_text('abcdefghij', 500, '')
+assert(String.length(long) == 5000, "error handling error: long text")
+assert(String.length(Error.message(Error(long))) == 5000, "error handling error: long message of an error")
+fun use_error(e) do e + 1 end
+assert(String.length(Error.message(use_error?(Error(long)))) == 5000, "error handling error: long message of a protected failure")
+assert(Error.message(use_error?(Error(long))) == long, "error handling error: long message is intact")
+print('Error handling (long messages) done!')

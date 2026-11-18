@@ -57,6 +57,8 @@ Both functions work for any `n`. `sum_to` runs in constant memory.
 | `return f(x)`, anywhere in the function | yes |
 | `c and f(x)` / `c or f(x)` in tail position | yes, the right side |
 | `x \|> f()` in tail position | yes |
+| `x \|?> f()` in tail position | yes (see [error handling](./error-handling.md)) |
+| `f?(x)` (protected call), anywhere | no, the frame must stay to catch the failure; a protected function can still tail call inside itself |
 | `&(n - 1, acc)` (self call operator) in tail position | yes |
 | `m.next(x)` (function stored in a frame) in tail position | yes |
 | a native function (`Number.to_string(x)`) in tail position | runs as a normal call, a native never grows the Drax stack |

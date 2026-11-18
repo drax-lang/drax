@@ -61,6 +61,27 @@ expect_error("native_nesting_overflow", "too many nested calls through native fu
 expect_error("map_callback_error", "Bad argument in arithmetic expression")
 assert(!String.contains(List.at(run("map_callback_error"), 1), "Runtime error during list iteration"), "errors error: callback error reported more than once")
 
+### an Error used as an operand ends the program with its own message
+expect_error("error_arith", "boom")
+expect_error("error_concat", "boom")
+expect_error("error_neg", "neg")
+expect_error("error_compare", "small")
+expect_error("error_call", "not a function")
+
+### f?(...) protects the call, not the lookup of the function or its arguments
+expect_error("protected_undefined", "'undefined_fn' is not defined")
+expect_error("protected_argument", "Bad argument in arithmetic expression")
+
+### a failure that was caught does not hide the next one that is not
+expect_error("protected_then_fail", "Bad argument in arithmetic expression")
+expect_error("protected_native_then_fail", "Bad argument in arithmetic expression")
+assert(String.contains(List.at(run("protected_then_fail"), 1), "Error(\"Bad argument"), "errors error: the first failure must be caught")
+
+### syntax
+expect_error("safe_pipe_syntax", "Expect expression")
+expect_error("protected_syntax", "Expect '(' after '?'")
+expect_error("qmark_in_name", "'?' is not allowed in names")
+
 ### the error must point to the file and to the line
 expect_error("line_number_reported", "line_number_reported.dx:3")
 

@@ -32,7 +32,7 @@
       vm->stack_count--; \
       vm->stack[vm->stack_count - 1] = AS_VALUE(AS_NUMBER(v1) op AS_NUMBER(v2)); \
     } else { \
-      raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
+      raise_operand_error(vm, v1, v2, MSG_BAD_AGR_ARITH_OP); \
       return 1; \
     } \
   } while (0)
@@ -103,6 +103,7 @@ void callstack_push(d_vm* vm, d_instructions* target, d_generic_var_table* modul
   frame->env_global = vm->envs->global;
   frame->stack_base = vm->stack_count;
   frame->local_base = vm->envs->local->count;
+  frame->prot = 0;
   frame->callee = DRAX_NIL_VAL;
 
   vm->active_instr = target;
@@ -175,16 +176,155 @@ static void trace_error(d_vm* vm) {
   print_trace_step(vm, &last_line);
 }
 
-/* Delegate to drax_print_error */
+/**
+ * Reports a runtime error. The error ends the execution (the callers
+ * return 1), unless a protected call (f?(...)) is waiting for it: then
+ * nothing is printed, the message is kept and the failure travels back
+ * (return 1, the same way) to the protected call, which turns it into an
+ * Error value, see recover_protected and OP_D_CALL_S.
+ */
 void raise_drax_error(d_vm* vm, const char* format, ...) {
   va_list args;
   va_start(args, format);
+
+  if (vm->protect_count > 0 || vm->soft_depth > 0) {
+    /* the first error is the cause, the ones raised while it travels back are ignored */
+    if (!vm->pending_error) {
+      va_list copy;
+      size_t n;
+      int len;
+
+      va_copy(copy, args);
+      len = vsnprintf(NULL, 0, format, copy);
+      va_end(copy);
+      if (len < 0) len = 0;
+
+      free(vm->pending_msg);
+      vm->pending_msg = (char*) malloc((size_t) len + 1);
+      if (vm->pending_msg == NULL) {
+        fprintf(stderr, "fatal: out of memory to report an error.\n");
+        exit(1);
+      }
+      vsnprintf(vm->pending_msg, (size_t) len + 1, format, args);
+      n = strlen(vm->pending_msg);
+      while (n > 0 && vm->pending_msg[n - 1] == '\n') vm->pending_msg[--n] = '\0';
+      vm->pending_error = 1;
+    }
+    va_end(args);
+    return;
+  }
+
   drax_print_error(format, args);
   putchar('\n');
   va_end(args);
 
   trace_error(vm);
   __reset__(vm);
+}
+
+/**
+ * An Error used as an operand (1 + Error(...), a call of an Error) ends
+ * the execution with its own message, not with a generic one.
+ */
+static void raise_operand_error(d_vm* vm, drax_value a, drax_value b, const char* generic) {
+  drax_value e = IS_ERROR(a) ? a : (IS_ERROR(b) ? b : 0);
+
+  if (e != 0) {
+    char buf[64];
+    raise_drax_error(vm, "%s", derror_text(CAST_ERROR(e), buf, sizeof(buf)));
+    return;
+  }
+
+  raise_drax_error(vm, "%s", generic);
+}
+
+/* the pending error as an Error value (the message is its payload) */
+static drax_value take_pending_error(d_vm* vm) {
+  drax_string* s = copy_dstring(vm, vm->pending_msg, (int) strlen(vm->pending_msg));
+  vm->pending_error = 0;
+  free(vm->pending_msg);
+  vm->pending_msg = NULL;
+  return DS_VAL(new_derror_value(vm, DS_VAL(s)));
+}
+
+/* an error nobody handled: reports it like raise_drax_error does without a handler */
+static void flush_pending_error(d_vm* vm) {
+  char* msg = vm->pending_msg;
+
+  vm->pending_msg = NULL;
+  vm->pending_error = 0;
+  vm->protect_count = 0;
+  vm->soft_depth = 0;
+  raise_drax_error(vm, "%s", msg);
+  free(msg);
+}
+
+/**
+ * Where the VM was before a protected call of a native function (or of
+ * something that is not a function), to go back to it if the call fails.
+ */
+typedef struct d_snapshot {
+  d_instructions* instr;
+  drax_value* ip;
+  d_generic_var_table* env_global;
+  int frames;
+  int stack_count;
+  int local_count;
+  int protect_count;
+} d_snapshot;
+
+static void snapshot_take(d_vm* vm, d_snapshot* s) {
+  s->instr = vm->active_instr;
+  s->ip = vm->ip;
+  s->env_global = vm->envs->global;
+  s->frames = vm->call_stack->count;
+  s->stack_count = vm->stack_count;
+  s->local_count = vm->envs->local->count;
+  s->protect_count = vm->protect_count;
+}
+
+static void snapshot_restore(d_vm* vm, d_snapshot* s) {
+  vm->active_instr = s->instr;
+  vm->ip = s->ip;
+  vm->envs->global = s->env_global;
+  vm->call_stack->count = s->frames;
+  vm->stack_count = s->stack_count;
+  vm->envs->local->count = s->local_count;
+  vm->protect_count = s->protect_count;
+}
+
+/**
+ * A failure came back to this loop. If the innermost protected frame was
+ * started by this loop, the frame (and everything above it) is dropped and
+ * the protected call evaluates to an Error. The state is the one the
+ * caller had, taken from the frame, so no work is needed on the happy path.
+ *
+ * A protected frame of an outer loop (the failure crossed a native
+ * function or an import) is recovered by that loop.
+ */
+static int recover_protected(d_vm* vm) {
+  d_frame* frames = vm->call_stack->frames;
+  int i;
+
+  if (vm->protect_count == 0) return 0;
+
+  for (i = vm->call_stack->count - 1; i >= 0; i--) {
+    if (frames[i].prot) break;
+  }
+
+  if (i < 0 || frames[i].prot != vm->loop_depth) return 0;
+
+  /* i is the innermost protected frame: the frames above it are not protected */
+  vm->protect_count--;
+  vm->stack_count = frames[i].stack_base;
+  vm->envs->local->count = frames[i].local_base;
+  vm->active_instr = frames[i].instr;
+  vm->ip = frames[i].ip;
+  vm->envs->global = frames[i].env_global;
+  vm->call_stack->count = i;
+
+  push(vm, take_pending_error(vm));
+  return 1;
 }
 
 /* too_deep is set when lists/frames are nested deeper than MAX_VALUE_DEPTH */
@@ -259,6 +399,21 @@ static bool values_equal(drax_value a, drax_value b, int depth, bool* too_deep) 
     }
 
 
+    case DS_ERROR: {
+      drax_error* e1 = CAST_ERROR(a);
+      drax_error* e2 = CAST_ERROR(b);
+
+      /* the text of an error built by the VM equals Error('the same text') */
+      if (e1->chars != NULL || e2->chars != NULL) {
+        const char* t1 = e1->chars != NULL ? e1->chars : (IS_STRING(e1->payload) ? CAST_STRING(e1->payload)->chars : NULL);
+        const char* t2 = e2->chars != NULL ? e2->chars : (IS_STRING(e2->payload) ? CAST_STRING(e2->payload)->chars : NULL);
+        return t1 != NULL && t2 != NULL && strcmp(t1, t2) == 0;
+      }
+
+      if (depth >= MAX_VALUE_DEPTH) { *too_deep = true; return false; }
+      return values_equal(e1->payload, e2->payload, depth + 1, too_deep);
+    }
+
     case DS_FUNCTION:
     case DS_NATIVE:
     case DS_MODULE:
@@ -326,7 +481,17 @@ static int lookup_name(d_vm* vm, char* k, int is_local, drax_value* v) {
   int has_arity = name_without_arity(k, base, sizeof(base));
   char* plain = has_arity ? base : k;
 
-  if (get_mod_table(vm->envs->modules, plain, v)) return 1;
+  if (get_mod_table(vm->envs->modules, plain, v)) {
+    /**
+     * a call with the name of a module is the native function with
+     * the same name when there is one: Error(x) and Error.is(x)
+     */
+    if (has_arity) {
+      drax_value nf = get_fun_table(vm->envs->native, plain, 0);
+      if (nf) *v = nf;
+    }
+    return 1;
+  }
 
   if (is_local) {
     d_local_var_table* l = vm->envs->local;
@@ -770,7 +935,7 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
       if (!scs) {
         /* an empty error was already reported */
         if (CAST_ERROR(result)->length > 0) {
-          raise_drax_error(vm, CAST_ERROR(result)->chars);
+          raise_drax_error(vm, "%s", CAST_ERROR(result)->chars);
         }
         return 1;
       }
@@ -782,18 +947,21 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
 
   if (IS_NIL(v)) {
     raise_drax_error(vm, "nil is not function!\n");
+  } else if (IS_ERROR(v)) {
+    raise_operand_error(vm, v, 0, "vm_error: function is not valid!\n");
   } else {
     raise_drax_error(vm, "vm_error: function is not valid!\n");
   }
   return 1;
 }
 
-int __start__(d_vm* vm, int inter_mode) {
+/* the interpreter loop, __start__ restarts it after a recovered failure */
+static int __exec__(d_vm* vm, int inter_mode) {
 
   #define dbin_bool_op(op, v) \
       do { \
         if (!IS_NUMBER(peek(vm, 0)) || !IS_NUMBER(peek(vm, 1))) { \
-          raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP); \
+          raise_operand_error(vm, peek(vm, 0), peek(vm, 1), MSG_BAD_AGR_ARITH_OP); \
           return 1; \
         } \
         double bbop = CAST_NUMBER(pop(vm)); \
@@ -802,16 +970,6 @@ int __start__(d_vm* vm, int inter_mode) {
       } while (false)
 
   UNUSED(inter_mode);
-
-  if (-1 == vm->vid) {
-    if (vm->active_instr->file && *vm->active_instr->file) {
-      put_var_table(vm->imported_files, vm->active_instr->file, DRAX_NIL_VAL);
-      /* __start__ also runs for imported modules: keep only the first */
-      if (!entry_file[0]) {
-        snprintf(entry_file, sizeof(entry_file), "%s", vm->active_instr->file);
-      }
-    }
-  }
 
   drax_value a;
 
@@ -845,6 +1003,9 @@ int __start__(d_vm* vm, int inter_mode) {
     [OP_D_CALL_P] = &&do_OP_D_CALL_P,
     [OP_D_CALL_T] = &&do_OP_D_CALL_T,
     [OP_D_CALL_P_T] = &&do_OP_D_CALL_P_T,
+    [OP_D_CALL_S] = &&do_OP_D_CALL_S,
+    [OP_D_CALL_P_S] = &&do_OP_D_CALL_P_S,
+    [OP_JMP_ERR] = &&do_OP_JMP_ERR,
     [OP_FUN] = &&do_OP_FUN,
     [OP_SET_G_ID] = &&do_OP_SET_G_ID,
     [OP_GET_G_ID] = &&do_OP_GET_G_ID,
@@ -1037,7 +1198,7 @@ int __start__(d_vm* vm, int inter_mode) {
           pop_times(vm, 2);
           push(vm, DS_VAL(result));
         } else{
-          raise_drax_error(vm, "Concat with unspected type");
+          raise_operand_error(vm, peek(vm, 0), peek(vm, 1), "Concat with unspected type");
           return 1;
         }
         NEXT_OP(vm);
@@ -1067,7 +1228,7 @@ int __start__(d_vm* vm, int inter_mode) {
       }
       VMCase(OP_NEG) {
         if (!IS_NUMBER(peek(vm, 0))) {
-          raise_drax_error(vm, MSG_BAD_AGR_ARITH_OP);
+          raise_operand_error(vm, peek(vm, 0), 0, MSG_BAD_AGR_ARITH_OP);
           return 1;
         }
         
@@ -1085,6 +1246,58 @@ int __start__(d_vm* vm, int inter_mode) {
         NEXT_OP(vm);
       }
       VMCase(OP_LOOP) {
+        NEXT_OP(vm);
+      }
+      VMCase(OP_JMP_ERR) {
+        /**
+         * a |?> f(): when 'a' is an Error the call (the function and its
+         * arguments) is skipped and the Error is the result.
+         */
+        uint16_t offset = dg16_byte(vm);
+        if (IS_ERROR(peek(vm, 0))) vm->ip += offset;
+        NEXT_OP(vm);
+      }
+      VMCase(OP_D_CALL_P_S) {
+        a = GET_VALUE(vm);
+        process_pipe_args(vm, a);
+        goto S_COMMON_CALL;
+      }
+      VMCase(OP_D_CALL_S) {
+        /**
+         * Protected call, f?(...): a failure inside the call (a runtime
+         * error or an error of a native function) does not end the program,
+         * the call evaluates to an Error. Never a tail call, the frame must
+         * stay to catch the failure.
+         */
+        a = GET_VALUE(vm);
+
+        S_COMMON_CALL: {
+          dgc_maybe_collect(vm);
+
+          drax_value v = peek(vm, a);
+          remove_elem_on_stack(vm, a);
+
+          d_snapshot snap;
+          snapshot_take(vm, &snap);
+          /* a failed call leaves neither the function nor its arguments */
+          snap.stack_count -= (int) a;
+
+          vm->soft_depth++;
+          int failed = execute_d_function(vm, a, v);
+          vm->soft_depth--;
+
+          if (failed) {
+            /* without a pending error it was already reported: it ends the program */
+            if (!vm->pending_error) return 1;
+
+            snapshot_restore(vm, &snap);
+            push(vm, take_pending_error(vm));
+          } else if (IS_FUNCTION(v)) {
+            /* a Drax function runs on its own frame, which is the protected one */
+            CURR_FRAME(vm)->prot = vm->loop_depth;
+            vm->protect_count++;
+          }
+        }
         NEXT_OP(vm);
       }
       VMCase(OP_D_CALL_P) {
@@ -1221,6 +1434,8 @@ int __start__(d_vm* vm, int inter_mode) {
         drax_value result = (vm->stack_count > fr->stack_base) ?
           vm->stack[vm->stack_count - 1] : DRAX_NIL_VAL;
 
+        if (fr->prot) vm->protect_count--;
+
         vm->stack_count = fr->stack_base;
         vm->envs->local->count = fr->local_base;
         callstack_pop(vm);
@@ -1251,6 +1466,37 @@ int __start__(d_vm* vm, int inter_mode) {
   }
 
   return 0;  
+}
+
+int __start__(d_vm* vm, int inter_mode) {
+  int r;
+
+  if (-1 == vm->vid) {
+    if (vm->active_instr->file && *vm->active_instr->file) {
+      put_var_table(vm->imported_files, vm->active_instr->file, DRAX_NIL_VAL);
+      /* __start__ also runs for imported modules: keep only the first */
+      if (!entry_file[0]) {
+        snprintf(entry_file, sizeof(entry_file), "%s", vm->active_instr->file);
+      }
+    }
+  }
+
+  vm->loop_depth++;
+
+  /**
+   * A failure returns 1 from the loop (after raise_drax_error). When a
+   * protected call is waiting for it, the state is restored and the
+   * loop goes on from the instruction after the call.
+   */
+  while ((r = __exec__(vm, inter_mode)) != 0 && vm->pending_error && recover_protected(vm)) {}
+
+  /* a pending error here has no handler left: it is reported now */
+  if (r != 0 && vm->pending_error && vm->loop_depth == 1) {
+    flush_pending_error(vm);
+  }
+
+  vm->loop_depth--;
+  return r;
 }
 
 /* Constructor */
@@ -1340,6 +1586,7 @@ void __destroy__(d_vm* vm) {
   free(vm->str_pool->items);
   free(vm->str_pool);
 
+  free(vm->pending_msg);
   free(vm->call_stack->frames);
   free(vm->call_stack);
   free(vm->stack);
@@ -1371,6 +1618,8 @@ void __reset__(d_vm* vm) {
   vm->stack_count = 0;
   vm->envs->local->count = 0;
   vm->ip = NULL;
+  vm->protect_count = 0;
+  vm->pending_error = 0;
 }
 
 d_vm* createMainVM() {
@@ -1424,6 +1673,11 @@ d_vm* createMainVM() {
    * DRAX_MAX_CALL_DEPTH overrides the limit of non tail calls.
    */
   vm->native_nesting = 0;
+  vm->protect_count = 0;
+  vm->soft_depth = 0;
+  vm->loop_depth = 0;
+  vm->pending_error = 0;
+  vm->pending_msg = NULL;
   vm->max_call_depth = MAX_CALL_DEPTH;
   const char* env_depth = getenv("DRAX_MAX_CALL_DEPTH");
   if (env_depth != NULL) {

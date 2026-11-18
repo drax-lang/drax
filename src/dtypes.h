@@ -103,6 +103,9 @@ typedef enum d_op_code {
   OP_D_CALL_P,
   OP_D_CALL_T, /* tail optimization*/
   OP_D_CALL_P_T,
+  OP_D_CALL_S, /* protected call: f?(...), a failure becomes an Error value */
+  OP_D_CALL_P_S,
+  OP_JMP_ERR,  /* jumps when the top of the stack is an Error (|?>) */
   OP_FUN,
   OP_SET_G_ID, /* global */
   OP_GET_G_ID,

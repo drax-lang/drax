@@ -20,6 +20,7 @@ const char* const DLANG_KEYWORDS[] = {
 };
 
 const char* const DLANG_BUILTINS[] = {
+  "Error/1",
   "assert/2",
   "help/1",
   "inspect/1",
@@ -34,6 +35,14 @@ static const char* const MOD_Core[] = {
   "exit/1",
   "gc_meta_info/0",
   "gc_swap/0",
+  0
+};
+
+static const char* const MOD_Error[] = {
+  "is/1",
+  "message/1",
+  "or_else/2",
+  "payload/1",
   0
 };
 
@@ -157,6 +166,7 @@ static const char* const MOD_TCPServer[] = {
 
 const dlang_module DLANG_MODULES[] = {
   { "Core", MOD_Core },
+  { "Error", MOD_Error },
   { "Frame", MOD_Frame },
   { "Http", MOD_Http },
   { "List", MOD_List },
