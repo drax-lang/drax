@@ -933,8 +933,14 @@ static int is_self_reference(drax_function* fn, const char* k) {
 
 static int build_self_dep_fn(d_vm* vm, drax_value* v) {
   drax_function* f = CAST_FUNCTION(*v);
-  drax_function* new_fn = new_function(vm);
   int n_refs = f->instructions->extrn_ref_count;
+
+  /**
+   * The code of a closure is the code of the function plus 4 words for each
+   * captured value (at most one for each reference): it has exactly that
+   * room, not the one of a function that is still being compiled.
+   */
+  drax_function* new_fn = new_function_sized(vm, f->instructions->instr_count + n_refs * 4 + 1);
   
   new_fn->name = f->name;
   new_fn->arity = f->arity;
@@ -1009,7 +1015,7 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
   if (new_range > 0) {
     new_fn->instructions->local_names = (char**) calloc((size_t) new_range, sizeof(char*));
     new_fn->instructions->local_names_cap = new_range;
-    vm->gc_meta->bytes += sizeof(char*) * (size_t) new_range;
+    vm->gc_meta->bytes += sizeof(char*) * (size_t) new_range + D_MALLOC_OVERHEAD;
     if (base_range > 0) {
       memcpy(new_fn->instructions->local_names, f->instructions->local_names, sizeof(char*) * (size_t) base_range);
     }
@@ -1028,6 +1034,8 @@ static int build_self_dep_fn(d_vm* vm, drax_value* v) {
   new_fn->instructions->instr_count = f->instructions->instr_count + (n_slots * 4);
   
   if (new_fn->instructions->instr_size < new_fn->instructions->instr_count) {
+    vm->gc_meta->bytes += (size_t) (new_fn->instructions->instr_count + 1 - new_fn->instructions->instr_size)
+                          * (sizeof(drax_value) + sizeof(int));
     new_fn->instructions->instr_size = new_fn->instructions->instr_count + 1;
 
     new_fn->instructions->values = (drax_value*) realloc(
@@ -2001,6 +2009,7 @@ d_vm* createMainVM() {
 
   vm->gc_meta = (dgc_meta*) malloc(sizeof(dgc_meta));
   vm->gc_meta->n_cycles = 0;
+  vm->gc_meta->epoch = 0;
   vm->gc_meta->n_free_structs = 0;
   vm->gc_meta->bytes = 0;
   vm->gc_meta->next_gc = GC_INITIAL_THRESHOLD;

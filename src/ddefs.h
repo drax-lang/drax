@@ -59,6 +59,16 @@
  * since the last cycle reaches a limit. After each cycle the limit is
  * twice the memory in use (and at least GC_INITIAL_THRESHOLD).
  */
+/**
+ * What the allocator of the system keeps for each block (its header and the
+ * alignment). It is counted for the blocks of a function, which has many small
+ * ones, so the collector sees the memory that is really in use.
+ */
+#define D_MALLOC_OVERHEAD 16
+
+/* the blocks of a function: the function, its code, the values and the lines */
+#define D_FUNCTION_BLOCKS 4
+
 #ifndef GC_INITIAL_THRESHOLD
   #define GC_INITIAL_THRESHOLD (8 * 1024 * 1024)
 #endif

@@ -133,6 +133,7 @@ typedef struct dcall_stack {
 
 typedef struct dgc_meta {
   int n_cycles;
+  unsigned epoch;    /* identifies the running cycle among all VMs (see dgc_swap) */
   int n_free_structs;
   size_t bytes;      /* bytes allocated by structs since the last cycle (estimate) */
   size_t next_gc;    /* a cycle runs when 'bytes' reaches this value */

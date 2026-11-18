@@ -21,6 +21,16 @@ typedef struct drax_generic_var_node {
 typedef struct d_generic_var_table {
     int size;
     drax_generic_var_node** array;
+    /**
+     * The last garbage collection cycle that marked this table (a cycle
+     * number that is unique in the process, see dgc_swap). A table that
+     * was marked in the cycle is not read again, so:
+     *  - it must be created with new_var_table (gc_epoch = 0), never
+     *    with malloc or by copying another table;
+     *  - it cannot change while a cycle runs (the collector does not run
+     *    code of the program).
+     */
+    unsigned gc_epoch;
 } d_generic_var_table;
 
 /* Local envinronment */

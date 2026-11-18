@@ -1,0 +1,23 @@
+## support for gc_marking.dx: a module with its own globals, whose functions
+## collect garbage in the middle of a recursion
+
+module_tag = "from the module"
+module_list = [1, 2, 3]
+
+fun down(n) do
+    if (n == 0) do
+        Core.gc_swap()
+        return [module_tag, module_list]
+    else
+        r = down(n - 1)
+        return [module_tag, module_list, n, r]
+    end
+end
+
+## the top level code collects while it is running: the constants that
+## come after this point are still needed
+Core.gc_swap()
+late_text = "late" ++ "-" ++ "constant"
+Core.gc_swap()
+
+export({ down: down, tag: module_tag, late: late_text })

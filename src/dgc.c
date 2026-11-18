@@ -53,17 +53,7 @@ static void dgc_mark(d_vm* vm, drax_value v) {
  * Instructions keep constants (strings, functions) between the
  * operations. Raw operands (names, opcodes) are not structs and
  * are ignored by dgc_mark.
- */
-static void dgc_mark_instructions(d_vm* vm, d_instructions* instr) {
-  if (instr == NULL || instr->values == NULL) return;
-
-  int i;
-  for (i = 0; i < instr->instr_count; i++) {
-    dgc_mark(vm, instr->values[i]);
-  }
-}
-
-/**
+ *
  * Marks the constants of a block from 'ip' to the end.
  *
  * Used for the code being executed. The top level code (of the main
@@ -71,6 +61,11 @@ static void dgc_mark_instructions(d_vm* vm, d_instructions* instr) {
  * before 'ip' is never used again. The code of a function can run
  * again, but the function itself is marked (it is the callee of a
  * frame), which marks all of its instructions.
+ *
+ * A block can be asked many times in a cycle (it is the caller of every
+ * frame of a recursion, and it is marked again as the code of a function):
+ * the part that was already marked in this cycle is skipped, see gc_epoch
+ * and gc_from.
  */
 static void dgc_mark_instructions_from(d_vm* vm, d_instructions* instr, drax_value* ip) {
   if (instr == NULL || instr->values == NULL || ip == NULL) return;
@@ -78,8 +73,23 @@ static void dgc_mark_instructions_from(d_vm* vm, d_instructions* instr, drax_val
   int start = (int) (ip - instr->values);
   if (start < 0 || start > instr->instr_count) start = 0;
 
+  /**
+   * A block that is the caller on many frames (a recursion) is read once
+   * for each cycle: only the part that was not read yet is read now.
+   */
+  int end = instr->instr_count;
+  const unsigned epoch = vm->gc_meta->epoch;
+
+  if (instr->gc_epoch == epoch) {
+    if (start >= instr->gc_from) return;
+    end = instr->gc_from;
+  }
+
+  instr->gc_epoch = epoch;
+  instr->gc_from = start;
+
   int i;
-  for (i = start; i < instr->instr_count; i++) {
+  for (i = start; i < end; i++) {
     dgc_mark(vm, instr->values[i]);
   }
 }
@@ -109,7 +119,11 @@ static void dgc_mark_children(d_vm* vm, drax_value v) {
     }
 
     case DS_FUNCTION:
-      dgc_mark_instructions(vm, CAST_FUNCTION(v)->instructions);
+      {
+        d_instructions* code = CAST_FUNCTION(v)->instructions;
+        /* all of the code: a function can run again from the start */
+        if (code != NULL) dgc_mark_instructions_from(vm, code, code->values);
+      }
       break;
 
     case DS_ERROR:
@@ -132,6 +146,10 @@ static void dgc_drain(d_vm* vm) {
 
 static void dgc_mark_var_table(d_vm* vm, d_generic_var_table* t) {
   if (t == NULL) return;
+
+  /* the same table is the environment of every frame of a recursion */
+  if (t->gc_epoch == vm->gc_meta->epoch) return;
+  t->gc_epoch = vm->gc_meta->epoch;
 
   int i;
   for (i = 0; i < t->size; i++) {
@@ -202,7 +220,7 @@ static size_t dgc_size_of(d_struct* d) {
     case DS_FUNCTION: {
       d_instructions* i = ((drax_function*) d)->instructions;
       return sizeof(drax_function) + sizeof(d_instructions) + i->instr_size * (sizeof(drax_value) + sizeof(int))
-           + sizeof(char*) * (size_t) i->local_names_cap;
+           + sizeof(char*) * (size_t) i->local_names_cap + D_FUNCTION_BLOCKS * D_MALLOC_OVERHEAD;
     }
     case DS_NATIVE:
       return sizeof(drax_os_native);
@@ -311,8 +329,30 @@ static size_t dgc_sweep(d_vm* vm) {
   return live;
 }
 
+/**
+ * The number of a cycle, unique in the process: the stamps (gc_epoch) are in
+ * tables and blocks of code that more than one VM can see, and a stamp of
+ * another VM must never look like the stamp of the running cycle. 0 is
+ * reserved for "never marked".
+ */
+static unsigned dgc_next_epoch(void) {
+  static unsigned counter = 0;
+  unsigned e;
+
+#if defined(__GNUC__)
+  e = __sync_add_and_fetch(&counter, 1u);
+  if (e == 0) e = __sync_add_and_fetch(&counter, 1u);
+#else
+  e = ++counter;
+  if (e == 0) e = ++counter;
+#endif
+
+  return e;
+}
+
 int dgc_swap(d_vm* vm) {
   vm->gc_meta->n_cycles++;
+  vm->gc_meta->epoch = dgc_next_epoch();
 
   dgc_mark_roots(vm);
   size_t live = dgc_sweep(vm);

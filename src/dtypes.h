@@ -169,6 +169,18 @@ typedef struct d_instructions {
   int local_names_cap;
 
   /**
+   * Used by the garbage collector: in the cycle 'gc_epoch' the constants from
+   * the instruction 'gc_from' to the end were already marked, so a block
+   * that is on many frames (a recursion) is read once per cycle.
+   *
+   * 'gc_epoch' is a cycle number that is unique in the process (not only in
+   * a VM), 0 means "never marked": every block must be created with it as 0
+   * (see new_instructions_sized), also the ones that are not on the heap.
+   */
+  unsigned gc_epoch;
+  int gc_from;
+
+  /**
    * uextrn_ref: sed by lambda to check if there are external 
    * references (local variables outside the lambda 
    * or global variables).
@@ -213,5 +225,8 @@ static inline drax_value num_to_draxvalue(double num) {
 /* Helpers */
 
 d_instructions* new_instructions();
+
+/* a block with room for 'cap' instructions and no references to other names */
+d_instructions* new_instructions_sized(int cap);
 
 #endif

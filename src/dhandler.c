@@ -37,6 +37,7 @@ static void name_hashes(const char* s, uint32_t* fnv, uint32_t* bucket) {
 d_generic_var_table* new_var_table() {
   d_generic_var_table* t = (d_generic_var_table*) malloc(sizeof(d_generic_var_table));
   t->size = HASH_VAR_TABLE_SIZE;
+  t->gc_epoch = 0;
   t->array = malloc(HASH_VAR_TABLE_SIZE * sizeof(struct node*));
   int i;
   for (i = 0; i < HASH_VAR_TABLE_SIZE; i++) {

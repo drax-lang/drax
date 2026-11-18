@@ -41,6 +41,8 @@ echo -e "\n\033[43m----------------------\033[0m"
 
 ./bin/drax ./tests/drax/gc.dx
 
+./bin/drax ./tests/drax/gc_marking.dx
+
 # the garbage must be collected while the program runs: limited memory.
 # (not with sanitizers: they reserve a lot of virtual memory)
 if [ -z "$DRAX_MEMCHECK" ]; then

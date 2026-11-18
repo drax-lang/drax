@@ -1,0 +1,228 @@
+## garbage collector: marking of recursions, closures and environments
+##
+## The collector reads the code of every frame, the environment of every
+## frame and the code of every closure. These tests collect in the middle of
+## the work so a value that was not marked is a failure.
+
+### the code that runs after a recursive call keeps its constants
+
+fun down(n) do
+    if (n == 0) do
+        Core.gc_swap()
+        return "bottom"
+    else
+        r = down(n - 1)
+        ## constants used only after the call returns
+        return r ++ "-" ++ "up"
+    end
+end
+
+r = down(3)
+assert(r == "bottom-up-up-up", "gc marking: constants after the recursive call")
+
+fun deep(n) do
+    if (n == 0) do
+        Core.gc_swap()
+        Core.gc_swap()
+        return 0
+    else
+        return 1 + deep(n - 1)
+    end
+end
+assert(deep(20000) == 20000, "gc marking: deep recursion")
+
+### two call sites of the same function: the code after each one is kept
+
+fun two_sites(n) do
+    if (n == 0) do
+        Core.gc_swap()
+        return ["leaf"]
+    else
+        a = two_sites(n - 1)
+        Core.gc_swap()
+        b = two_sites(n - 1)
+        return [a, "between", b, "after"]
+    end
+end
+t = two_sites(3)
+assert(List.length(t) == 4, "gc marking: two call sites")
+assert(List.at(t, 1) == "between" and List.at(t, 3) == "after", "gc marking: constants between and after the calls")
+
+### the locals of every frame of a recursion
+
+fun with_locals(n) do
+    mine = [n, "local" ++ "-" ++ "value"]
+    if (n == 0) do
+        Core.gc_swap()
+        return [mine]
+    else
+        rest = with_locals(n - 1)
+        return [mine, rest]
+    end
+end
+w = with_locals(50)
+assert(List.at(w, 0) == [50, "local-value"], "gc marking: local of the first frame")
+assert(List.at(List.at(w, 1), 0) == [49, "local-value"], "gc marking: local of the second frame")
+
+### the environment of every frame: globals reached only from a recursion
+
+global_text = "g" ++ "lobal"
+global_items = [1, [2, 3]]
+fun uses_globals(n) do
+    if (n == 0) do
+        Core.gc_swap()
+        return [global_text, global_items]
+    else
+        r = uses_globals(n - 1)
+        return [global_text, r]
+    end
+end
+g = uses_globals(100)
+assert(List.at(g, 0) == "global", "gc marking: global of the first frame")
+
+### the environment of a module (its own table of globals)
+
+lib = import('./lib/gc_module.dx')
+m = lib.down(200)
+assert(List.at(m, 0) == "from the module", "gc marking: module global in a frame")
+assert(List.at(m, 1) == [1, 2, 3], "gc marking: module list in a frame")
+assert(List.at(m, 2) == 200, "gc marking: module argument")
+Core.gc_swap()
+assert(lib.tag == "from the module", "gc marking: module export after a cycle")
+assert(lib.late == "late-constant", "gc marking: constants after a cycle in the top level code")
+
+### the code before the point of collection is used again by the next call
+## (the running code is marked from the point of the call, the function
+## itself from the start: the two parts must be marked)
+
+fun gc_in_the_middle(x) do
+    first = "fir" ++ "st"
+    label = "label-"
+    Core.gc_swap()
+    return [first, label ++ x]
+end
+assert(gc_in_the_middle("1") == ["first", "label-1"], "gc marking: first call")
+assert(gc_in_the_middle("2") == ["first", "label-2"], "gc marking: second call uses the code before the collection")
+
+### closures: exact size of the code and captured values
+
+fun capture_many(a, b, c) do
+    s = "s" ++ "tr"
+    l = [a, b, c]
+    return fun(x) do
+        Core.gc_swap()
+        return [x, a, b, c, s, l, a, a, s]
+    end
+end
+f = capture_many(1, "two", [3])
+r = f(0)
+assert(List.at(r, 0) == 0 and List.at(r, 1) == 1 and List.at(r, 2) == "two", "gc marking: captured arguments")
+assert(List.at(r, 4) == "str" and List.at(r, 5) == [1, "two", [3]], "gc marking: captured locals")
+assert(List.at(r, 8) == "str", "gc marking: a captured name used twice")
+
+fun no_capture() do
+    return fun(x) do
+        Core.gc_swap()
+        return x + 1
+    end
+end
+assert(no_capture()(1) == 2, "gc marking: closure with nothing to capture")
+
+fun nested_closure(a) do
+    return fun(x) do
+        return fun(y) do
+            Core.gc_swap()
+            return [a, x, y, "inner"]
+        end
+    end
+end
+assert(nested_closure("A")("B")("C") == ["A", "B", "C", "inner"], "gc marking: nested closures")
+
+### a closure with a big body (more than the default size of a function)
+
+fun big_body(k) do
+    return fun(x) do
+        a1 = x + k
+        a2 = a1 + k
+        a3 = a2 + k
+        a4 = a3 + k
+        a5 = a4 + k
+        a6 = a5 + k
+        a7 = a6 + k
+        a8 = a7 + k
+        a9 = a8 + k
+        a10 = a9 + k
+        Core.gc_swap()
+        b1 = a10 + k
+        b2 = b1 + k
+        b3 = b2 + k
+        b4 = b3 + k
+        b5 = b4 + k
+        b6 = b5 + k
+        b7 = b6 + k
+        b8 = b7 + k
+        b9 = b8 + k
+        b10 = b9 + k
+        c1 = b10 + a1 + a2 + a3 + a4 + a5
+        return [c1, "big"]
+    end
+end
+bb = big_body(1)(0)
+assert(List.at(bb, 1) == "big", "gc marking: closure with a big body")
+assert(List.at(bb, 0) == 20 + 1 + 2 + 3 + 4 + 5, "gc marking: value of the big body")
+
+### many closures alive at the same time, collected in the middle
+
+fun make_all(i, acc) do
+    if (i == 0) do
+        return acc
+    else
+        tag = "n" ++ Number.to_string(i)
+        f = fun(x) x ++ tag end
+        return make_all(i - 1, [f, acc])
+    end
+end
+fs = make_all(2000, [])
+Core.gc_swap()
+fun call_all(l, acc) do
+    if (List.length(l) == 0) do
+        return acc
+    else
+        return call_all(List.at(l, 1), acc + String.length(List.at(l, 0)("x")))
+    end
+end
+assert(call_all(fs, 0) > 2000, "gc marking: closures alive at the same time")
+
+### the memory of the closures is released
+
+before = Core.gc_meta_info().num_free_structs
+fun churn(i, acc) do
+    if (i == 0) do
+        return acc
+    else
+        f = fun(x) x + i end
+        return churn(i - 1, acc + f(1))
+    end
+end
+assert(churn(20000, 0) == 200030000, "gc marking: closures in a loop")
+Core.gc_swap()
+after = Core.gc_meta_info().num_free_structs
+assert(after - before >= 20000, "gc marking: closures were not released")
+
+### the number of cycles grows and values survive many of them
+
+c0 = Core.gc_meta_info().num_cycles
+keep = ["a" ++ "b", [1, 2, ["x" ++ "y"]]]
+fun cycles(i) do
+    if (i == 0) do
+        return 0
+    else
+        Core.gc_swap()
+        return 1 + cycles(i - 1)
+    end
+end
+assert(cycles(30) == 30, "gc marking: cycles inside a recursion")
+assert(Core.gc_meta_info().num_cycles - c0 >= 30, "gc marking: cycles are counted")
+assert(keep == ["ab", [1, 2, ["xy"]]], "gc marking: values after many cycles")
+
+print('GC marking done!')

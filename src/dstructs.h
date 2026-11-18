@@ -165,6 +165,9 @@ drax_list* new_dlist(d_vm* vm, int cap);
 
 drax_function* new_function(d_vm* vm);
 
+/* a function (a closure) whose code has room for 'cap' instructions */
+drax_function* new_function_sized(d_vm* vm, int cap);
+
 drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* f, const char* name, int arity);
 
 drax_string* new_dstring(d_vm* vm, char* chars, int length);
