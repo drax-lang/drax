@@ -33,14 +33,11 @@ drax_value __d_list_concat(d_vm* vm, int* stat) {
   return_if_is_not_list(a, stat);
   return_if_is_not_list(b, stat);
 
-  drax_list* l1 = CAST_LIST(a);
-  drax_list* l2 = CAST_LIST(b);
-
-  drax_list* l = new_dlist(vm, l1->length + l2->length);
-  l->length = l1->length + l2->length;
-
-  memcpy(l->elems, l1->elems, l1->length * sizeof(drax_value));
-  memcpy(l->elems + l1->length, l2->elems, l2->length * sizeof(drax_value));
+  drax_list* l = dlist_concat(vm, CAST_LIST(a), CAST_LIST(b));
+  if (l == NULL) {
+    DX_ERROR_FN(stat);
+    return DS_VAL(new_derror(vm, (char *) "Concat result is too large"));
+  }
 
   DX_SUCESS_FN(stat);
   return DS_VAL(l);
@@ -71,7 +68,7 @@ drax_value __d_list_tail(d_vm* vm, int* stat) {
    * lists are immutable, the tail shares the elements of the
    * original list (O(1), important for recursion over lists).
    */
-  drax_list* l = new_dlist(vm, l1->length - 1);
+  drax_list* l = new_dlist(vm, 1);
   free(l->elems);
   l->length = l1->length - 1;
   l->cap = l->length;

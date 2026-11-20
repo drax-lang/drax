@@ -110,6 +110,12 @@ typedef struct drax_list {
    * which is kept alive while the list is used.
    */
   struct drax_list* owner;
+  /**
+   * Only meaningful in the list that owns the buffer: how many slots
+   * of 'elems' were written by it or by the lists that share it.
+   * Lets List.concat(l, [x]) append in place (amortized O(1)).
+   */
+  int used;
 } drax_list;
 
 typedef struct drax_frame {
@@ -157,6 +163,9 @@ typedef struct drax_tid {
 } drax_tid;
 
 void put_value_dlist(drax_list* l, drax_value v);
+
+/* l1 ++ l2, appends in place when possible; NULL if the result is too large */
+drax_list* dlist_concat(d_vm* vm, drax_list* l1, drax_list* l2);
 
 void copy_dframe_entries(drax_frame* dst, int di, drax_frame* src, int si, int count);
 

@@ -29,6 +29,8 @@ echo -e "\n\033[43m----------------------\033[0m"
 
 ./bin/drax ./tests/drax/list.dx
 
+./bin/drax ./tests/drax/list_concat.dx
+
 ./bin/drax ./tests/drax/import.dx
 
 ./bin/drax ./tests/drax/math.dx

@@ -1,0 +1,100 @@
+# ++ / List.concat share the buffer when appending (see docs/list-append-optimization.md).
+# Lists are immutable: no result may change another list.
+
+fun build(n, acc) do
+  if (n == 0) do acc else build(n - 1, acc ++ [n]) end
+end
+
+fun build_concat(n, acc) do
+  if (n == 0) do acc else build_concat(n - 1, List.concat(acc, [n])) end
+end
+
+fun sum(l, acc) do
+  if (List.is_empty(l)) do acc else sum(List.tail(l), acc + List.head(l)) end
+end
+
+# branching from the same base: only one append can reuse the free room
+a = [1, 2, 3] ++ [4]
+b = a ++ [5]
+c = a ++ [6]
+d = b ++ [7]
+e = b ++ [8]
+
+assert(a == [1, 2, 3, 4], "list_concat: base list changed")
+assert(b == [1, 2, 3, 4, 5], "list_concat: first branch changed")
+assert(c == [1, 2, 3, 4, 6], "list_concat: second branch wrong")
+assert(d == [1, 2, 3, 4, 5, 7], "list_concat: nested branch d wrong")
+assert(e == [1, 2, 3, 4, 5, 8], "list_concat: nested branch e wrong")
+
+# appending to an old version after newer ones exist
+old = [10, 20] ++ [30]
+newer = old ++ [40]
+older = old ++ [50]
+assert(old == [10, 20, 30], "list_concat: old version changed")
+assert(newer == [10, 20, 30, 40], "list_concat: newer wrong")
+assert(older == [10, 20, 30, 50], "list_concat: old version append wrong")
+
+# appending after tail (the tail shares the buffer of its list)
+base = [1, 2, 3] ++ [4]
+t = List.tail(base)
+t1 = t ++ [9]
+t2 = t ++ [8]
+assert(base == [1, 2, 3, 4], "list_concat: list changed by tail append")
+assert(t == [2, 3, 4], "list_concat: tail changed")
+assert(t1 == [2, 3, 4, 9], "list_concat: tail append t1 wrong")
+assert(t2 == [2, 3, 4, 8], "list_concat: tail append t2 wrong")
+
+# tail of an appended list, then appending again to the original
+x = [1, 2] ++ [3]
+y = List.tail(x ++ [4])
+z = x ++ [5]
+assert(y == [2, 3, 4], "list_concat: tail of appended list wrong")
+assert(z == [1, 2, 3, 5], "list_concat: append after tail of appended list wrong")
+
+# empty sides
+assert([] ++ [] == [], "list_concat: empty ++ empty")
+assert([] ++ [1] == [1], "list_concat: empty ++ list")
+assert([1] ++ [] == [1], "list_concat: list ++ empty")
+e1 = [1, 2] ++ [3]
+e2 = e1 ++ []
+e3 = e2 ++ [4]
+e4 = e1 ++ [5]
+assert(e1 == [1, 2, 3] and e3 == [1, 2, 3, 4] and e4 == [1, 2, 3, 5], "list_concat: empty right side")
+
+# right side with more than one element, larger than the free room
+m = [1] ++ [2]
+n1 = m ++ [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+n2 = m ++ [0]
+assert(List.length(n1) == 14 and List.at(n1, 13) == 14, "list_concat: big right side")
+assert(n2 == [1, 2, 0] and m == [1, 2], "list_concat: right side branches")
+
+# nested lists and mixed values
+nested = [[1], "a"] ++ [[2, 3]]
+nested2 = nested ++ [nil]
+assert(List.at(nested, 2) == [2, 3] and List.length(nested) == 3, "list_concat: nested values")
+assert(List.length(nested2) == 4, "list_concat: nested append")
+
+# List.concat and ++ interleaved on the same buffer
+mix = [1] ++ [2]
+mix1 = List.concat(mix, [3])
+mix2 = mix1 ++ [4]
+mix3 = mix ++ [9]
+assert(mix == [1, 2] and mix1 == [1, 2, 3] and mix2 == [1, 2, 3, 4] and mix3 == [1, 2, 9], "list_concat: interleaved")
+
+# long builds (many growth steps and many views, GC runs in the middle)
+big = build(100000, [])
+assert(List.length(big) == 100000, "list_concat: big length")
+assert(List.at(big, 0) == 100000 and List.at(big, 99999) == 1, "list_concat: big ends")
+assert(sum(big, 0) == 5000050000, "list_concat: big sum")
+
+big2 = build_concat(100000, [])
+assert(big == big2, "list_concat: ++ and List.concat results differ")
+
+# values written in place must stay alive for the GC
+fun build_str(n, acc) do
+  if (n == 0) do acc else build_str(n - 1, acc ++ ["item" ++ "x"]) end
+end
+strs = build_str(20000, [])
+assert(List.length(strs) == 20000 and List.at(strs, 19999) == "itemx", "list_concat: strings survive the GC")
+
+print("list_concat done!")

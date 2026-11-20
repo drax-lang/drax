@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+#include <limits.h>
 
 #include "dstructs.h"
 #include "dhandler.h"
@@ -45,7 +46,56 @@ drax_list* new_dlist(d_vm* vm, int cap) {
   l->cap = cap <= 0 ? LIST_PRE_SIZE : cap;
   l->elems = malloc(sizeof(drax_value) * l->cap);
   l->owner = NULL;
+  l->used = 0;
   GC_TRACK(vm, sizeof(drax_value) * l->cap);
+  return l;
+}
+
+/**
+ * l1 ++ l2 for lists, shared by List.concat and the ++ operator.
+ *
+ * Append hack (like Go slices): when l1 ends exactly where the shared
+ * buffer is filled and there is spare room, l2 is written in place and a
+ * new view over the same buffer is returned. l1 is never modified, so
+ * immutability holds, and building a list with acc ++ [x] is O(1)
+ * amortized instead of O(n). See docs/list-append-optimization.md.
+ *
+ * Returns NULL when the result would not fit in a list (length > INT_MAX).
+ */
+drax_list* dlist_concat(d_vm* vm, drax_list* l1, drax_list* l2) {
+  /* lists are immutable: nothing to append, the same list is the result */
+  if (l2->length == 0) return l1;
+  if (l1->length == 0) return l2;
+
+  long long total = (long long) l1->length + (long long) l2->length;
+  if (total > INT_MAX) return NULL;
+
+  drax_list* root = (l1->owner != NULL) ? l1->owner : l1;
+  long long fill = root->used > root->length ? root->used : root->length;
+  drax_value* end = root->elems + fill;
+
+  if (l1->elems + l1->length == end && fill + l2->length <= root->cap) {
+    drax_list* v = new_dlist(vm, 1);
+    free(v->elems);
+    memcpy(end, l2->elems, l2->length * sizeof(drax_value));
+    root->used = (int) (fill + l2->length);
+    v->elems = l1->elems;
+    v->length = (int) total;
+    v->cap = (int) total;
+    v->owner = root;
+    return v;
+  }
+
+  /* small right side: leave spare room so the next appends are in place */
+  long long cap = total;
+  if (l2->length <= 8 && total + total / 2 + 4 <= INT_MAX) cap = total + total / 2 + 4;
+
+  drax_list* l = new_dlist(vm, (int) cap);
+  l->length = (int) total;
+  l->used = (int) total;
+
+  memcpy(l->elems, l1->elems, l1->length * sizeof(drax_value));
+  memcpy(l->elems + l1->length, l2->elems, l2->length * sizeof(drax_value));
   return l;
 }
 

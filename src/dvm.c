@@ -1554,12 +1554,12 @@ static int __exec__(d_vm* vm, int inter_mode) {
         } else if (IS_LIST(peek(vm, 0)) && IS_LIST(peek(vm, 1))) {
           drax_list* bl = CAST_LIST(peek(vm, 0));
           drax_list* al = CAST_LIST(peek(vm, 1));
-          int length = al->length + bl->length;
-          drax_list* result = new_dlist(vm, length);
-          memcpy(result->elems, al->elems, al->length * sizeof(drax_value));
-          memcpy(result->elems + al->length, bl->elems, bl->length * sizeof(drax_value));
-
-          result->length = length;
+          drax_list* result = dlist_concat(vm, al, bl);
+          if (result == NULL) {
+            SYNC_IP();
+            raise_operand_error(vm, peek(vm, 0), peek(vm, 1), "Concat result is too large");
+            return 1;
+          }
           pop_times(vm, 2);
           push(vm, DS_VAL(result));
         } else{
