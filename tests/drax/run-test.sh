@@ -81,6 +81,11 @@ timeout -s KILL 1 ./bin/drax ./tests/drax/print_flush.dx > "$PRINT_OUT" || true
 grep -q "first line" "$PRINT_OUT" || { echo "print is not flushed when stdout is a file"; rm -f "$PRINT_OUT"; exit 1; }
 rm -f "$PRINT_OUT"
 
+# native extensions (Native.load) and safe mode (--safe, --allow-*)
+sh ./tests/drax/ext/build.sh
+./bin/drax ./tests/drax/native.dx
+bash ./tests/drax/safe/run-safe-tests.sh
+
 # http server: real server and real clients (skipped without curl)
 bash ./tests/drax/http/run-http-tests.sh
 

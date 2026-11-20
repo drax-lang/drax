@@ -1,0 +1,24 @@
+## the permission is checked inside the function: an alias, a pipe or a callback do not skip it
+msg = "Os.cmd: permission denied"
+
+f = Os.cmd
+r = f?("echo hi")
+assert(Error.is(r) and String.contains(Error.message(r), msg), "safe: an alias of Os.cmd")
+
+r = "echo hi" |> Os.cmd?()
+assert(Error.is(r) and String.contains(Error.message(r), msg), "safe: Os.cmd in a pipe")
+
+r = List.map?(["echo hi"], Os.cmd)
+assert(Error.is(r) and String.contains(Error.message(r), msg), "safe: Os.cmd as a callback")
+
+g = Os.system
+r = g?("true")
+assert(Error.is(r) and String.contains(Error.message(r), "Os.system: permission denied"), "safe: an alias of Os.system")
+
+h = Native.load
+r = h?("./bin/ext/greet")
+assert(Error.is(r) and String.contains(Error.message(r), "Native.load: permission denied"), "safe: an alias of Native.load")
+
+fun run_it(cmd) do Os.cmd(cmd) end
+r = run_it?("echo hi")
+assert(Error.is(r) and String.contains(Error.message(r), msg), "safe: Os.cmd inside a function")

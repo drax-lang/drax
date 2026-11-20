@@ -1,0 +1,232 @@
+### Native extensions: Native.load of a library written with src/drax_ext.h
+### (tests/drax/ext/*.c, built by tests/drax/ext/build.sh into bin/ext)
+
+### load: the result is the name of the module (the suffix of the system is optional)
+name = Native.load("./bin/ext/greet")
+assert(name == 'Greet', "native error: Native.load must return the name of the module")
+
+### loading the same file again is the same module, nothing is registered twice
+assert(Native.load("bin/ext/greet") == 'Greet', "native error: a library loaded twice")
+
+### numbers
+assert(Greet.add(1, 2) == 3, "native error: Greet.add")
+assert(Greet.add(1.5, 2.25) == 3.75, "native error: Greet.add with decimals")
+assert(Greet.add(-1, 1) == 0, "native error: Greet.add with a negative number")
+
+### the arguments arrive in order
+assert(Greet.pair(1, 'a') == [1, 'a'], "native error: arguments out of order")
+
+### strings
+assert(Greet.shout('hello') == 'HELLO', "native error: Greet.shout")
+assert(Greet.shout('') == '', "native error: Greet.shout with an empty string")
+assert(Greet.length('abc') == 3, "native error: Greet.length")
+
+### the bytes of a string are kept as they are (no escape sequence is converted)
+assert(Greet.echo('a\\nb') == 'a\\nb', "native error: Greet.echo must not convert escape sequences")
+assert(Greet.length(Greet.echo('a\\nb')) == String.length('a\\nb'), "native error: Greet.echo length")
+
+### lists
+assert(Greet.sum([1, 2, 3, 4]) == 10, "native error: Greet.sum")
+assert(Greet.sum([]) == 0, "native error: Greet.sum of an empty list")
+assert(Greet.pair([1, 2], [3]) == [[1, 2], [3]], "native error: Greet.pair with lists")
+
+### frames
+info = Greet.info()
+assert(Greet.field(info, 'name') == 'greet', "native error: a frame returned by an extension")
+assert(Greet.field(info, 'version') == 1, "native error: a number in a frame")
+assert(Greet.field(info, 'ok') == true, "native error: a boolean in a frame")
+assert(Greet.field(info, 'nothing') == nil, "native error: nil in a frame")
+assert(Greet.field({x: 10, y: 20}, 'y') == 20, "native error: reading a frame")
+assert(Greet.field({x: 10}, 'missing') == nil, "native error: a key that does not exist")
+assert(Greet.length(Greet.field({k: 'abcd'}, 'k')) == 4, "native error: a string inside a frame")
+assert(List.length(Greet.keys({a: 1, b: 2, c: 3})) == 3, "native error: the keys of a frame")
+assert(Greet.keys({a: 1, b: 2}) == ['a', 'b'], "native error: the keys of a frame, in order")
+
+### types
+assert(Greet.type_of(1) == 'number', "native error: type_of number")
+assert(Greet.type_of('x') == 'string', "native error: type_of string")
+assert(Greet.type_of([1]) == 'list', "native error: type_of list")
+assert(Greet.type_of({a: 1}) == 'frame', "native error: type_of frame")
+assert(Greet.type_of(nil) == 'nil', "native error: type_of nil")
+assert(Greet.type_of(true) == 'boolean', "native error: type_of boolean")
+
+### several arities with the same name
+assert(Greet.hello() == 'hello', "native error: hello/0")
+assert(Greet.hello('drax') == 'hello drax', "native error: hello/1")
+
+### a failure of the extension is an Error value
+e = Greet.fail('no disk')
+assert(Error.is(e), "native error: a failure must be an Error")
+assert(Error.message(e) == 'failed: no disk', "native error: the message of the Error")
+
+### an argument of the wrong type is an Error that says what was wrong
+e = Greet.add(1, 'two')
+assert(Error.is(e), "native error: wrong argument type")
+assert(Error.message(e) == 'Greet.add: argument 2 must be a number, got string', "native error: message of a wrong argument")
+
+e = Greet.sum([1, 'x', 3])
+assert(Error.message(e) == 'Greet.sum: item 1 of the list is not a number (it is string)', "native error: message of a wrong item")
+
+### it works with the pipe and the protected call
+fun double(x) do x * 2 end
+assert(Greet.add(1, 2) |> double() == 6, "native error: pipe")
+assert(Error.is(Greet.add(1, 'a') |?> double()), "native error: |?> must stop at the Error")
+assert(Greet.add?(1, 2) == 3, "native error: protected call")
+
+### wrong number of arguments: the usual error of Drax
+r = Greet.add?(1)
+assert(Error.is(r), "native error: wrong number of arguments")
+
+### a function of the extension inside functions and as a value
+fun call_it(a, b) do Greet.add(a, b) end
+assert(call_it(10, 20) == 30, "native error: inside a function")
+f = Greet.add
+assert(f(2, 3) == 5, "native error: as a value")
+
+fun loop(n, acc) do
+    if (n == 0) do acc else loop(n - 1, Greet.add(acc, 1)) end
+end
+assert(loop(1000, 0) == 1000, "native error: a tail call that calls an extension")
+
+### handles: native data that the garbage collector releases
+c = Greet.counter_new(10)
+assert(Greet.type_of(c) == 'handle', "native error: type_of handle")
+assert(Greet.counter_next(c) == 11, "native error: handle (1)")
+assert(Greet.counter_next(c) == 12, "native error: handle (2)")
+
+e = Greet.counter_next(5)
+assert(Error.message(e) == 'Greet.counter_next: expected a counter, got number', "native error: a value that is not a handle")
+
+### a handle of another kind, and a value of the interpreter that is not an extension handle
+o = Greet.other_new()
+e = Greet.counter_next(o)
+assert(Error.message(e) == 'Greet.counter_next: expected a counter, got handle', "native error: a handle of another kind must be refused")
+srv = TCPServer.new({host: "127.0.0.1", port: "0"})
+e = Greet.counter_next(srv)
+assert(Error.is(e), "native error: a server is not a handle of the extension")
+TCPServer.close(srv)
+
+before = Greet.released()
+
+fun make_garbage(n) do
+    if (n == 0) do 0 else
+        Greet.counter_new(n)
+        make_garbage(n - 1)
+    end
+end
+
+make_garbage(50)
+Core.gc_swap()
+Core.gc_swap()
+assert(Greet.released() >= before + 50, "native error: the handles that nobody uses must be released")
+assert(Greet.counter_next(c) == 13, "native error: a handle that is still used must not be released")
+
+### a lot of values created by the extension
+fun many(n, acc) do
+    if (n == 0) do acc else many(n - 1, acc + Greet.length(Greet.shout('abcdefghij'))) end
+end
+assert(many(2000, 0) == 20000, "native error: many calls")
+
+### Native.load failures are Error values with the way to fix them
+e = Native.load("./bin/ext/does_not_exist")
+assert(Error.is(e), "native error: a library that does not exist")
+assert(String.contains(Error.message(e), "cannot find the library './bin/ext/does_not_exist'"), "native error: message (not found)")
+assert(String.contains(Error.message(e), "Looked for:"), "native error: message (not found, where)")
+assert(String.contains(Error.message(e), "current directory"), "native error: message (not found, directory)")
+
+e = Native.load("./bin/ext/plain")
+assert(Error.is(e), "native error: a library that is not an extension")
+assert(String.contains(Error.message(e), "not a Drax extension"), "native error: message (not an extension)")
+assert(String.contains(Error.message(e), "DRAX_EXTENSION"), "native error: message (not an extension, how to fix)")
+
+e = Native.load("./bin/ext/badabi")
+assert(String.contains(Error.message(e), "was built for version 999"), "native error: message (abi)")
+assert(String.contains(Error.message(e), "Rebuild the extension"), "native error: message (abi, how to fix)")
+
+e = Native.load("./bin/ext/noinit")
+assert(String.contains(Error.message(e), "does not export 'drax_ext_init'"), "native error: message (no start function)")
+
+e = Native.load("./bin/ext/badinit")
+assert(String.contains(Error.message(e), "failed to start: the database driver 'libfoo' is not installed"), "native error: message (start failed)")
+
+e = Native.load("./bin/ext/clash")
+assert(String.contains(Error.message(e), "declares the module 'List'"), "native error: message (name in use)")
+assert(String.contains(Error.message(e), "already has a module with that name"), "native error: message (name in use, why)")
+assert(List.length([1, 2]) == 2, "native error: the builtin List must still work")
+
+e = Native.load("./bin/ext/badreg")
+assert(String.contains(Error.message(e), "the function name 'Bad-Name' is not valid"), "native error: message (invalid function name)")
+
+e = Native.load("")
+assert(String.contains(Error.message(e), "the path of the library is empty"), "native error: message (empty path)")
+
+### the failed loads left nothing behind
+assert(Greet.add(2, 2) == 4, "native error: the loaded module must still work after failed loads")
+
+### a second extension
+assert(Native.load("./bin/ext/other") == 'Other', "native error: a second extension")
+assert(Other.one() == 1, "native error: the second extension")
+
+### A list or a frame that came from the script is shared: the extension cannot change it
+xs = [1, 2, 3]
+ys = List.tail(xs)
+assert(Greet.mutate_list(xs) == 0, "native error: list_push must refuse a list of the script")
+assert(xs == [1, 2, 3], "native error: a list of the script was changed by the extension")
+assert(ys == [2, 3], "native error: a list that shares the elements was changed")
+fr = {a: 1}
+assert(Greet.mutate_frame(fr) == 0, "native error: frame_set must refuse a frame of the script")
+assert(fr == {a: 1}, "native error: a frame of the script was changed by the extension")
+
+### a list that the extension created in the same call can be changed (also inside other containers)
+assert(Greet.nested() == [{row: [1, 'x', 2]}, [1, 'x', 2]], "native error: lists and frames created in the call")
+
+### and one that was created in a previous call cannot
+k = Greet.keep()
+assert(k == [], "native error: keep")
+assert(Greet.push_kept() == 0, "native error: a list of a previous call must not be changed")
+assert(k == [], "native error: a list of a previous call was changed")
+
+### long results: the list grows without quadratic copies
+big = Greet.range(200000)
+assert(List.length(big) == 200000, "native error: a long list")
+assert(List.at(big, 0) == 0, "native error: first item of a long list")
+assert(List.at(big, 199999) == 199999, "native error: last item of a long list")
+assert(Greet.sum(big) == 19999900000, "native error: sum of a long list")
+assert(Greet.range(0) == [], "native error: an empty list")
+assert(Error.is(Greet.range(-1)), "native error: range with a negative number")
+
+### the collector sees the values that an extension puts in a list or in a frame
+fun churn(n) do
+    if (n == 0) do 0 else
+        r = Greet.nested()
+        Core.gc_swap()
+        assert(r == [{row: [1, 'x', 2]}, [1, 'x', 2]], "native error: values created by an extension were collected")
+        churn(n - 1)
+    end
+end
+churn(30)
+
+### two extensions with the same module name
+e = Native.load("./bin/ext/greet2")
+assert(Error.is(e), "native error: two extensions with the same module")
+assert(String.contains(Error.message(e), "declares the module 'Greet', but the extension"), "native error: message (same module, two extensions)")
+assert(String.contains(Error.message(e), "greet.so' already uses that name"), "native error: message (same module, who has it)")
+assert(Greet.add(1, 1) == 2, "native error: the first extension must still work")
+
+### an extension built with a newer drax_ext.h than the interpreter understands
+e = Native.load("./bin/ext/newapi")
+assert(String.contains(Error.message(e), "newer drax_ext.h than this Drax understands"), "native error: message (table too short)")
+
+### a directory is not a library
+e = Native.load("./bin/ext")
+assert(String.contains(Error.message(e), "is a directory, not a library file"), "native error: message (directory)")
+
+### the pieces of the path
+assert(Native.load("./bin/ext/greet.so") == 'Greet', "native error: path with the suffix")
+assert(Native.load("./bin/ext/../ext/greet") == 'Greet', "native error: path with ..")
+
+### C++ (only when the build made it)
+if (List.at(Os.cmd_with_status("test -f ./bin/ext/cppext.so"), 0) == 0) do
+    assert(Native.load("./bin/ext/cppext") == 'Cpp', "native error: a C++ extension")
+    assert(Cpp.twice(21) == 42, "native error: a C++ extension function")
+end

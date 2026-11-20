@@ -1,0 +1,11 @@
+## what needs no permission works in safe mode
+fun fib(n) do
+    if (n < 2) do n else fib(n - 1) + fib(n - 2) end
+end
+
+assert(fib(15) == 610, "safe: functions")
+assert(List.length(List.map([1, 2, 3], fun (x) x * 2 end)) == 3, "safe: List.map")
+assert(String.length("abc") == 3, "safe: String")
+assert(Math.floor(2.5) == 2, "safe: Math")
+assert(Error.is(Error("x")), "safe: Error")
+print("pure ok")

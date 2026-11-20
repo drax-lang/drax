@@ -12,6 +12,7 @@
 #include "dbuiltin.h"
 #include "dtypes.h"
 #include "dgc.h"
+#include "mods/d_mod_native.h"
 #include "deval.h"
 
 #include "dstring.h"
@@ -1197,6 +1198,7 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
     if (s->type == DS_NATIVE) {
       drax_os_native* nf = (drax_os_native*) s;
       low_level_callback* native_fn = nf->function;
+      void* native_data = nf->udata;
 
       if (nf->arity != (int) a) {
         /* Module.name is resolved by name only: another function of the
@@ -1207,8 +1209,10 @@ int execute_d_function(d_vm* vm, drax_value a, drax_value v) {
           return 1;
         }
         native_fn = nf->module->fun[ov];
+        native_data = nf->module->udata ? nf->module->udata[ov] : NULL;
       }
 
+      vm->native_udata = native_data;
       int scs = 0;
       drax_value result = native_fn(vm, &scs);
 
@@ -1487,6 +1491,7 @@ static int __exec__(d_vm* vm, int inter_mode) {
           int art = md->arity[idx];
           drax_os_native* mn = new_dllcallback(vm, nf, (const char*) k, art);
           mn->module = md;
+          if (md->udata) mn->udata = md->udata[idx];
           push(vm, DS_VAL(mn));
           NEXT_OP(vm);
         }
@@ -1928,6 +1933,9 @@ void __destroy__(d_vm* vm) {
   if (vm == NULL) return;
 
   dgc_free_all(vm);
+  /* after the collection: the handles of an extension call its code when they are freed */
+  dnative_free(vm);
+  dperm_free(&vm->perms);
   free(vm->gc_meta);
 
   free_instructions(vm->instructions);
@@ -2048,6 +2056,9 @@ d_vm* createMainVM() {
   vm->pending_error = 0;
   vm->pending_msg = NULL;
   vm->max_call_depth = MAX_CALL_DEPTH;
+  dperm_init(&vm->perms);
+  vm->ext = NULL;
+  vm->native_udata = NULL;
   const char* env_depth = getenv("DRAX_MAX_CALL_DEPTH");
   if (env_depth != NULL) {
     long d = strtol(env_depth, NULL, 10);

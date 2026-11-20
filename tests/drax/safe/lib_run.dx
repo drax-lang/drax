@@ -1,0 +1,4 @@
+fun pure(x) do x * 2 end
+fun run() do Os.cmd("echo hi") end
+
+export({pure: pure, run: run})

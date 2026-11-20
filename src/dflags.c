@@ -13,10 +13,16 @@ static void version_app() {
 }
 
 static void help_app() {
-  printf(" usage drax [option] [args] \n\
-  -h, --help     show this help\n\
-  -v, --version  show version\
-  \n");
+  printf(" usage: drax [options] [script.dx]\n\
+\n\
+  -h, --help             show this help\n\
+  -v, --version          show version\n\
+\n\
+ Safe mode: by default a program may do everything. With --safe it can do\n\
+ only what the --allow-* options grant:\n\
+\n");
+  printf("%s", dperm_options_help());
+  printf("\n example: drax --safe --allow-run --allow-native=./greet.so script.dx\n");
 }
 
 static int non_flag(char * name) {
@@ -37,19 +43,51 @@ static int argcmp(char sname, const char * name, char * arg) {
   return 1;
 }
 
-bimode get_bimode(int argc, char** argv) {
-  #define _call_opt(s, o, v, fn) if (argcmp(s, o, v) == 0) fn();
+bimode get_bimode(int argc, char** argv, d_perms* perms, int* script) {
+  *script = 0;
 
   if (argc <= 1) return BI_INTERACTIVE_DEFAULT;
 
   int i;
   for (i = 1; i < argc; i++) {
-    if (non_flag(argv[i])) return BI_PROCESS_DEFAULT;
+    if (non_flag(argv[i])) {
+      *script = i;
 
-    _call_opt('h', "--help", argv[i], help_app);
-    _call_opt('v', "--version", argv[i], version_app);
+      /* an option after the script would be ignored, and --safe ignored is a program that is not safe */
+      int j;
+      for (j = i + 1; j < argc; j++) {
+        d_perms scratch;
+        char ignored[64];
+        dperm_init(&scratch);
+        int r = dperm_parse_option(&scratch, argv[j], ignored, sizeof(ignored));
+        dperm_free(&scratch);
 
+        if (r != 0) {
+          fprintf(stderr, "drax: the option '%s' is after the script and would be ignored. "
+                          "Options go before the script (example: drax --safe %s)\n", argv[j], argv[i]);
+          return BI_ERROR;
+        }
+      }
+
+      return BI_PROCESS_DEFAULT;
+    }
+
+    if (argcmp('h', "--help", argv[i]) == 0) { help_app(); return BI_NONE; }
+    if (argcmp('v', "--version", argv[i]) == 0) { version_app(); return BI_NONE; }
+
+    char err[512];
+    int r = dperm_parse_option(perms, argv[i], err, sizeof(err));
+
+    if (r == 1) continue;
+
+    if (r == -1) {
+      fprintf(stderr, "%s\n", err);
+    } else {
+      fprintf(stderr, "drax: unknown option '%s'. Run 'drax --help' to see the options.\n", argv[i]);
+    }
+    return BI_ERROR;
   }
 
-  return BI_NONE;
+  /* only options (drax --safe): the interactive shell */
+  return BI_INTERACTIVE_DEFAULT;
 }

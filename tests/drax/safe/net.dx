@@ -1,0 +1,3 @@
+s = TCPServer.new({host: "127.0.0.1", port: "0"})
+assert(typeof(s) == "tid", "safe: TCPServer.new")
+TCPServer.close(s)

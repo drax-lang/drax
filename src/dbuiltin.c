@@ -16,6 +16,7 @@
 #include "mods/d_mod_os.h"
 #include "mods/d_mod_http.h"
 #include "mods/d_mod_list.h"
+#include "mods/d_mod_native.h"
 
 static drax_value __d_assert(d_vm* vm, int* stat) {
   drax_value b = pop(vm);
@@ -450,6 +451,7 @@ static drax_value __d_number_floor_div(d_vm* vm, int* stat) {
 static drax_value __d_get_env(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
 
+  if (!dperm_allows(&vm->perms, D_PERM_ENV)) return dperm_deny(vm, stat, D_PERM_ENV, "Os.get_env", NULL);
   return_if_is_not_string(a, stat);
 
   char* env = getenv(CAST_STRING(a)->chars);
@@ -465,6 +467,7 @@ static drax_value __d_get_env(d_vm* vm, int* stat) {
 static drax_value __d_cmd(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
 
+  if (!dperm_allows(&vm->perms, D_PERM_RUN)) return dperm_deny(vm, stat, D_PERM_RUN, "Os.cmd", NULL);
   return_if_is_not_string(a, stat);
 
   char buf[4096];
@@ -484,6 +487,7 @@ static drax_value __d_cmd(d_vm* vm, int* stat) {
 static drax_value __d_cmd_with_status(d_vm* vm, int* stat) {
   drax_value a = pop(vm);
 
+  if (!dperm_allows(&vm->perms, D_PERM_RUN)) return dperm_deny(vm, stat, D_PERM_RUN, "Os.cmd_with_status", NULL);
   return_if_is_not_string(a, stat);
 
   char buf[4096];
@@ -511,6 +515,10 @@ static int create_directory(const char* path, mode_t mode) {
 static drax_value __d_mkdir(d_vm* vm, int* stat, int permission) {
   drax_value b = permission ? pop(vm) : DRAX_NIL_VAL;
   drax_value a = pop(vm);
+
+  if (!dperm_allows(&vm->perms, D_PERM_FS)) {
+    return dperm_deny(vm, stat, D_PERM_FS, permission ? "Os.pmkdir" : "Os.mkdir", NULL);
+  }
 
   if (permission) { return_if_is_not_number(b, stat); }
 
@@ -548,7 +556,8 @@ static drax_value __d_mkdir1(d_vm* v, int* s) { return __d_mkdir(v, s, 0); }
 static drax_value __d_mkdir2(d_vm* v, int* s) { return __d_mkdir(v, s, 1); }
 
 static drax_value __d_system(d_vm* vm, int* stat) {
-  drax_value a = pop(vm);  
+  drax_value a = pop(vm);
+  if (!dperm_allows(&vm->perms, D_PERM_RUN)) return dperm_deny(vm, stat, D_PERM_RUN, "Os.system", NULL);
   return_if_is_not_string(a, stat);
   int r = system(CAST_STRING(a)->chars);
 
@@ -1010,6 +1019,7 @@ static int http_opt_bool(drax_frame* f, const char* key, int* out) {
  */
 static drax_value __d_start_server(d_vm* vm, int* stat) {
   drax_value opt = pop(vm);
+  if (!dperm_allows(&vm->perms, D_PERM_NET)) return dperm_deny(vm, stat, D_PERM_NET, "TCPServer.new", NULL);
   return_if_is_not_frame(opt, stat);
   drax_frame* ofr = CAST_FRAME(opt);
 
@@ -1170,6 +1180,17 @@ void create_native_modules(d_vm* vm) {
 
   put_fun_on_module(mos, os_helper, sizeof(os_helper) / sizeof(drax_native_module_helper)); 
   put_mod_table(vm->envs->modules, DS_VAL(mos));
+
+  /**
+   * Native module: shared libraries written with drax_ext.h
+   */
+  drax_native_module* mnative = new_native_module(vm, "Native", 1);
+  const drax_native_module_helper native_helper[] = {
+    {1, "load", d_native_load },
+  };
+
+  put_fun_on_module(mnative, native_helper, sizeof(native_helper) / sizeof(drax_native_module_helper));
+  put_mod_table(vm->envs->modules, DS_VAL(mnative));
 
   /**
    * Error module

@@ -81,6 +81,8 @@ struct drax_native_module {
   const char** fn_names;
   int* arity;
   low_level_callback** fun;
+  /* data of each function (the extensions loaded with Native.load), NULL in the builtin modules */
+  void** udata;
 };
 
 typedef struct drax_native_module drax_native_module;
@@ -93,6 +95,8 @@ typedef struct drax_os_native {
    * used to find the overload that has the arity of the call */
   drax_native_module* module;
   low_level_callback* function;
+  /* what the function needs to know which one it is (see vm->native_udata), NULL for the builtin ones */
+  void* udata;
 } drax_os_native;
 
 typedef struct drax_list {
@@ -185,6 +189,9 @@ void put_value_dframe(drax_frame* l, char* k, drax_value v);
 drax_native_module* new_native_module(d_vm* vm, const char* name, int cap);
 
 void put_fun_on_module(drax_native_module* m, const drax_native_module_helper helper[], int size);
+
+/* data for each function of the module, in the order of put_fun_on_module (copied) */
+void put_data_on_module(drax_native_module* m, void* const udata[], int size);
 
 int get_fun_on_module(drax_native_module* m, const char* n);
 

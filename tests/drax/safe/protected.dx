@@ -1,0 +1,8 @@
+## a denied call is a runtime error: f?() turns it into an Error
+r = Os.cmd?("echo hi")
+assert(Error.is(r), "safe: the denial must be an Error with f?()")
+assert(String.contains(Error.message(r), "--allow-run"), "safe: the message must say the flag")
+
+r = Native.load?("./bin/ext/greet")
+assert(Error.is(r), "safe: Native.load denied")
+assert(String.contains(Error.message(r), "--allow-native"), "safe: the message must say the flag")

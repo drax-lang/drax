@@ -55,11 +55,10 @@ static int interactive_shell(d_vm* v) {
   return 0;
 }
 
-static int process_file(d_vm* v, char** argv) {
+static int process_file(d_vm* v, char* path) {
   is_teractive_mode = 0;
   int stat = 0;
   char* content = 0;
-  char* path = argv[1];
 
   if(get_file_content(NULL, path, &content)) {
     printf("file '%s' not found.\n", path);
@@ -79,7 +78,21 @@ static int process_file(d_vm* v, char** argv) {
 }
 
 int main(int argc, char** argv) {
-  bimode bmode = get_bimode(argc, argv);
+  d_perms perms;
+  int script = 0;
+  dperm_init(&perms);
+
+  bimode bmode = get_bimode(argc, argv, &perms, &script);
+
+  if (bmode == BI_ERROR) {
+    dperm_free(&perms);
+    return 2;
+  }
+
+  if (bmode == BI_NONE) {
+    dperm_free(&perms);
+    return 0;
+  }
 
   /* print/inspect must reach a file or a pipe line by line: a server under a
    * supervisor would otherwise lose its last lines (full buffering is the
@@ -90,10 +103,13 @@ int main(int argc, char** argv) {
   d_vm* gdvm = createMainVM();
   main_vm = gdvm;
   atexit(destroy_main_vm);
+
+  /* the table of permissions is owned by the VM from here */
+  gdvm->perms = perms;
   
   switch (bmode) {
     case BI_PROCESS_DEFAULT:
-      return process_file(gdvm, argv);
+      return process_file(gdvm, argv[script]);
 
     case BI_INTERACTIVE_DEFAULT:
       interactive_shell(gdvm);

@@ -86,6 +86,7 @@ drax_os_native* new_dllcallback(d_vm* vm, low_level_callback* f, const char* nam
   native->function = f;
   native->arity = arity;
   native->module = NULL;
+  native->udata = NULL;
   return native;
 }
 
@@ -262,6 +263,7 @@ drax_native_module* new_native_module(d_vm* vm, const char* name, int cap) {
   m->arity = (int*) malloc(sizeof(int) * cap);
   m->fun = (low_level_callback**) malloc(sizeof(low_level_callback*) * cap);
   m->fn_names = (const char**) malloc(sizeof(const char*) * cap);
+  m->udata = NULL;
   return m;
 }
 
@@ -273,6 +275,12 @@ void put_fun_on_module(drax_native_module* m, const drax_native_module_helper he
     m->arity[i] = helper[i].arity;
   }
   m->count = size;
+}
+
+void put_data_on_module(drax_native_module* m, void* const udata[], int size) {
+  free(m->udata);
+  m->udata = (void**) malloc(sizeof(void*) * (size_t) (size > 0 ? size : 1));
+  memcpy(m->udata, udata, sizeof(void*) * (size_t) size);
 }
 
 int get_fun_on_module(drax_native_module* m, const char* n) {

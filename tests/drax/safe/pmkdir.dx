@@ -1,0 +1,1 @@
+assert(Os.pmkdir("bin/safe_pmkdir_test", 493) == true, "safe: Os.pmkdir")

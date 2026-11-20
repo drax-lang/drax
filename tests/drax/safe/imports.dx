@@ -1,0 +1,6 @@
+## import is not a permission: the imported code runs with the same table
+m = import('./lib_run.dx')
+assert(m.pure(2) == 4, "safe: an imported function that needs no permission")
+r = m.run?()
+assert(Error.is(r), "safe: the imported code must not escape the permissions")
+assert(String.contains(Error.message(r), "Os.cmd: permission denied"), "safe: message of the imported code")

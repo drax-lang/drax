@@ -1,0 +1,2 @@
+assert(Native.load("./bin/ext/greet") == "Greet", "safe: Native.load")
+assert(Greet.add(1, 2) == 3, "safe: the extension must work")

@@ -288,6 +288,7 @@ static void dgc_free_struct(d_struct* d) {
       free(m->arity);
       free(m->fun);
       free(m->fn_names);
+      free(m->udata);
       break;
     }
 

@@ -1,0 +1,1 @@
+assert(Os.system("true") == 0, "safe: Os.system")

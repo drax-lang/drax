@@ -1,0 +1,1 @@
+assert(List.at(Os.cmd_with_status("echo hi"), 0) == 0, "safe: Os.cmd_with_status")

@@ -10,6 +10,7 @@
 #include "dtypes.h"
 #include "dhandler.h"
 #include "dstructs.h"
+#include "dperm.h"
 
 #define is_call_fn(v) ((v->act != BACT_CALL_OP) && (v->act != BACT_CORE_OP))
 
@@ -205,6 +206,13 @@ typedef struct d_vm {
   int loop_depth;      /* nested __start__ loops (natives, imports) */
   int pending_error;   /* an error was raised and is waiting for its handler */
   char* pending_msg;   /* message of the pending error (heap) */
+
+  /* Permissions (safe mode), see dperm.h: everything is allowed by default */
+  d_perms perms;
+
+  /* Extensions loaded with Native.load, see mods/d_mod_native.c */
+  struct d_native_registry* ext;
+  void* native_udata;  /* data of the native function being called (an extension function) */
 } d_vm;
 
 /* VM */
@@ -223,6 +231,13 @@ d_vm* ligth_based_createVM(d_vm* vm_base, int vid, int clone_gc, int new_global_
 void push(d_vm* vm, drax_value v);
 
 drax_value pop(d_vm* vm);
+
+/**
+ * The result of a native function that needs a permission the program
+ * does not have: a runtime error that says which flag allows it.
+ * 'detail' is optional (see dperm_denied_text).
+ */
+drax_value dperm_deny(d_vm* vm, int* stat, d_perm what, const char* fn, const char* detail);
 
 void raise_drax_error(d_vm* vm, const char* format, ...);
 

@@ -133,7 +133,8 @@ typedef enum d_op_code {
 typedef enum bimode {
   BI_NONE,
   BI_PROCESS_DEFAULT,
-  BI_INTERACTIVE_DEFAULT
+  BI_INTERACTIVE_DEFAULT,
+  BI_ERROR              /* a wrong option: the message was printed, the status is 2 */
 } bimode;
 
 /**

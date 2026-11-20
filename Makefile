@@ -23,6 +23,8 @@ FILES= ./src/dvm.c \
 	   ./src/mods/d_mod_os.c \
 	   ./src/mods/d_mod_http.c \
 	   ./src/mods/d_mod_list.c \
+	   ./src/mods/d_mod_native.c \
+	   ./src/dperm.c \
 	   ./src/mods/d_http_parser.c
 
 DEBUGF= -ggdb \
@@ -140,7 +142,7 @@ config:
 
 c_test:
 	$(CC) -o tests/c_test_lex.o tests/c_tests/tests_lexer.c src/dlex.c
-	$(CC) -o tests/c_test_parser.o tests/c_tests/tests_parser.c $(FILES) -lm
+	$(CC) -o tests/c_test_parser.o tests/c_tests/tests_parser.c $(FILES) -lm $(LIBS)
 	$(CC) -o tests/c_test_http.o tests/c_tests/tests_http_parser.c src/mods/d_http_parser.c
 	./tests/c_test_lex.o
 	./tests/c_test_parser.o

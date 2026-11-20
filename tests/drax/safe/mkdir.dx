@@ -1,0 +1,1 @@
+assert(Os.mkdir("bin/safe_mkdir_test") == true, "safe: Os.mkdir")
