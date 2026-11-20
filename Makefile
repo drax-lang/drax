@@ -144,9 +144,13 @@ c_test:
 	$(CC) -o tests/c_test_lex.o tests/c_tests/tests_lexer.c src/dlex.c
 	$(CC) -o tests/c_test_parser.o tests/c_tests/tests_parser.c $(FILES) -lm $(LIBS)
 	$(CC) -o tests/c_test_http.o tests/c_tests/tests_http_parser.c src/mods/d_http_parser.c
+	$(CC) -o tests/c_test_list.o tests/c_tests/tests_list.c $(FILES) -lm $(LIBS)
+	$(CC) -o tests/c_test_vm.o tests/c_tests/tests_vm.c $(FILES) -lm $(LIBS)
 	./tests/c_test_lex.o
 	./tests/c_test_parser.o
 	./tests/c_test_http.o
+	./tests/c_test_list.o
+	./tests/c_test_vm.o
 
 test:
 ifeq ($(TARGET_OS),WIN32)

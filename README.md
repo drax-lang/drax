@@ -11,7 +11,7 @@ Drax is a lightweight project, dynamically typed, functional programming languag
 
 ### Learning
 
-Know the language in [Documentation](https://drax-lang.org/documentation/)
+Know the language in [Documentation](https://drax-lang.github.io//documentation/)
 
 ### Contributing
 
